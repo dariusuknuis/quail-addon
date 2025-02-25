@@ -1,25 +1,96 @@
 import io
-
+import pytest
 from wce.wce import wce
+import os
 
-def test_wce_reader():
+def read_file(path):
+    with open("test/" + path, "r") as file_reader:
+        data = file_reader.read()
+    return io.StringIO(data)
+
+@pytest.mark.parametrize("path", [
+    "actordef.wce",
+    "actorinst.wce",
+    "ambientlight.wce",
+    "blitspritedef.wce",
+    "dmspritedef2.wce",
+    "dmspritedefinition.wce",
+    "dmtrackdef2.wce",
+    "eqganidef.wce",
+    "eqglayerdef.wce",
+    "eqgmodeldef.wce",
+    "eqgskinnedmodeldef.wce",
+    "eqgterdef.wce",
+    "globalambientlightdef.wce",
+    "hierarchicalspritedef.wce",
+    "lightdefinition.wce",
+    "materialdefinition.wce",
+    "materialpalette.wce",
+    "particleclouddef.wce",
+    "pointlight.wce",
+    "polyhedrondefinition.wce",
+    "region.wce",
+    "rgbdeformationtrackdef.wce",
+    "simplespritedef.wce",
+    "sprite2ddef.wce",
+    "sprite3ddef.wce",
+    "trackdefinition.wce",
+    "trackinstance.wce",
+    "worlddef.wce",
+    "worldtree.wce",
+    "zone.wce"
+])
+def test_individual_wce_reader(path):
+    try:
+        e = wce()
+        data = read_file(path)
+        e.parse_definitions(path, data)
+        print(f"Done with {path}")
+    except Exception as ex:
+        print(f"Failed to process {path}: {ex}")
+        raise ex
+
+
+@pytest.mark.parametrize("path", [
+    "actordef.wce",
+    "actorinst.wce",
+    "ambientlight.wce",
+    "blitspritedef.wce",
+    "dmspritedef2.wce",
+    "dmspritedefinition.wce",
+    "dmtrackdef2.wce",
+    "eqganidef.wce",
+    "eqglayerdef.wce",
+    "eqgmodeldef.wce",
+    "eqgskinnedmodeldef.wce",
+    "eqgterdef.wce",
+    "globalambientlightdef.wce",
+    "hierarchicalspritedef.wce",
+    "lightdefinition.wce",
+    "materialdefinition.wce",
+    "materialpalette.wce",
+    "particleclouddef.wce",
+    "pointlight.wce",
+    "polyhedrondefinition.wce",
+    "region.wce",
+    "rgbdeformationtrackdef.wce",
+    "simplespritedef.wce",
+    "sprite2ddef.wce",
+    "sprite3ddef.wce",
+    "trackdefinition.wce",
+    "trackinstance.wce"
+])
+def test_wce_writer(path):
     e = wce()
-    path = "../quail/test/globalelf_chr/_root.wce"
-    file_reader = open(path, "r")
-    data = file_reader.read()
-    r = io.StringIO(data)
-    e.parse_definitions(path, r)
-    print("Done")
+    data = read_file(path)
+    e.parse_definitions(path, data)
 
-def test_wce_writer():
-    e = wce()
-    path = "../quail/test/globalelf_chr/_root.wce"
-    file_reader = open(path, "r")
-    data = file_reader.read()
-    r = io.StringIO(data)
-    e.parse_definitions(path, r)
+    if not os.path.exists("test/write"):
+        os.makedirs("test/write")
 
-    file_writer = open("test/_root.wce", "w")
     w = io.StringIO()
+    file_writer = open("test/write/"+path, "w")
     e.write_definitions(file_writer)
+
+    #assert w.getvalue() == data.getvalue(), "Written data does not match the read data"
     print("Done")
