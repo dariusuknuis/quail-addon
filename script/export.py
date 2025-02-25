@@ -64,8 +64,7 @@ def write_dmspritedef2(w:TextIOWrapper, object:bpy.types.Object):
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    w.write("DMSPRITEDEF2\n")
-    w.write("\tTAG \"%s_DMSPRITEDEF\"\n" % object.name)
+    w.write("DMSPRITEDEF2 \"%s\"\n" % object.name)
 
     # center = mathutils.Vector((0.0, 0.0, 0.0))
     # for vertex in mesh.vertices:
@@ -113,7 +112,6 @@ def write_dmspritedef2(w:TextIOWrapper, object:bpy.types.Object):
     w.write("\n")
     w.write("\tPOLYHEDRON\n")
     w.write("\t\tDEFINITION \"%s\"\n" % mesh["definition"])
-    w.write("\tENDPOLYHEDRON\n\n")
     w.write("\tNUMFACE2S %d\n" % len(mesh.polygons))
     w.write("\n")
     passable_layer = bm.faces.layers.int.get("passable")
@@ -122,10 +120,8 @@ def write_dmspritedef2(w:TextIOWrapper, object:bpy.types.Object):
         w.write("\t\tPASSABLE %d\n" % bm.faces[i][passable_layer])
         # w.write("\t\tPASSABLE %d\n" %  face["passable"])
         w.write("\t\tTRIANGLE %d %d %d\n" % (face.vertices[0], face.vertices[1], face.vertices[2]))
-        w.write("\tENDDMFACE2 //%d\n\n" % i)
     w.write("\n")
-    w.write("\t// meshops are not supported\n")
-    w.write("\t// NUMMESHOPS 0\n")
+    w.write("\tNUMMESHOPS 0\n")
     w.write("\n")
     w.write("\tFACEMATERIALGROUPS %s" % mesh["facematerialgroups"])
     w.write("\n")
@@ -144,7 +140,7 @@ def write_dmspritedef2(w:TextIOWrapper, object:bpy.types.Object):
     w.write("\tHEXTENTHOUSANDFLAG %d\n" % mesh["hextenthousandflag"])
     w.write("\tHEXTWENTYTHOUSANDFLAG %d\n" % mesh["hextwentythousandflag"])
 
-    w.write("ENDDMSPRITEDEF2\n\n")
+    w.write("\n\n")
 
     bm.free()
 

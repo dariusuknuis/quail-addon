@@ -175,12 +175,10 @@ def parse_property(r:io.TextIOWrapper=None, property:str="", num_args:int=-1) ->
             raise Exception("%s: expected %d arguments, got %d" % (property, len(records)-1, num_args))
         return records
 
-def parse_dmspritedef2(r:io.TextIOWrapper=None):
+def parse_dmspritedef2(tag:str, r:io.TextIOWrapper=None):
     if r is None:
         raise Exception("reader is none")
 
-    records = parse_property(r, "TAG", 1)
-    tag = records[1]
     base_tag = tag.split("_DMSPRITEDEF")[0]
 
     print("Reading %s" % tag)
@@ -231,8 +229,6 @@ def parse_dmspritedef2(r:io.TextIOWrapper=None):
 
     print("definition %s" % mesh["definition"])
 
-    records = parse_property(r, "ENDPOLYHEDRON", 0)
-
     records = parse_property(r, "NUMFACE2S", 1)
     face_count = int(records[1])
 
@@ -244,7 +240,6 @@ def parse_dmspritedef2(r:io.TextIOWrapper=None):
         mesh_passable.append(int(records[1]))
         records = parse_property(r, "TRIANGLE", 3)
         mesh_faces.append((int(records[1]), int(records[2]), int(records[3])))
-        parse_property(r, "ENDDMFACE2", 0)
 
     records = parse_property(r, "NUMMESHOPS", 1)
 
