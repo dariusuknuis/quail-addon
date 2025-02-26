@@ -31,10 +31,11 @@ class pointlight:
 		self.radiusofinfluence = float(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"LIGHT \"{self.light}\"\n")
-		w.write(f"STATIC \"{self.static}\"\n")
-		w.write(f"STATICINFLUENCE \"{self.staticinfluence}\"\n")
-		w.write(f"HASREGIONS \"{self.hasregions}\"\n")
-		w.write(f"XYZ \"{self.xyz}\"\n")
-		w.write(f"RADIUSOFINFLUENCE \"{self.radiusofinfluence}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tLIGHT \"{self.light}\"\n")
+		w.write(f"\tSTATIC \"{self.static}\"\n")
+		w.write(f"\tSTATICINFLUENCE \"{self.staticinfluence}\"\n")
+		w.write(f"\tHASREGIONS \"{self.hasregions}\"\n")
+		w.write(f"\tXYZ \"{self.xyz}\"\n")
+		w.write(f"\tRADIUSOFINFLUENCE \"{self.radiusofinfluence}\"\n")
 

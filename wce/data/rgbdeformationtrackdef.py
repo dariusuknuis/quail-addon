@@ -41,12 +41,13 @@ class rgbdeformationtrackdef:
 			self.rgbas.append(rgbai)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"DATA1 \"{self.data1}\"\n")
-		w.write(f"DATA2 \"{self.data2}\"\n")
-		w.write(f"SLEEP \"{self.sleep}\"\n")
-		w.write(f"DATA4 \"{self.data4}\"\n")
-		w.write(f"RGBDEFORMATIONFRAME\n")
-		w.write(f"NUMRGBAS \"{len(self.rgbas)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tDATA1 \"{self.data1}\"\n")
+		w.write(f"\tDATA2 \"{self.data2}\"\n")
+		w.write(f"\tSLEEP \"{self.sleep}\"\n")
+		w.write(f"\tDATA4 \"{self.data4}\"\n")
+		w.write(f"\tRGBDEFORMATIONFRAME\n")
+		w.write(f"\tNUMRGBAS \"{len(self.rgbas)}\"\n")
 		for rgbai in self.rgbas:
-			w.write(f"RGBA \"{rgbai.rgba}\"\n")
+			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")
 

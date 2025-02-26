@@ -13,6 +13,8 @@ from wce.data.eqglayerdef import eqglayerdef
 from wce.data.eqgmodeldef import eqgmodeldef
 from wce.data.eqgskinnedmodeldef import eqgskinnedmodeldef
 from wce.data.eqgterdef import eqgterdef
+from wce.data.eqgparticlepointdef import eqgparticlepointdef
+from wce.data.eqgparticlerenderdef import eqgparticlerenderdef
 from wce.data.globalambientlightdef import globalambientlightdef
 from wce.data.hierarchicalspritedef import hierarchicalspritedef
 from wce.data.lightdefinition import lightdefinition
@@ -45,6 +47,8 @@ class wce:
     eqgmodeldefs:dict[str, eqgmodeldef]
     eqgskinnedmodeldefs:dict[str, eqgskinnedmodeldef]
     eqgterdefs:dict[str, eqgterdef]
+    eqgparticlepointdefs:dict[str, eqgparticlepointdef]
+    eqgparticlerenderdefs:dict[str, eqgparticlerenderdef]
     globalambientlightdefs:dict[str, globalambientlightdef]
     hierarchicalspritedefs:dict[str, hierarchicalspritedef]
     lightdefinitions:dict[str, lightdefinition]
@@ -78,6 +82,8 @@ class wce:
         self.eqgmodeldefs = {}
         self.eqgskinnedmodeldefs = {}
         self.eqgterdefs = {}
+        self.eqgparticlepointdefs = {}
+        self.eqgparticlerenderdefs = {}
         self.globalambientlightdefs = {}
         self.hierarchicalspritedefs = {}
         self.lightdefinitions = {}
@@ -210,6 +216,20 @@ class wce:
                     self.eqgterdefs[tag] = eqgterdef(tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgterdef: {e}")
+                continue
+
+            if line.startswith(eqgparticlepointdef.definition()):
+                try:
+                    self.eqgterdefs[tag] = eqgparticlepointdef(tag, r)
+                except Exception as e:
+                    raise Exception(f"{path_cursor} eqgparticlepointdef: {e}")
+                continue
+
+            if line.startswith(eqgparticlerenderdef.definition()):
+                try:
+                    self.eqgterdefs[tag] = eqgparticlerenderdef(tag, r)
+                except Exception as e:
+                    raise Exception(f"{path_cursor} eqgparticlerenderdef: {e}")
                 continue
 
             if line.startswith(globalambientlightdef.definition()):
@@ -353,6 +373,8 @@ class wce:
         for tag, eqgmodeldefs in self.eqgmodeldefs.items(): eqgmodeldefs.write(w)
         for tag, eqgskinnedmodeldefs in self.eqgskinnedmodeldefs.items(): eqgskinnedmodeldefs.write(w)
         for tag, eqgterdefs in self.eqgterdefs.items(): eqgterdefs.write(w)
+        for tag, eqgparticlepointdefs in self.eqgparticlepointdefs.items(): eqgparticlepointdefs.write(w)
+        for tag, eqgparticlerenderdefs in self.eqgparticlerenderdefs.items(): eqgparticlerenderdefs.write(w)
         for tag, globalambientlightdefs in self.globalambientlightdefs.items(): globalambientlightdefs.write(w)
         for tag, hierarchicalspritedefs in self.hierarchicalspritedefs.items(): hierarchicalspritedefs.write(w)
         for tag, lightdefinitions in self.lightdefinitions.items(): lightdefinitions.write(w)

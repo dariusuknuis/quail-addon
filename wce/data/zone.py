@@ -20,6 +20,7 @@ class zone:
 		self.userdata = str(records[1])
 
 	def write(self, w:io.TextIOWrapper):
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"REGIONLIST \"{self.regionlist}\"\n")
-		w.write(f"USERDATA \"{self.userdata}\"\n")
+		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 

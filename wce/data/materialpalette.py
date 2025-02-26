@@ -27,7 +27,8 @@ class materialpalette:
 			self.materials.append(materiali)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"NUMMATERIALS \"{len(self.materials)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
 		for materiali in self.materials:
-			w.write(f"MATERIAL \"{materiali.material}\"\n")
+			w.write(f"\t\tMATERIAL \"{materiali.material}\"\n")
 

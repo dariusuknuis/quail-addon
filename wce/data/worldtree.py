@@ -42,11 +42,12 @@ class worldtree:
 			self.worldnodes.append(worldnodei)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"NUMWORLDNODES \"{len(self.worldnodes)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tNUMWORLDNODES \"{len(self.worldnodes)}\"\n")
 		for worldnodei in self.worldnodes:
-			w.write(f"WORLDNODE\n")
-			w.write(f"NORMALABCD \"{worldnodei.normalabcd}\"\n")
-			w.write(f"WORLDREGIONTAG \"{worldnodei.worldregiontag}\"\n")
-			w.write(f"FRONTTREE \"{worldnodei.fronttree}\"\n")
-			w.write(f"BACKTREE \"{worldnodei.backtree}\"\n")
+			w.write(f"\t\tWORLDNODE\n")
+			w.write(f"\t\tNORMALABCD \"{worldnodei.normalabcd}\"\n")
+			w.write(f"\t\tWORLDREGIONTAG \"{worldnodei.worldregiontag}\"\n")
+			w.write(f"\t\tFRONTTREE \"{worldnodei.fronttree}\"\n")
+			w.write(f"\t\tBACKTREE \"{worldnodei.backtree}\"\n")
 

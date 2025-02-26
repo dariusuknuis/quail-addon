@@ -8,7 +8,7 @@ class actorinst:
 		return "ACTORINST"
 
 	tag:str
-	definition:str # Reference to the actor's sprite tag
+	sprite:str # Reference to the actor's sprite tag
 	currentaction:tuple[str, None] # The current action of the actor
 	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] # The location of the actor
 	boundingradius:tuple[float, None] # Radius around the actor instance for bounds
@@ -24,8 +24,8 @@ class actorinst:
 
 	def __init__(self, tag:str, r:io.TextIOWrapper):
 		self.tag = tag
-		records = parse.property(r, "DEFINITION", 1)
-		self.definition = str(records[1])
+		records = parse.property(r, "SPRITE", 1)
+		self.sprite = str(records[1])
 		records = parse.property(r, "CURRENTACTION?", 1)
 		self.currentaction = (str(records[1]) if records[1] != "NULL" else None)
 		records = parse.property(r, "LOCATION?", 6)
@@ -52,17 +52,18 @@ class actorinst:
 		self.userdata = int(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"DEFINITION \"{self.definition}\"\n")
-		w.write(f"CURRENTACTION? \"{self.currentaction}\"\n")
-		w.write(f"LOCATION? \"{self.location}\"\n")
-		w.write(f"BOUNDINGRADIUS? \"{self.boundingradius}\"\n")
-		w.write(f"SCALEFACTOR? \"{self.scalefactor}\"\n")
-		w.write(f"SOUND? \"{self.sound}\"\n")
-		w.write(f"ACTIVE? \"{self.active}\"\n")
-		w.write(f"SPRITEVOLUMEONLY? \"{self.spritevolumeonly}\"\n")
-		w.write(f"DMRGBTRACK? \"{self.dmrgbtrack}\"\n")
-		w.write(f"SPHERE \"{self.sphere}\"\n")
-		w.write(f"SPHERERADIUS \"{self.sphereradius}\"\n")
-		w.write(f"USEBOUNDINGBOX \"{self.useboundingbox}\"\n")
-		w.write(f"USERDATA \"{self.userdata}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tCURRENTACTION? \"{self.currentaction}\"\n")
+		w.write(f"\tLOCATION? \"{self.location}\"\n")
+		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
+		w.write(f"\tSCALEFACTOR? \"{self.scalefactor}\"\n")
+		w.write(f"\tSOUND? \"{self.sound}\"\n")
+		w.write(f"\tACTIVE? \"{self.active}\"\n")
+		w.write(f"\tSPRITEVOLUMEONLY? \"{self.spritevolumeonly}\"\n")
+		w.write(f"\tDMRGBTRACK? \"{self.dmrgbtrack}\"\n")
+		w.write(f"\tSPHERE \"{self.sphere}\"\n")
+		w.write(f"\tSPHERERADIUS \"{self.sphereradius}\"\n")
+		w.write(f"\tUSEBOUNDINGBOX \"{self.useboundingbox}\"\n")
+		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 

@@ -50,13 +50,14 @@ class lightdefinition:
 			self.colors.append(colori)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"CURRENTFRAME? \"{self.currentframe}\"\n")
-		w.write(f"NUMFRAMES \"{len(self.lightlevelss)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tCURRENTFRAME? \"{self.currentframe}\"\n")
+		w.write(f"\tNUMFRAMES \"{len(self.lightlevelss)}\"\n")
 		for lightlevelsi in self.lightlevelss:
-			w.write(f"LIGHTLEVELS \"{lightlevelsi.lightlevels}\"\n")
-		w.write(f"SLEEP? \"{self.sleep}\"\n")
-		w.write(f"SKIPFRAMES \"{self.skipframes}\"\n")
-		w.write(f"NUMCOLORS \"{len(self.colors)}\"\n")
+			w.write(f"\t\tLIGHTLEVELS \"{lightlevelsi.lightlevels}\"\n")
+		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
+		w.write(f"\tSKIPFRAMES \"{self.skipframes}\"\n")
+		w.write(f"\tNUMCOLORS \"{len(self.colors)}\"\n")
 		for colori in self.colors:
-			w.write(f"COLOR \"{colori.color}\"\n")
+			w.write(f"\t\tCOLOR \"{colori.color}\"\n")
 

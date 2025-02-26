@@ -41,11 +41,12 @@ class eqglayerdef:
 			self.layers.append(layeri)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"VERSION \"{self.version}\"\n")
-		w.write(f"NUMLAYERS \"{len(self.layers)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tVERSION \"{self.version}\"\n")
+		w.write(f"\tNUMLAYERS \"{len(self.layers)}\"\n")
 		for layeri in self.layers:
-			w.write(f"LAYER\n")
-			w.write(f"MATERIAL \"{layeri.material}\"\n")
-			w.write(f"DIFFUSE \"{layeri.diffuse}\"\n")
-			w.write(f"NORMAL \"{layeri.normal}\"\n")
+			w.write(f"\t\tLAYER\n")
+			w.write(f"\t\tMATERIAL \"{layeri.material}\"\n")
+			w.write(f"\t\tDIFFUSE \"{layeri.diffuse}\"\n")
+			w.write(f"\t\tNORMAL \"{layeri.normal}\"\n")
 

@@ -14,5 +14,6 @@ class globalambientlightdef:
 		self.color = int(records[1]), int(records[2]), int(records[3]), int(records[4])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"COLOR \"{self.color}\"\n")
+		w.write(f"{self.definition()}\n")
+		w.write(f"\tCOLOR \"{self.color}\"\n")
 

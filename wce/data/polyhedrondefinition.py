@@ -51,13 +51,14 @@ class polyhedrondefinition:
 		self.hexoneflag = int(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"BOUNDINGRADIUS \"{self.boundingradius}\"\n")
-		w.write(f"SCALEFACTOR \"{self.scalefactor}\"\n")
-		w.write(f"NUMVERTICES \"{len(self.xyzs)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tBOUNDINGRADIUS \"{self.boundingradius}\"\n")
+		w.write(f"\tSCALEFACTOR \"{self.scalefactor}\"\n")
+		w.write(f"\tNUMVERTICES \"{len(self.xyzs)}\"\n")
 		for xyzi in self.xyzs:
-			w.write(f"XYZ \"{xyzi.xyz}\"\n")
-		w.write(f"NUMFACES \"{len(self.vertexlists)}\"\n")
+			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMFACES \"{len(self.vertexlists)}\"\n")
 		for vertexlisti in self.vertexlists:
 			w.write(f"VERTEXLIST \"{vertexlisti.vertexlist}\"\n")
-		w.write(f"HEXONEFLAG \"{self.hexoneflag}\"\n")
+		w.write(f"\tHEXONEFLAG \"{self.hexoneflag}\"\n")
 

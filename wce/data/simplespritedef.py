@@ -60,16 +60,17 @@ class simplespritedef:
 			self.frames.append(framei)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"TAGINDEX \"{self.tagindex}\"\n")
-		w.write(f"VARIATION \"{self.variation}\"\n")
-		w.write(f"SKIPFRAMES? \"{self.skipframes}\"\n")
-		w.write(f"ANIMATED? \"{self.animated}\"\n")
-		w.write(f"SLEEP? \"{self.sleep}\"\n")
-		w.write(f"CURRENTFRAME? \"{self.currentframe}\"\n")
-		w.write(f"NUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
+		w.write(f"\tVARIATION \"{self.variation}\"\n")
+		w.write(f"\tSKIPFRAMES? \"{self.skipframes}\"\n")
+		w.write(f"\tANIMATED? \"{self.animated}\"\n")
+		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
+		w.write(f"\tCURRENTFRAME? \"{self.currentframe}\"\n")
+		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for framei in self.frames:
-			w.write(f"FRAME \"{framei.frame}\"\n")
-			w.write(f"NUMFILES \"{len(framei.files)}\"\n")
+			w.write(f"\t\tFRAME \"{framei.frame}\"\n")
+			w.write(f"\t\tNUMFILES \"{len(framei.files)}\"\n")
 			for filej in framei.files:
-				w.write(f"FILE \"{filej.file}\"\n")
+				w.write(f"\t\t\tFILE \"{filej.file}\"\n")
 

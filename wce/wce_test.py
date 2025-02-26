@@ -4,7 +4,7 @@ from wce.wce import wce
 import os
 
 def read_file(path):
-    with open("test/" + path, "r") as file_reader:
+    with open("test/read/" + path, "r") as file_reader:
         data = file_reader.read()
     return io.StringIO(data)
 
@@ -19,6 +19,8 @@ def read_file(path):
     "eqganidef.wce",
     "eqglayerdef.wce",
     "eqgmodeldef.wce",
+    "eqgparticlepointdef.wce",
+    "eqgparticlerenderdef.wce",
     "eqgskinnedmodeldef.wce",
     "eqgterdef.wce",
     "globalambientlightdef.wce",
@@ -62,6 +64,8 @@ def test_individual_wce_reader(path):
     "eqganidef.wce",
     "eqglayerdef.wce",
     "eqgmodeldef.wce",
+    "eqgparticlepointdef.wce",
+    "eqgparticlerenderdef.wce",
     "eqgskinnedmodeldef.wce",
     "eqgterdef.wce",
     "globalambientlightdef.wce",
@@ -78,7 +82,10 @@ def test_individual_wce_reader(path):
     "sprite2ddef.wce",
     "sprite3ddef.wce",
     "trackdefinition.wce",
-    "trackinstance.wce"
+    "trackinstance.wce",
+    "worlddef.wce",
+    "worldtree.wce",
+    "zone.wce"
 ])
 def test_wce_writer(path):
     e = wce()

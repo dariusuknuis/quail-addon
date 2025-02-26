@@ -63,16 +63,17 @@ class eqganidef:
 			self.bones.append(bonei)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"VERSION \"{self.version}\"\n")
-		w.write(f"STRICT \"{self.strict}\"\n")
-		w.write(f"NUMBONES \"{len(self.bones)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tVERSION \"{self.version}\"\n")
+		w.write(f"\tSTRICT \"{self.strict}\"\n")
+		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
 		for bonei in self.bones:
-			w.write(f"BONE \"{bonei.bone}\"\n")
-			w.write(f"NUMFRAMES \"{len(bonei.frames)}\"\n")
+			w.write(f"\t\tBONE \"{bonei.bone}\"\n")
+			w.write(f"\t\tNUMFRAMES \"{len(bonei.frames)}\"\n")
 			for framej in bonei.frames:
-				w.write(f"FRAME\n")
-				w.write(f"MILLISECONDS \"{framej.milliseconds}\"\n")
-				w.write(f"TRANSLATION \"{framej.translation}\"\n")
-				w.write(f"ROTATION \"{framej.rotation}\"\n")
-				w.write(f"SCALE \"{framej.scale}\"\n")
+				w.write(f"\t\t\tFRAME\n")
+				w.write(f"\t\t\tMILLISECONDS \"{framej.milliseconds}\"\n")
+				w.write(f"\t\t\tTRANSLATION \"{framej.translation}\"\n")
+				w.write(f"\t\t\tROTATION \"{framej.rotation}\"\n")
+				w.write(f"\t\t\tSCALE \"{framej.scale}\"\n")
 

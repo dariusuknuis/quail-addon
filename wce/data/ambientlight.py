@@ -20,6 +20,7 @@ class ambientlight:
 
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"LIGHT \"{self.light}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tLIGHT \"{self.light}\"\n")
 		w.write(f"REGIONLIST \"{self.regionlist}\"\n")
 

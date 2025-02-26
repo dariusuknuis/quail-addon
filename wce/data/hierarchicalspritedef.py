@@ -34,7 +34,7 @@ class hierarchicalspritedef:
 		linkskinupdatestodagindex:int
 
 	attachedskins:list[attachedskin]
-	definition:str
+	sprite:str
 	centeroffset:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
 	boundingradius:tuple[float, None]
 	hextwohundredflag:int # also known as HAVEATTACHEDSKINS
@@ -81,8 +81,8 @@ class hierarchicalspritedef:
 			self.attachedskins.append(attachedskini)
 		parse.property(r, "POLYHEDRON", 0)
 
-		records = parse.property(r, "DEFINITION", 1)
-		self.definition = str(records[1])
+		records = parse.property(r, "SPRITE", 1)
+		self.sprite = str(records[1])
 		records = parse.property(r, "CENTEROFFSET?", 3)
 		self.centeroffset = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
 		records = parse.property(r, "BOUNDINGRADIUS?", 1)
@@ -93,25 +93,26 @@ class hierarchicalspritedef:
 		self.hextwentythousandflag = int(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"NUMDAGS \"{len(self.dags)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tNUMDAGS \"{len(self.dags)}\"\n")
 		for dagi in self.dags:
-			w.write(f"DAG\n")
-			w.write(f"TAG \"{dagi.tag}\"\n")
-			w.write(f"SPRITE \"{dagi.sprite}\"\n")
-			w.write(f"SPRITEINDEX \"{dagi.spriteindex}\"\n")
-			w.write(f"TRACK \"{dagi.track}\"\n")
-			w.write(f"TRACKINDEX \"{dagi.trackindex}\"\n")
+			w.write(f"\t\tDAG\n")
+			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
+			w.write(f"\t\tSPRITE \"{dagi.sprite}\"\n")
+			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
+			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
+			w.write(f"\t\tTRACKINDEX \"{dagi.trackindex}\"\n")
 			w.write(f"SUBDAGLIST \"{dagi.subdaglist}\"\n")
-		w.write(f"NUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
+		w.write(f"\tNUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
 		for attachedskini in self.attachedskins:
-			w.write(f"ATTACHEDSKIN\n")
-			w.write(f"DMSPRITE \"{attachedskini.dmsprite}\"\n")
-			w.write(f"DMSPRITEINDEX \"{attachedskini.dmspriteindex}\"\n")
-			w.write(f"LINKSKINUPDATESTODAGINDEX \"{attachedskini.linkskinupdatestodagindex}\"\n")
-		w.write(f"POLYHEDRON\n")
-		w.write(f"DEFINITION \"{self.definition}\"\n")
-		w.write(f"CENTEROFFSET? \"{self.centeroffset}\"\n")
-		w.write(f"BOUNDINGRADIUS? \"{self.boundingradius}\"\n")
-		w.write(f"HEXTWOHUNDREDFLAG \"{self.hextwohundredflag}\"\n")
-		w.write(f"HEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
+			w.write(f"\t\tATTACHEDSKIN\n")
+			w.write(f"\t\tDMSPRITE \"{attachedskini.dmsprite}\"\n")
+			w.write(f"\t\tDMSPRITEINDEX \"{attachedskini.dmspriteindex}\"\n")
+			w.write(f"\t\tLINKSKINUPDATESTODAGINDEX \"{attachedskini.linkskinupdatestodagindex}\"\n")
+		w.write(f"\tPOLYHEDRON\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tCENTEROFFSET? \"{self.centeroffset}\"\n")
+		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
+		w.write(f"\tHEXTWOHUNDREDFLAG \"{self.hextwohundredflag}\"\n")
+		w.write(f"\tHEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
 

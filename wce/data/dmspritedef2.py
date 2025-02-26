@@ -34,7 +34,7 @@ class dmspritedef2:
 	materialpalette:str # The material palette used by the sprite
 	dmtrackinst:str # The DM track instance
 	polyhedron:str # The polyhedron definition
-	definition:str # The definition reference
+	sprite:str # The definition reference
 
 	class dmface2:
 
@@ -112,8 +112,8 @@ class dmspritedef2:
 		self.dmtrackinst = str(records[1])
 		records = parse.property(r, "POLYHEDRON", 1)
 		self.polyhedron = str(records[1])
-		records = parse.property(r, "DEFINITION", 1)
-		self.definition = str(records[1])
+		records = parse.property(r, "SPRITE", 1)
+		self.sprite = str(records[1])
 		records = parse.property(r, "NUMFACE2S", 1)
 		numface2s = int(records[1])
 
@@ -162,43 +162,44 @@ class dmspritedef2:
 		self.hextwentythousandflag = int(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"TAGINDEX \"{self.tagindex}\"\n")
-		w.write(f"CENTEROFFSET \"{self.centeroffset}\"\n")
-		w.write(f"NUMVERTICES \"{len(self.xyzs)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
+		w.write(f"\tCENTEROFFSET \"{self.centeroffset}\"\n")
+		w.write(f"\tNUMVERTICES \"{len(self.xyzs)}\"\n")
 		for xyzi in self.xyzs:
-			w.write(f"XYZ \"{xyzi.xyz}\"\n")
-		w.write(f"NUMUVS \"{len(self.uvs)}\"\n")
+			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMUVS \"{len(self.uvs)}\"\n")
 		for uvi in self.uvs:
-			w.write(f"UV \"{uvi.uv}\"\n")
-		w.write(f"NUMVERTEXNORMALS \"{len(self.xyzs)}\"\n")
+			w.write(f"\t\tUV \"{uvi.uv}\"\n")
+		w.write(f"\tNUMVERTEXNORMALS \"{len(self.xyzs)}\"\n")
 		for xyzi in self.xyzs:
-			w.write(f"XYZ \"{xyzi.xyz}\"\n")
-		w.write(f"NUMVERTEXCOLORS \"{len(self.rgbas)}\"\n")
+			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMVERTEXCOLORS \"{len(self.rgbas)}\"\n")
 		for rgbai in self.rgbas:
-			w.write(f"RGBA \"{rgbai.rgba}\"\n")
+			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")
 		w.write(f"SKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
-		w.write(f"MATERIALPALETTE \"{self.materialpalette}\"\n")
-		w.write(f"DMTRACKINST \"{self.dmtrackinst}\"\n")
-		w.write(f"POLYHEDRON \"{self.polyhedron}\"\n")
-		w.write(f"DEFINITION \"{self.definition}\"\n")
-		w.write(f"NUMFACE2S \"{len(self.dmface2s)}\"\n")
+		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
+		w.write(f"\tDMTRACKINST \"{self.dmtrackinst}\"\n")
+		w.write(f"\tPOLYHEDRON \"{self.polyhedron}\"\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tNUMFACE2S \"{len(self.dmface2s)}\"\n")
 		for dmface2i in self.dmface2s:
-			w.write(f"DMFACE2\n")
-			w.write(f"PASSABLE \"{dmface2i.passable}\"\n")
-			w.write(f"TRIANGLE \"{dmface2i.triangle}\"\n")
-		w.write(f"NUMMESHOPS \"{len(self.meshops)}\"\n")
+			w.write(f"\t\tDMFACE2\n")
+			w.write(f"\t\tPASSABLE \"{dmface2i.passable}\"\n")
+			w.write(f"\t\tTRIANGLE \"{dmface2i.triangle}\"\n")
+		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
 		for meshopi in self.meshops:
-			w.write(f"MESHOP \"{meshopi.meshop}\"\n")
-		w.write(f"FACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
-		w.write(f"VERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
-		w.write(f"BOUNDINGBOXMIN \"{self.boundingboxmin}\"\n")
-		w.write(f"BOUNDINGBOXMAX \"{self.boundingboxmax}\"\n")
-		w.write(f"BOUNDINGRADIUS \"{self.boundingradius}\"\n")
-		w.write(f"FPSCALE \"{self.fpscale}\"\n")
-		w.write(f"HEXONEFLAG \"{self.hexoneflag}\"\n")
-		w.write(f"HEXTWOFLAG \"{self.hextwoflag}\"\n")
-		w.write(f"HEXFOURTHOUSANDFLAG \"{self.hexfourthousandflag}\"\n")
-		w.write(f"HEXEIGHTTHOUSANDFLAG \"{self.hexeightthousandflag}\"\n")
-		w.write(f"HEXTENTHOUSANDFLAG \"{self.hextenthousandflag}\"\n")
-		w.write(f"HEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
+			w.write(f"\t\tMESHOP \"{meshopi.meshop}\"\n")
+		w.write(f"\tFACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
+		w.write(f"\tVERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
+		w.write(f"\tBOUNDINGBOXMIN \"{self.boundingboxmin}\"\n")
+		w.write(f"\tBOUNDINGBOXMAX \"{self.boundingboxmax}\"\n")
+		w.write(f"\tBOUNDINGRADIUS \"{self.boundingradius}\"\n")
+		w.write(f"\tFPSCALE \"{self.fpscale}\"\n")
+		w.write(f"\tHEXONEFLAG \"{self.hexoneflag}\"\n")
+		w.write(f"\tHEXTWOFLAG \"{self.hextwoflag}\"\n")
+		w.write(f"\tHEXFOURTHOUSANDFLAG \"{self.hexfourthousandflag}\"\n")
+		w.write(f"\tHEXEIGHTTHOUSANDFLAG \"{self.hexeightthousandflag}\"\n")
+		w.write(f"\tHEXTENTHOUSANDFLAG \"{self.hextenthousandflag}\"\n")
+		w.write(f"\tHEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
 

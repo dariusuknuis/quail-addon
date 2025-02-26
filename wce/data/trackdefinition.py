@@ -44,11 +44,12 @@ class trackdefinition:
 			self.legacyframes.append(legacyframei)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"TAGINDEX \"{self.tagindex}\"\n")
-		w.write(f"NUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
+		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for framei in self.frames:
-			w.write(f"FRAME \"{framei.frame}\"\n")
-		w.write(f"NUMLEGACYFRAMES \"{len(self.legacyframes)}\"\n")
+			w.write(f"\t\tFRAME \"{framei.frame}\"\n")
+		w.write(f"\tNUMLEGACYFRAMES \"{len(self.legacyframes)}\"\n")
 		for legacyframei in self.legacyframes:
-			w.write(f"LEGACYFRAME \"{legacyframei.legacyframe}\"\n")
+			w.write(f"\t\tLEGACYFRAME \"{legacyframei.legacyframe}\"\n")
 

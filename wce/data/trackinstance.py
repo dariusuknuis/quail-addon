@@ -9,8 +9,8 @@ class trackinstance:
 
 	tag:str
 	tagindex:int
-	definition:str
-	definitionindex:int
+	sprite:str
+	spriteindex:int
 	interpolate:int # deprecated, ignored in RoF2
 	reverse:int # deprecated, ignored in RoF2
 	sleep:tuple[int, None]
@@ -19,10 +19,10 @@ class trackinstance:
 		self.tag = tag
 		records = parse.property(r, "TAGINDEX", 1)
 		self.tagindex = int(records[1])
-		records = parse.property(r, "DEFINITION", 1)
-		self.definition = str(records[1])
-		records = parse.property(r, "DEFINITIONINDEX", 1)
-		self.definitionindex = int(records[1])
+		records = parse.property(r, "SPRITE", 1)
+		self.sprite = str(records[1])
+		records = parse.property(r, "SPRITEINDEX", 1)
+		self.spriteindex = int(records[1])
 		records = parse.property(r, "INTERPOLATE", 1)
 		self.interpolate = int(records[1])
 		records = parse.property(r, "REVERSE", 1)
@@ -31,10 +31,11 @@ class trackinstance:
 		self.sleep = (int(records[1]) if records[1] != "NULL" else None)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"TAGINDEX \"{self.tagindex}\"\n")
-		w.write(f"DEFINITION \"{self.definition}\"\n")
-		w.write(f"DEFINITIONINDEX \"{self.definitionindex}\"\n")
-		w.write(f"INTERPOLATE \"{self.interpolate}\"\n")
-		w.write(f"REVERSE \"{self.reverse}\"\n")
-		w.write(f"SLEEP? \"{self.sleep}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tSPRITEINDEX \"{self.spriteindex}\"\n")
+		w.write(f"\tINTERPOLATE \"{self.interpolate}\"\n")
+		w.write(f"\tREVERSE \"{self.reverse}\"\n")
+		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
 

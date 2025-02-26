@@ -20,7 +20,8 @@ class worlddef:
 		self.eqgversion = (int(records[1]) if records[1] != "NULL" else None)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"NEWWORLD \"{self.newworld}\"\n")
-		w.write(f"ZONE \"{self.zone}\"\n")
-		w.write(f"EQGVERSION? \"{self.eqgversion}\"\n")
+		w.write(f"{self.definition()}\n")
+		w.write(f"\tNEWWORLD \"{self.newworld}\"\n")
+		w.write(f"\tZONE \"{self.zone}\"\n")
+		w.write(f"\tEQGVERSION? \"{self.eqgversion}\"\n")
 

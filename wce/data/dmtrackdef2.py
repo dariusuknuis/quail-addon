@@ -50,13 +50,14 @@ class dmtrackdef2:
 			self.numverticess.append(numverticesi)
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"SLEEP \"{self.sleep}\"\n")
-		w.write(f"PARAM2 \"{self.param2}\"\n")
-		w.write(f"FPSCALE \"{self.fpscale}\"\n")
-		w.write(f"SIZE6 \"{self.size6}\"\n")
-		w.write(f"NUMFRAMES \"{len(self.numverticess)}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tSLEEP \"{self.sleep}\"\n")
+		w.write(f"\tPARAM2 \"{self.param2}\"\n")
+		w.write(f"\tFPSCALE \"{self.fpscale}\"\n")
+		w.write(f"\tSIZE6 \"{self.size6}\"\n")
+		w.write(f"\tNUMFRAMES \"{len(self.numverticess)}\"\n")
 		for numverticesi in self.numverticess:
-			w.write(f"NUMVERTICES \"{len(numverticesi.xyzs)}\"\n")
+			w.write(f"\t\tNUMVERTICES \"{len(numverticesi.xyzs)}\"\n")
 			for xyzj in numverticesi.xyzs:
-				w.write(f"XYZ \"{xyzj.xyz}\"\n")
+				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
 

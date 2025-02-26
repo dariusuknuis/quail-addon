@@ -22,7 +22,8 @@ class blitspritedef:
 		self.transparent = int(records[1])
 
 	def write(self, w:io.TextIOWrapper):
-		w.write(f"SPRITE \"{self.sprite}\"\n")
-		w.write(f"RENDERMETHOD \"{self.rendermethod}\"\n")
-		w.write(f"TRANSPARENT \"{self.transparent}\"\n")
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tRENDERMETHOD \"{self.rendermethod}\"\n")
+		w.write(f"\tTRANSPARENT \"{self.transparent}\"\n")
 
