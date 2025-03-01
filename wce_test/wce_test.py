@@ -11,7 +11,7 @@ def read_file(path):
 
 class TestWCE(unittest.TestCase):
     def setUp(self):
-        self.e = wce()
+        self.e = wce("")
 
     def run_test(self, path):
         try:

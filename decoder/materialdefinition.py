@@ -19,6 +19,6 @@ def decode_materialdefinition(parser:wce, material:materialdefinition) -> str:
     if bsdf is None:
         return f"material {material.tag} has no Principled BSDF node"
     tex_image = mat.node_tree.nodes.new('ShaderNodeTexImage')
-    tex_image.image = bpy.data.images.load(material.texture_path)
+    # tex_image.image = bpy.data.images.load(material.texture_path)
     mat.node_tree.links.new(bsdf.inputs['Base Color'], tex_image.outputs['Color'])
     return ""
