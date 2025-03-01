@@ -10,8 +10,7 @@ class hierarchicalspritedef:
 	tag:str
 
 	class dag:
-
-		tag:str
+		dag:str
 
 		sprite:str
 
@@ -48,10 +47,8 @@ class hierarchicalspritedef:
 		self.dags = []
 		for i in range(numdags):
 			dagi = self.dag()
-			property(r, "DAG", 0)
-
-			records = property(r, "TAG", 1)
-			dagi.tag = str(records[1])
+			records = property(r, "DAG", 1)
+			dagi.dag = str(records[1])
 			records = property(r, "SPRITE", 1)
 			dagi.sprite = str(records[1])
 			records = property(r, "SPRITEINDEX", 1)
@@ -96,8 +93,7 @@ class hierarchicalspritedef:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tNUMDAGS \"{len(self.dags)}\"\n")
 		for dagi in self.dags:
-			w.write(f"\t\tDAG\n")
-			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
+			w.write(f"\t\tDAG \"{dagi.dag}\"\n")
 			w.write(f"\t\tSPRITE \"{dagi.sprite}\"\n")
 			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
 			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
