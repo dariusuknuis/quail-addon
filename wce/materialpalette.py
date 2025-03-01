@@ -1,0 +1,34 @@
+# Generated from quail, DO NOT EDIT
+import io
+from .parse import property
+
+class materialpalette:
+	@staticmethod
+	def definition():
+		return "MATERIALPALETTE"
+
+	tag:str
+
+	class material:
+		material:str # Material tag
+
+	materials:list[material]
+
+	def __init__(self, tag:str, r:io.TextIOWrapper):
+		self.tag = tag
+		records = property(r, "NUMMATERIALS", 1)
+		nummaterials = int(records[1])
+
+		self.materials = []
+		for i in range(nummaterials):
+			materiali = self.material()
+			records = property(r, "MATERIAL", 1)
+			materiali.material = str(records[1])
+			self.materials.append(materiali)
+
+	def write(self, w:io.TextIOWrapper):
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
+		for materiali in self.materials:
+			w.write(f"\t\tMATERIAL \"{materiali.material}\"\n")
+

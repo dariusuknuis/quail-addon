@@ -1,0 +1,25 @@
+// Wld Light
+LIGHTDEFINITION "tag"
+	// Is there a current frame, and what's value
+ 	 // Argument 1 (%d): NULL if skipped
+	CURRENTFRAME? 1
+	// Number of frames in light
+ 	 // Argument 1 (%d): Count of frames
+	NUMFRAMES 1
+		// value of light level frame
+ 		 // Argument 1 (%0.8e): light level
+		LIGHTLEVELS 1.12345678
+	// Is a sleep value set?
+ 	 // Argument 1 (%d): NULL if skipped, sleep value in ms
+	SLEEP? 1
+	// Are frames skipped
+ 	 // Argument 1 (%d): number of frames to skip
+	SKIPFRAMES 1
+	// Number of colors
+ 	 // Argument 1 (%d): Count of colors
+	NUMCOLORS 1
+		// Color value
+ 		 // Argument 1 (%0.8e): R Value of color
+ 		 // Argument 2 (%0.8e): G Value of color
+ 		 // Argument 3 (%0.8e): B Value of color
+		COLOR 1.12345678 2.12345678 3.12345678

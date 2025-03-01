@@ -1,0 +1,8 @@
+// Wld Material Palette
+MATERIALPALETTE "tag"
+	// Number of materials in the palette
+ 	 // Argument 1 (%d): Number of materials
+	NUMMATERIALS 1
+		// Material tag
+ 		 // Argument 1 (%s): Tag of material
+		MATERIAL "1"

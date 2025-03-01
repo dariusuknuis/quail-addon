@@ -1,0 +1,46 @@
+// Wld actor instance
+ACTORINST "tag"
+	// Reference to the actor's sprite tag
+ 	 // Argument 1 (%s): Actor's sprite reference tag
+	SPRITE "1"
+	// The current action of the actor
+ 	 // Argument 1 (%s): The current action
+	CURRENTACTION? "1"
+	// The location of the actor
+ 	 // Argument 1 (%0.8e): The x coordinate
+ 	 // Argument 2 (%0.8e): The y coordinate
+ 	 // Argument 3 (%0.8e): The z coordinate
+ 	 // Argument 4 (%d): The x rotation
+ 	 // Argument 5 (%d): The y rotation
+ 	 // Argument 6 (%d): The z rotation
+	LOCATION? 1.12345678 2.12345678 3.12345678 4 5 6
+	// Radius around the actor instance for bounds
+ 	 // Argument 1 (%0.8e): Radius
+	BOUNDINGRADIUS? 1.12345678
+	// Scale factor of the actor instance
+ 	 // Argument 1 (%0.8e): Scale factor amount
+	SCALEFACTOR? 1.12345678
+	// Has a sound tag attached?
+ 	 // Argument 1 (%s): NULL if empty, sound tag
+	SOUND? "1"
+	// Is actor instance active?
+ 	 // Argument 1 (%d): NULL if empty, 1 if set to true
+	ACTIVE? 1
+	// Uses sprite volume?
+ 	 // Argument 1 (%d): NULL empty
+	SPRITEVOLUMEONLY? 1
+	// References an RGB Track?
+ 	 // Argument 1 (%s): NULL if not set, tag otherwise
+	DMRGBTRACK? "1"
+	// Reference to sphere tag
+ 	 // Argument 1 (%s): tag of sphere
+	SPHERE "1"
+	// Radius of sphere
+ 	 // Argument 1 (%0.8e): radius of sphere
+	SPHERERADIUS 1.12345678
+	// Use a bounding box
+ 	 // Argument 1 (%d): 0: false, 1: true
+	USEBOUNDINGBOX 1
+	// Unknown property 2
+ 	 // Argument 1 (%d): Unknown property 2
+	USERDATA 1

@@ -1,0 +1,118 @@
+# Generated from quail, DO NOT EDIT
+import io
+from .parse import property
+
+class hierarchicalspritedef:
+	@staticmethod
+	def definition():
+		return "HIERARCHICALSPRITEDEF"
+
+	tag:str
+
+	class dag:
+
+		tag:str
+
+		sprite:str
+
+		spriteindex:int
+
+		track:str
+
+		trackindex:str
+
+		subdaglist:list[str]
+
+	dags:list[dag]
+
+	class attachedskin:
+
+		dmsprite:str
+
+		dmspriteindex:int
+
+		linkskinupdatestodagindex:int
+
+	attachedskins:list[attachedskin]
+	sprite:str
+	centeroffset:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+	boundingradius:tuple[float, None]
+	hextwohundredflag:int # also known as HAVEATTACHEDSKINS
+	hextwentythousandflag:int # also known as DAGCOLLISONS
+
+	def __init__(self, tag:str, r:io.TextIOWrapper):
+		self.tag = tag
+		records = property(r, "NUMDAGS", 1)
+		numdags = int(records[1])
+
+		self.dags = []
+		for i in range(numdags):
+			dagi = self.dag()
+			property(r, "DAG", 0)
+
+			records = property(r, "TAG", 1)
+			dagi.tag = str(records[1])
+			records = property(r, "SPRITE", 1)
+			dagi.sprite = str(records[1])
+			records = property(r, "SPRITEINDEX", 1)
+			dagi.spriteindex = int(records[1])
+			records = property(r, "TRACK", 1)
+			dagi.track = str(records[1])
+			records = property(r, "TRACKINDEX", 1)
+			dagi.trackindex = str(records[1])
+			records = property(r, "SUBDAGLIST", -1)
+			dagi.subdaglist = records[1:]
+
+			self.dags.append(dagi)
+		records = property(r, "NUMATTACHEDSKINS", 1)
+		numattachedskins = int(records[1])
+
+		self.attachedskins = []
+		for i in range(numattachedskins):
+			attachedskini = self.attachedskin()
+			property(r, "ATTACHEDSKIN", 0)
+
+			records = property(r, "DMSPRITE", 1)
+			attachedskini.dmsprite = str(records[1])
+			records = property(r, "DMSPRITEINDEX", 1)
+			attachedskini.dmspriteindex = int(records[1])
+			records = property(r, "LINKSKINUPDATESTODAGINDEX", 1)
+			attachedskini.linkskinupdatestodagindex = int(records[1])
+			self.attachedskins.append(attachedskini)
+		property(r, "POLYHEDRON", 0)
+
+		records = property(r, "SPRITE", 1)
+		self.sprite = str(records[1])
+		records = property(r, "CENTEROFFSET?", 3)
+		self.centeroffset = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
+		records = property(r, "BOUNDINGRADIUS?", 1)
+		self.boundingradius = (float(records[1]) if records[1] != "NULL" else None)
+		records = property(r, "HEXTWOHUNDREDFLAG", 1)
+		self.hextwohundredflag = int(records[1])
+		records = property(r, "HEXTWENTYTHOUSANDFLAG", 1)
+		self.hextwentythousandflag = int(records[1])
+
+	def write(self, w:io.TextIOWrapper):
+		w.write(f"{self.definition()} \"{self.tag}\"\n")
+		w.write(f"\tNUMDAGS \"{len(self.dags)}\"\n")
+		for dagi in self.dags:
+			w.write(f"\t\tDAG\n")
+			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
+			w.write(f"\t\tSPRITE \"{dagi.sprite}\"\n")
+			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
+			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
+			w.write(f"\t\tTRACKINDEX \"{dagi.trackindex}\"\n")
+			w.write(f"SUBDAGLIST \"{dagi.subdaglist}\"\n")
+		w.write(f"\tNUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
+		for attachedskini in self.attachedskins:
+			w.write(f"\t\tATTACHEDSKIN\n")
+			w.write(f"\t\tDMSPRITE \"{attachedskini.dmsprite}\"\n")
+			w.write(f"\t\tDMSPRITEINDEX \"{attachedskini.dmspriteindex}\"\n")
+			w.write(f"\t\tLINKSKINUPDATESTODAGINDEX \"{attachedskini.linkskinupdatestodagindex}\"\n")
+		w.write(f"\tPOLYHEDRON\n")
+		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		w.write(f"\tCENTEROFFSET? \"{self.centeroffset}\"\n")
+		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
+		w.write(f"\tHEXTWOHUNDREDFLAG \"{self.hextwohundredflag}\"\n")
+		w.write(f"\tHEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
+

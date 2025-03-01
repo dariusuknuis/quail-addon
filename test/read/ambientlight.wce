@@ -1,0 +1,4 @@
+// Wld Ambient Light
+AMBIENTLIGHT "tag"
+	LIGHT 1.12345678
+	REGIONLIST 1 1

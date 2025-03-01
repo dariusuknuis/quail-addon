@@ -1,0 +1,32 @@
+// Wld Simple Sprite
+SIMPLESPRITEDEF "tag"
+	// Index of tag
+ 	 // Argument 1 (%d): Index of tag
+	TAGINDEX 1
+	// Variation of tag
+ 	 // Argument 1 (%d): Variation of tag
+	VARIATION 1
+	// Should frames be skipped?
+ 	 // Argument 1 (%d): 0: false, 1: true
+	SKIPFRAMES? 1
+	// Is animated?
+ 	 // Argument 1 (%d): 0: false, 1: true
+	ANIMATED? 1
+	// Is there a sleep duration (in milliseconds)
+ 	 // Argument 1 (%d): NULL for non-value
+	SLEEP? 1
+	// Current frame set?
+ 	 // Argument 1 (%d): NULL for non-value
+	CURRENTFRAME? 1
+	// Number of frames in simple sprite
+ 	 // Argument 1 (%d): Number of frames
+	NUMFRAMES 1
+		// Frame tag
+ 		 // Argument 1 (%s): Frame tag
+		FRAME "1"
+		// Number of files
+ 		 // Argument 1 (%d): Count of files
+		NUMFILES 1
+			// Texture file name
+ 			 // Argument 1 (%s): tag of file
+			FILE "1"

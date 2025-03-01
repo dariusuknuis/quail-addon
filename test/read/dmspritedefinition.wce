@@ -1,0 +1,107 @@
+// Wld DM sprite definition
+DMSPRITEDEFINITION "tag"
+	// The index of the tag
+ 	 // Argument 1 (%d): The index of the tag
+	TAGINDEX 1
+	// Fragment 1
+ 	 // Argument 1 (%d): fragment index
+	FRAGMENT1 1
+	// Material palette tag
+ 	 // Argument 1 (%s): Tag
+	MATERIALPALETTE "1"
+	// Fragment 3
+ 	 // Argument 1 (%d): fragment 3
+	FRAGMENT3 1
+	// center?
+ 	 // Argument 1 (%0.8e): The x coordinate
+ 	 // Argument 2 (%0.8e): The y coordinate
+ 	 // Argument 3 (%0.8e): The z coordinate
+	CENTER? 1.12345678 2.12345678 3.12345678
+	// params1
+ 	 // Argument 1 (%d): params1
+ 	 // Argument 2 (%d): params1
+ 	 // Argument 3 (%d): params1
+	PARAMS1? 1 2 3
+	// The number of vertices in the sprite
+ 	 // Argument 1 (%d): The number of vertices
+	NUMVERTICES 1
+		// The coordinates of a vertex
+ 		 // Argument 1 (%0.8e): The x coordinate
+ 		 // Argument 2 (%0.8e): The y coordinate
+ 		 // Argument 3 (%0.8e): The z coordinate
+		XYZ 1.12345678 2.12345678 3.12345678
+	// The number of texture coords
+ 	 // Argument 1 (%d): The number of tex coords
+	NUMTEXCOORDS 1
+		// The coordinates of a texture normal
+ 		 // Argument 1 (%0.8e): The u coordinate
+ 		 // Argument 2 (%0.8e): The v coordinate
+		UV 1.12345678 2.12345678
+	// The number of vertex normals in the sprite
+ 	 // Argument 1 (%d): The number of vertex normals
+	NUMNORMALS 1
+		// The coordinates of a texture normal
+ 		 // Argument 1 (%0.8e): The x coordinate
+ 		 // Argument 2 (%0.8e): The y coordinate
+ 		 // Argument 3 (%0.8e): The z coordinate
+		XYZ 1.12345678 2.12345678 3.12345678
+	// The number of vertex colors in the sprite
+ 	 // Argument 1 (%d): The number of vertex colors
+	NUMCOLORS 1
+		// The coordinates of a vertex
+ 		 // Argument 1 (%d): Red
+ 		 // Argument 2 (%d): Green
+ 		 // Argument 3 (%d): Blue
+ 		 // Argument 4 (%d): Alpha
+		RGBA 1 2 3 4
+	// The number of face2s in the sprite
+ 	 // Argument 1 (%d): The number of face2s
+	NUMFACES 1
+		// DM Face 2 Entries
+		DMFACE
+		// face flags
+ 		 // Argument 1 (%d): face flags
+		FLAG 1
+		// face data
+ 		 // Argument 1 (%d): Index 0 of face data
+ 		 // Argument 2 (%d): Index 1 of face data
+ 		 // Argument 3 (%d): Index 2 of face data
+ 		 // Argument 4 (%d): Index 3 of face data
+		DATA 1 2 3 4
+		// Triangle indexes
+ 		 // Argument 1 (%d): Index 0 of triangle
+ 		 // Argument 2 (%d): Index 1 of triangle
+ 		 // Argument 3 (%d): Index 2 of triangle
+		TRIANGLE 1 2 3
+	// The number of mesh operations in the sprite
+ 	 // Argument 1 (%d): The number of mesh operations
+	NUMMESHOPS 1
+		// A mesh operation
+ 		 // Argument 1 (%d): arg 0
+ 		 // Argument 2 (%d): arg 1
+ 		 // Argument 3 (%0.8e): arg 2
+ 		 // Argument 4 (%d): arg 3
+ 		 // Argument 5 (%d): arg 4
+		MESHOP 1 2 3.12345678 4 5
+	// The skin assignment groups
+ 	 // Argument 1 (%d): The size of the group
+ 	 // Argument 2 (%d...): The data of the group
+	SKINASSIGNMENTGROUPS 1 2 3
+	// data 8 information
+ 	 // Argument 1 (%d): 8 info
+	DATA8 1
+	// The face material groups
+ 	 // Argument 1 (%d): The size of the group
+ 	 // Argument 2 (%d): The data of the group
+ 	 // Argument 3 (%d): The data of the group
+	FACEMATERIALGROUPS 1 2 3
+	// The vertex material groups
+ 	 // Argument 1 (%d): The size of the group
+ 	 // Argument 2 (%d): The data of the group
+ 	 // Argument 3 (%d): The data of the group
+	VERTEXMATERIALGROUPS 1 2 3
+	// params2
+ 	 // Argument 1 (%d): params2
+ 	 // Argument 2 (%d): params2
+ 	 // Argument 3 (%d): params2
+	PARAMS2? 1 2 3
