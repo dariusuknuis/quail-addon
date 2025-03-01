@@ -29,7 +29,7 @@ DMSPRITEDEFINITION "tag"
  		 // Argument 1 (%0.8e): The x coordinate
  		 // Argument 2 (%0.8e): The y coordinate
  		 // Argument 3 (%0.8e): The z coordinate
-		XYZ 1.12345678 2.12345678 3.12345678
+		VXYZ 1.12345678 2.12345678 3.12345678
 	// The number of texture coords
  	 // Argument 1 (%d): The number of tex coords
 	NUMTEXCOORDS 1
@@ -44,7 +44,7 @@ DMSPRITEDEFINITION "tag"
  		 // Argument 1 (%0.8e): The x coordinate
  		 // Argument 2 (%0.8e): The y coordinate
  		 // Argument 3 (%0.8e): The z coordinate
-		XYZ 1.12345678 2.12345678 3.12345678
+		NXYZ 1.12345678 2.12345678 3.12345678
 	// The number of vertex colors in the sprite
  	 // Argument 1 (%d): The number of vertex colors
 	NUMCOLORS 1

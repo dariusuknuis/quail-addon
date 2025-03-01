@@ -30,8 +30,7 @@ MATERIALDEFINITION "tag"
  	 // Argument 1 (%d): Hex fifty flag
 	HEXFIFTYFLAG 1
 	// Pairs of flags?
- 	 // Argument 1 (%d): Pairs 0
- 	 // Argument 2 (%d): Pairs 1
+ 	 // Argument 1 (%d...): Pairs 0
 	PAIRS? 1 2
 	// Is material double sided?
  	 // Argument 1 (%d): 0: False, 1: True

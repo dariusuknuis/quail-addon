@@ -8,6 +8,7 @@ def read_file(path):
         data = file_reader.read()
     return io.StringIO(data)
 
+
 class TestWCE(unittest.TestCase):
     def setUp(self):
         self.e = wce()
@@ -123,6 +124,7 @@ class TestWCE(unittest.TestCase):
 
     def test_zone_wce(self):
         self.run_test("zone.wce")
+
 
 if __name__ == '__main__':
     unittest.main()

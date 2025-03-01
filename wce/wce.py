@@ -35,6 +35,8 @@ from .worldtree import worldtree
 from .zone import zone
 
 class wce:
+    path:str
+
     actordefs:dict[str, actordef]
     actorinsts:dict[str, actorinst]
     ambientlights:dict[str, ambientlight]
@@ -68,7 +70,8 @@ class wce:
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
 
-    def __init__(self):
+    def __init__(self, path:str):
+        self.path = path
 
         self.actordefs = {}
         self.actorinsts = {}
@@ -104,8 +107,10 @@ class wce:
         self.zones = {}
 
     def parse_definitions(self, current_path:str, r:io.TextIOWrapper):
-        current_dir = os.path.dirname(current_path)
 
+        current_dir = current_path
+        if os.path.isfile(current_dir):
+            current_dir = os.path.dirname(current_dir)
         defs = {}
 
         line_number = 0

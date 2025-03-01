@@ -6,7 +6,7 @@ def is_dev() -> bool:
 
 
 def version() -> str:
-    return "0.0.1"
+    return "v1.5.8"
 
 
 def string_to_vector(line: str) -> Vector:

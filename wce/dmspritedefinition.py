@@ -15,20 +15,20 @@ class dmspritedefinition:
 	center:tuple[tuple[float, None], tuple[float, None], tuple[float, None]] # center?
 	params1:tuple[tuple[int, None], tuple[int, None], tuple[int, None]] # params1
 
-	class xyz:
-		xyz:tuple[float, float, float] # The coordinates of a vertex
+	class vxyz:
+		vxyz:tuple[float, float, float] # The coordinates of a vertex
 
-	xyzs:list[xyz]
+	vxyzs:list[vxyz]
 
 	class uv:
 		uv:tuple[float, float] # The coordinates of a texture normal
 
 	uvs:list[uv]
 
-	class xyz:
-		xyz:tuple[float, float, float] # The coordinates of a texture normal
+	class nxyz:
+		nxyz:tuple[float, float, float] # The coordinates of a texture normal
 
-	xyzs:list[xyz]
+	nxyzs:list[nxyz]
 
 	class rgba:
 		rgba:tuple[int, int, int, int] # The coordinates of a vertex
@@ -72,12 +72,12 @@ class dmspritedefinition:
 		records = property(r, "NUMVERTICES", 1)
 		numvertices = int(records[1])
 
-		self.xyzs = []
+		self.vxyzs = []
 		for i in range(numvertices):
-			xyzi = self.xyz()
-			records = property(r, "XYZ", 3)
-			xyzi.xyz = float(records[1]), float(records[2]), float(records[3])
-			self.xyzs.append(xyzi)
+			vxyzi = self.vxyz()
+			records = property(r, "VXYZ", 3)
+			vxyzi.vxyz = float(records[1]), float(records[2]), float(records[3])
+			self.vxyzs.append(vxyzi)
 		records = property(r, "NUMTEXCOORDS", 1)
 		numtexcoords = int(records[1])
 
@@ -90,12 +90,12 @@ class dmspritedefinition:
 		records = property(r, "NUMNORMALS", 1)
 		numnormals = int(records[1])
 
-		self.xyzs = []
+		self.nxyzs = []
 		for i in range(numnormals):
-			xyzi = self.xyz()
-			records = property(r, "XYZ", 3)
-			xyzi.xyz = float(records[1]), float(records[2]), float(records[3])
-			self.xyzs.append(xyzi)
+			nxyzi = self.nxyz()
+			records = property(r, "NXYZ", 3)
+			nxyzi.nxyz = float(records[1]), float(records[2]), float(records[3])
+			self.nxyzs.append(nxyzi)
 		records = property(r, "NUMCOLORS", 1)
 		numcolors = int(records[1])
 
@@ -149,15 +149,15 @@ class dmspritedefinition:
 		w.write(f"\tFRAGMENT3 \"{self.fragment3}\"\n")
 		w.write(f"\tCENTER? \"{self.center}\"\n")
 		w.write(f"\tPARAMS1? \"{self.params1}\"\n")
-		w.write(f"\tNUMVERTICES \"{len(self.xyzs)}\"\n")
-		for xyzi in self.xyzs:
-			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMVERTICES \"{len(self.vxyzs)}\"\n")
+		for vxyzi in self.vxyzs:
+			w.write(f"\t\tVXYZ \"{vxyzi.vxyz}\"\n")
 		w.write(f"\tNUMTEXCOORDS \"{len(self.uvs)}\"\n")
 		for uvi in self.uvs:
 			w.write(f"\t\tUV \"{uvi.uv}\"\n")
-		w.write(f"\tNUMNORMALS \"{len(self.xyzs)}\"\n")
-		for xyzi in self.xyzs:
-			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMNORMALS \"{len(self.nxyzs)}\"\n")
+		for nxyzi in self.nxyzs:
+			w.write(f"\t\tNXYZ \"{nxyzi.nxyz}\"\n")
 		w.write(f"\tNUMCOLORS \"{len(self.rgbas)}\"\n")
 		for rgbai in self.rgbas:
 			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")

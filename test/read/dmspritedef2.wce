@@ -15,7 +15,7 @@ DMSPRITEDEF2 "tag"
  		 // Argument 1 (%0.8e): The x coordinate
  		 // Argument 2 (%0.8e): The y coordinate
  		 // Argument 3 (%0.8e): The z coordinate
-		XYZ 1.12345678 2.12345678 3.12345678
+		VXYZ 1.12345678 2.12345678 3.12345678
 	// The number of UVs in the sprite
  	 // Argument 1 (%d): The number of UVs
 	NUMUVS 1
@@ -30,7 +30,7 @@ DMSPRITEDEF2 "tag"
  		 // Argument 1 (%0.8e): The x coordinate
  		 // Argument 2 (%0.8e): The y coordinate
  		 // Argument 3 (%0.8e): The z coordinate
-		XYZ 1.12345678 2.12345678 3.12345678
+		NXYZ 1.12345678 2.12345678 3.12345678
 	// The number of vertex colors in the sprite
  	 // Argument 1 (%d): The number of vertex colors
 	NUMVERTEXCOLORS 1
@@ -51,8 +51,7 @@ DMSPRITEDEF2 "tag"
  	 // Argument 1 (%s): The track instance
 	DMTRACKINST "1"
 	// The polyhedron definition
- 	 // Argument 1 (%s): The definition of the polyhedron
-	POLYHEDRON "1"
+	POLYHEDRON
 	// The definition reference
  	 // Argument 1 (%s): The definition
 	SPRITE "1"
@@ -80,15 +79,11 @@ DMSPRITEDEF2 "tag"
  		 // Argument 5 (%d): arg 4
 		MESHOP 1 2 3.12345678 4 5
 	// The face material groups
- 	 // Argument 1 (%d): The size of the group
- 	 // Argument 2 (%d): The data of the group
- 	 // Argument 3 (%d): The data of the group
-	FACEMATERIALGROUPS 1 2 3
+ 	 // Argument 1 (%d...): The size of the group
+	FACEMATERIALGROUPS 1 1 1
 	// The vertex material groups
- 	 // Argument 1 (%d): The size of the group
- 	 // Argument 2 (%d): The data of the group
- 	 // Argument 3 (%d): The data of the group
-	VERTEXMATERIALGROUPS 1 2 3
+ 	 // Argument 1 (%d...): The size of the group
+	VERTEXMATERIALGROUPS 1 1 1
 	// The minimum bounding box coordinates
  	 // Argument 1 (%0.8e): The x coordinate
  	 // Argument 2 (%0.8e): The y coordinate

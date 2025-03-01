@@ -16,7 +16,7 @@ class materialdefinition:
 	scaledambient:float # Scaled ambient amount
 	tag:str # Simple sprite instance tag
 	hexfiftyflag:int # Hex fifty flag
-	pairs:tuple[tuple[int, None], tuple[int, None]] # Pairs of flags?
+	pairs:list[str] # Pairs of flags?
 	doublesided:int # Is material double sided?
 
 	def __init__(self, tag:str, r:io.TextIOWrapper):
@@ -39,8 +39,9 @@ class materialdefinition:
 		self.tag = str(records[1])
 		records = property(r, "HEXFIFTYFLAG", 1)
 		self.hexfiftyflag = int(records[1])
-		records = property(r, "PAIRS?", 2)
-		self.pairs = (int(records[1]) if records[1] != "NULL" else None), (int(records[2]) if records[2] != "NULL" else None)
+		records = property(r, "PAIRS?", -1)
+		self.pairs = records[1:]
+
 		records = property(r, "DOUBLESIDED", 1)
 		self.doublesided = int(records[1])
 
@@ -55,6 +56,6 @@ class materialdefinition:
 		w.write(f"\tSIMPLESPRITEINST\n")
 		w.write(f"\tTAG \"{self.tag}\"\n")
 		w.write(f"\tHEXFIFTYFLAG \"{self.hexfiftyflag}\"\n")
-		w.write(f"\tPAIRS? \"{self.pairs}\"\n")
+		w.write(f"PAIRS? \"{self.pairs}\"\n")
 		w.write(f"\tDOUBLESIDED \"{self.doublesided}\"\n")
 

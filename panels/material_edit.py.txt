@@ -1,5 +1,5 @@
 import bpy
-from common import version
+from ..common import version
 
 class MaterialEditQuail(bpy.types.Panel):
     bl_idname = "QUAIL_PT_panel"

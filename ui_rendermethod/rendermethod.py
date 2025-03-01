@@ -1,28 +1,59 @@
-# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportCallIssue=false
+# pyright: basic, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportCallIssue=false
 
 import bpy
-from bpy.types import Node
+from bpy.types import Node, ShaderNodeTree
 from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, StringProperty
 from nodeitems_utils import NodeCategory, NodeItem, register_node_categories, unregister_node_categories
-from nodeitems_builtins import SortedNodeCategory
-import nodeitems_utils
+from nodeitems_builtins import ShaderNodeCategory
 
 class QuailRenderMethodNode(Node):
     """Custom Shader Node for Surface Dropdown"""
     bl_idname = "ShaderNodeQuailRenderMethod"
     bl_label = "Quail Render Method"
     bl_icon = 'SHADING_RENDERED'
+    bl_description = "Custom Quail Render Method"
 
-    # Custom properties
-    render_method:EnumProperty
+    # Properties must be defined at the class level
+    render_method: EnumProperty(
+        name="Render Method",
+        description="Select the rendering method",
+        items=[
+            ("METHOD1", "Method 1", "First rendering method"),
+            ("METHOD2", "Method 2", "Second rendering method"),
+            ("METHOD3", "Method 3", "Third rendering method")
+        ],
+        default="METHOD1"
+    )
 
-    rgb_pen: FloatVectorProperty
+    rgb_pen: FloatVectorProperty(
+        name="RGB PEN",
+        description="Color picker",
+        subtype='COLOR',
+        default=(1.0, 1.0, 1.0, 1.0),
+        size=4
+    )
 
-    brightness: FloatProperty
+    brightness: FloatProperty(
+        name="Brightness",
+        description="Control brightness",
+        default=1.0,
+        min=0.0,
+        max=10.0
+    )
 
-    scaled_ambient: FloatProperty
+    scaled_ambient: FloatProperty(
+        name="Scaled Ambient",
+        description="Control ambient scaling",
+        default=0.5,
+        min=0.0,
+        max=1.0
+    )
 
-    sprite: StringProperty
+    sprite: StringProperty(
+        name="Sprite",
+        description="Reference to a sprite texture",
+        default=""
+    )
 
     def init(self, context):
         """Create the node inputs and outputs"""
@@ -30,40 +61,6 @@ class QuailRenderMethodNode(Node):
         self.inputs.new("NodeSocketFloat", "Brightness")
         self.inputs.new("NodeSocketFloat", "Scaled Ambient")
         self.outputs.new("NodeSocketShader", "Shader Output")
-        self.render_method.name="Render Method",
-        self.render_method.description="Select the rendering method",
-        self.render_method.items=[
-                ("METHOD1", "Method 1", "First rendering method"),
-                ("METHOD2", "Method 2", "Second rendering method"),
-                ("METHOD3", "Method 3", "Third rendering method")
-            ],
-        self.render_method.default="METHOD1"
-        self.sprite = StringProperty(
-            name="Sprite",
-            description="Reference to a sprite texture",
-            default=""
-        )
-        self.scaled_ambient = FloatProperty(
-            name="Scaled Ambient",
-            description="Control ambient scaling",
-            default=0.5,
-            min=0.0,
-            max=1.0
-        )
-        self.brightness = FloatProperty(
-            name="Brightness",
-            description="Control brightness",
-            default=1.0,
-            min=0.0,
-            max=10.0
-        )
-        self.rgb_pen = FloatVectorProperty(
-            name="RGB PEN",
-            description="Color picker",
-            subtype='COLOR',
-            default=(1.0, 1.0, 1.0, 1.0),
-            size=4
-        )
 
     def draw_buttons(self, context, layout):
         """Draw UI elements in the node"""
@@ -73,28 +70,3 @@ class QuailRenderMethodNode(Node):
         layout.prop(self, "scaled_ambient", text="Scaled Ambient")
         layout.prop(self, "sprite", text="Sprite Path")
 
-# Define the node category correctly
-class QuailNodeCategory(NodeCategory):
-    @classmethod
-    def poll(cls, context):
-        return context.space_data.tree_type == 'ShaderNodeTree'
-
-
-# Registering the node class and categories
-def register():
-    # bpy.utils.register_class(QuailRenderMethodNode)  # Register the node class
-
-    node_categories = [
-        NodeCategory("Quail", "Custom Nodes", items=[
-            NodeItem("ShaderNodeQuailRenderMethod")
-        ])
-    ]
-
-    nodeitems_utils.register_node_categories("Quail", node_categories)
-
-def unregister():
-    unregister_node_categories("Quail")
-    bpy.utils.unregister_class(QuailRenderMethodNode)  # Unregister the node class
-
-if __name__ == "__main__":
-    register()

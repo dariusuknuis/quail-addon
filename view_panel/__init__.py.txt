@@ -9,7 +9,7 @@ import os
 addon_keymaps = []
 
 
-def register():
+def register():__init__
     bpy.utils.register_class(ViewPanelQuail)
     bpy.utils.register_class(QUAIL_PT_fast_export)
     if on_selection_changed not in bpy.app.handlers.depsgraph_update_post:

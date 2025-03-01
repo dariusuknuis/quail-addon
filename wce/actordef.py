@@ -31,7 +31,7 @@ class actordef:
 
 	actions:list[action]
 	usemodelcollider:int # Ignored in RoF2. 0x80 flag. This gets ignored if ActorInst doesn't have it. Likely need to use hierarchysprite flag for things like boats
-	userdata:int # Unknown property 2
+	userdata:str # User Data
 
 	def __init__(self, tag:str, r:io.TextIOWrapper):
 		self.tag = tag
@@ -74,7 +74,7 @@ class actordef:
 		records = property(r, "USEMODELCOLLIDER", 1)
 		self.usemodelcollider = int(records[1])
 		records = property(r, "USERDATA", 1)
-		self.userdata = int(records[1])
+		self.userdata = str(records[1])
 
 	def write(self, w:io.TextIOWrapper):
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
