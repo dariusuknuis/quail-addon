@@ -3,17 +3,24 @@
     "python.testing.unittestArgs": [
         "-v",
         "-s",
-        ".",
+        "./wce_test",
         "-p",
         "*_test.py"
     ],
     "python.defaultInterpreterPath": "/usr/local/src/blender/4.2/python/bin/python3.11",
-    "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+    "python.testing.promptToConfigure": true,
     "python.testing.pytestArgs": [
         "."
     ],
     "python.autoComplete.extraPaths": [
         "${workspaceFolder}/.venv/lib/python3.11/site-packages"
+    ],
+    "blender.addon.reloadOnSave": true,
+    "blender.additionalArguments": [
+        "--factory-startup", // any arguments you want
+        // "--open-last", // Open the most recently opened blend file, or:
+        //"./path/to/my-file.blend" // prefered to be last argument, watch out for trailing spaces (which are invisible in VS code UI)
     ]
 }

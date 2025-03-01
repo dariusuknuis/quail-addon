@@ -1,10 +1,10 @@
 schema_version = "1.0.0"
 
 id = "quail_addon"
-version = "4.2.2"
-name = "Quail Addon"
+version = "1.5.8"
+name = "Quail"
 tagline = "Utility tools for EverQuest model editing"
-maintainer = "Xackery <xackery@gmail.com>"
+maintainer = "Xackery"
 type = "add-on"
 
 website = "https://github.com/xackery/quail-addon"
@@ -22,10 +22,12 @@ tags = [
 ]
 
 blender_version_min = "4.2.0"
-blender_version_max = "5.0.0"
+blender_version_max = "5.1.0"
 
 license = ["SPDX:GPL-3.0-or-later"]
-copyright = ["2024 Xackery"]
+copyright = ["2025 Xackery"]
+
+platforms = ["windows-x64", "macos-arm64", "linux-x64", "linux-x64"]
 
 ## Optional: add-ons can list which resources they will require:
 ## * files (for access of any filesystem operations)
@@ -46,4 +48,11 @@ files = "Import/export S3D/EQG from/to disk"
 # Optional: build settings.
 # https://docs.blender.org/manual/en/dev/advanced/extensions/command_line_arguments.html#command-line-args-extension-build
 [build]
-paths_exclude_pattern = ["__pycache__/", ".vscode/", ".venv/"]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".vscode/",
+  ".venv/",
+  "/.git",
+  "/*.zip",
+  "wce_test/"
+]
