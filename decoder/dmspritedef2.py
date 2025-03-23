@@ -5,13 +5,14 @@ import mathutils
 from bpy.types import Object, Collection
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
+from .context import Context
 
-def decode_dmspritedef2(parser:wce, collection:Collection, parent:Object, sprite:dmspritedef2) -> str:
+def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
-    collection.objects.link(obj)
-    obj.parent = parent
 
+    ctx.collection.objects.link(obj)
+    obj.parent = ctx.parent
 
     obj.location = mathutils.Vector(sprite.centeroffset)
 

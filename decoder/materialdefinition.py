@@ -1,13 +1,22 @@
-# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false
+# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
 
 import bpy
 from ..wce.wce import wce
 from ..wce.materialdefinition import materialdefinition
+from .context import Context
 
-def decode_materialdefinition(parser:wce, material:materialdefinition) -> str:
+def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     if material.tag in bpy.data.materials:
         return ""
     mat = bpy.data.materials.new(material.tag)
+    mat['quaildef'] = 'materialdefinition'
+    mat.quail_materialdefinition.rendermethod = material.rendermethod
+    mat.quail_materialdefinition.rgbpen = f"{material.rgbpen[0]} {material.rgbpen[1]} {material.rgbpen[2]}"
+    mat.quail_materialdefinition.brightness = material.brightness
+    mat.quail_materialdefinition.scaledambient = material.scaledambient
+    mat.quail_materialdefinition.hexfiftyflags = material.hexfiftyflag == 1
+    mat.quail_materialdefinition.doublesided = material.doublesided == 1
+
     mat.use_nodes = True
     bsdf_index = 0
     node_position = (-350, 280)
