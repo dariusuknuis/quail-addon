@@ -25,7 +25,8 @@ MATERIALDEFINITION "tag"
 	SIMPLESPRITEINST
 	// Simple sprite instance tag
  	 // Argument 1 (%s): Simple sprite instance tag
-	INSTTAG "1"
+	TAG "1"
+	SIMPLESPRITETAGINDEX 1
 	// Hex fifty flag
  	 // Argument 1 (%d): Hex fifty flag
 	HEXFIFTYFLAG 1

@@ -7,6 +7,7 @@ DMSPRITEDEFINITION "tag"
  	 // Argument 1 (%d): fragment index
 	FRAGMENT1 1
 	// Material palette tag
+ 	 // Argument 1 (%s): Tag
 	MATERIALPALETTE "1"
 	// Fragment 3
  	 // Argument 1 (%d): fragment 3

@@ -1,7 +1,8 @@
 // Wld  Hierarchical Sprite Def
 HIERARCHICALSPRITEDEF "tag"
 	NUMDAGS 1
-		DAG "1"
+		DAG
+		TAG "1"
 		SPRITE "1"
 		SPRITEINDEX 1
 		TRACK "1"
