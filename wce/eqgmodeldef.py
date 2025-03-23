@@ -31,60 +31,62 @@ class eqgmodeldef:
 
 		textures:list[texture]
 
-
-		class vertex:
-
-			xyz:tuple[float, float, float]
-
-			uv:tuple[float, float]
-
-			uv2:tuple[float, float]
-
-			normal:tuple[float, float, float]
-
-			tint:tuple[int, int, int, int]
-
-		vertexs:list[vertex]
-
-
-		class face:
-
-			triangle:tuple[int, int, int]
-
-			material:str
-
-			passable:int
-
-			transparent:int
-
-			collisionrequired:int
-
-			culled:int
-
-			degenerate:int
-
-		faces:list[face]
-
-
-		class bone:
-
-			name:str
-
-			next:int
-
-			children:int
-
-			childindex:int
-
-			pivot:tuple[float, float, float]
-
-			quaternion:tuple[float, float, float, float]
-
-			scale:tuple[float, float, float]
-
-		bones:list[bone]
-
 	materials:list[material]
+
+	class vertex:
+
+		xyz:tuple[float, float, float]
+
+		uv:tuple[float, float]
+
+		uv2:tuple[float, float]
+
+		normal:tuple[float, float, float]
+
+		tint:tuple[int, int, int, int]
+
+
+		class weight:
+			weight:tuple[int, float]
+
+		weights:list[weight]
+
+	vertexs:list[vertex]
+
+	class face:
+
+		triangle:tuple[int, int, int]
+
+		material:str
+
+		passable:int
+
+		transparent:int
+
+		collisionrequired:int
+
+		culled:int
+
+		degenerate:int
+
+	faces:list[face]
+
+	class bone:
+		bone:str
+
+		next:int
+
+		children:int
+
+		childindex:int
+
+		pivot:tuple[float, float, float]
+
+		quaternion:tuple[float, float, float, float]
+
+		scale:tuple[float, float, float]
+
+	bones:list[bone]
 
 	def __init__(self, tag:str, r:io.TextIOWrapper):
 		self.tag = tag
@@ -122,72 +124,79 @@ class eqgmodeldef:
 				records = property(r, "TEXTURE", 1)
 				texturej.texture = str(records[1])
 				materiali.textures.append(texturej)
-			records = property(r, "NUMVERTICES", 1)
-			numvertices = int(records[1])
-
-			materiali.vertexs = []
-			for j in range(numvertices):
-				vertexj = self.material.vertex()
-				property(r, "VERTEX", 0)
-
-				records = property(r, "XYZ", 3)
-				vertexj.xyz = float(records[1]), float(records[2]), float(records[3])
-				records = property(r, "UV", 2)
-				vertexj.uv = float(records[1]), float(records[2])
-				records = property(r, "UV2", 2)
-				vertexj.uv2 = float(records[1]), float(records[2])
-				records = property(r, "NORMAL", 3)
-				vertexj.normal = float(records[1]), float(records[2]), float(records[3])
-				records = property(r, "TINT", 4)
-				vertexj.tint = int(records[1]), int(records[2]), int(records[3]), int(records[4])
-				materiali.vertexs.append(vertexj)
-			records = property(r, "NUMFACES", 1)
-			numfaces = int(records[1])
-
-			materiali.faces = []
-			for j in range(numfaces):
-				facej = self.material.face()
-				property(r, "FACE", 0)
-
-				records = property(r, "TRIANGLE", 3)
-				facej.triangle = int(records[1]), int(records[2]), int(records[3])
-				records = property(r, "MATERIAL", 1)
-				facej.material = str(records[1])
-				records = property(r, "PASSABLE", 1)
-				facej.passable = int(records[1])
-				records = property(r, "TRANSPARENT", 1)
-				facej.transparent = int(records[1])
-				records = property(r, "COLLISIONREQUIRED", 1)
-				facej.collisionrequired = int(records[1])
-				records = property(r, "CULLED", 1)
-				facej.culled = int(records[1])
-				records = property(r, "DEGENERATE", 1)
-				facej.degenerate = int(records[1])
-				materiali.faces.append(facej)
-			records = property(r, "NUMBONES", 1)
-			numbones = int(records[1])
-
-			materiali.bones = []
-			for j in range(numbones):
-				bonej = self.material.bone()
-				property(r, "BONE", 0)
-
-				records = property(r, "NAME", 1)
-				bonej.name = str(records[1])
-				records = property(r, "NEXT", 1)
-				bonej.next = int(records[1])
-				records = property(r, "CHILDREN", 1)
-				bonej.children = int(records[1])
-				records = property(r, "CHILDINDEX", 1)
-				bonej.childindex = int(records[1])
-				records = property(r, "PIVOT", 3)
-				bonej.pivot = float(records[1]), float(records[2]), float(records[3])
-				records = property(r, "QUATERNION", 4)
-				bonej.quaternion = float(records[1]), float(records[2]), float(records[3]), float(records[4])
-				records = property(r, "SCALE", 3)
-				bonej.scale = float(records[1]), float(records[2]), float(records[3])
-				materiali.bones.append(bonej)
 			self.materials.append(materiali)
+		records = property(r, "NUMVERTICES", 1)
+		numvertices = int(records[1])
+
+		self.vertexs = []
+		for i in range(numvertices):
+			vertexi = self.vertex()
+			property(r, "VERTEX", 0)
+
+			records = property(r, "XYZ", 3)
+			vertexi.xyz = float(records[1]), float(records[2]), float(records[3])
+			records = property(r, "UV", 2)
+			vertexi.uv = float(records[1]), float(records[2])
+			records = property(r, "UV2", 2)
+			vertexi.uv2 = float(records[1]), float(records[2])
+			records = property(r, "NORMAL", 3)
+			vertexi.normal = float(records[1]), float(records[2]), float(records[3])
+			records = property(r, "TINT", 4)
+			vertexi.tint = int(records[1]), int(records[2]), int(records[3]), int(records[4])
+			records = property(r, "NUMWEIGHTS", 1)
+			numweights = int(records[1])
+
+			vertexi.weights = []
+			for j in range(numweights):
+				weightj = self.vertex.weight()
+				records = property(r, "WEIGHT", 2)
+				weightj.weight = int(records[1]), float(records[2])
+				vertexi.weights.append(weightj)
+			self.vertexs.append(vertexi)
+		records = property(r, "NUMFACES", 1)
+		numfaces = int(records[1])
+
+		self.faces = []
+		for i in range(numfaces):
+			facei = self.face()
+			property(r, "FACE", 0)
+
+			records = property(r, "TRIANGLE", 3)
+			facei.triangle = int(records[1]), int(records[2]), int(records[3])
+			records = property(r, "MATERIAL", 1)
+			facei.material = str(records[1])
+			records = property(r, "PASSABLE", 1)
+			facei.passable = int(records[1])
+			records = property(r, "TRANSPARENT", 1)
+			facei.transparent = int(records[1])
+			records = property(r, "COLLISIONREQUIRED", 1)
+			facei.collisionrequired = int(records[1])
+			records = property(r, "CULLED", 1)
+			facei.culled = int(records[1])
+			records = property(r, "DEGENERATE", 1)
+			facei.degenerate = int(records[1])
+			self.faces.append(facei)
+		records = property(r, "NUMBONES", 1)
+		numbones = int(records[1])
+
+		self.bones = []
+		for i in range(numbones):
+			bonei = self.bone()
+			records = property(r, "BONE", 1)
+			bonei.bone = str(records[1])
+			records = property(r, "NEXT", 1)
+			bonei.next = int(records[1])
+			records = property(r, "CHILDREN", 1)
+			bonei.children = int(records[1])
+			records = property(r, "CHILDINDEX", 1)
+			bonei.childindex = int(records[1])
+			records = property(r, "PIVOT", 3)
+			bonei.pivot = float(records[1]), float(records[2]), float(records[3])
+			records = property(r, "QUATERNION", 4)
+			bonei.quaternion = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			records = property(r, "SCALE", 3)
+			bonei.scale = float(records[1]), float(records[2]), float(records[3])
+			self.bones.append(bonei)
 
 	def write(self, w:io.TextIOWrapper):
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
@@ -204,32 +213,34 @@ class eqgmodeldef:
 			w.write(f"\t\tNUMANIMTEXTURES \"{len(materiali.textures)}\"\n")
 			for texturej in materiali.textures:
 				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
-			w.write(f"\t\tNUMVERTICES \"{len(materiali.vertexs)}\"\n")
-			for vertexj in materiali.vertexs:
-				w.write(f"\t\t\tVERTEX\n")
-				w.write(f"\t\t\tXYZ \"{vertexj.xyz}\"\n")
-				w.write(f"\t\t\tUV \"{vertexj.uv}\"\n")
-				w.write(f"\t\t\tUV2 \"{vertexj.uv2}\"\n")
-				w.write(f"\t\t\tNORMAL \"{vertexj.normal}\"\n")
-				w.write(f"\t\t\tTINT \"{vertexj.tint}\"\n")
-			w.write(f"\t\tNUMFACES \"{len(materiali.faces)}\"\n")
-			for facej in materiali.faces:
-				w.write(f"\t\t\tFACE\n")
-				w.write(f"\t\t\tTRIANGLE \"{facej.triangle}\"\n")
-				w.write(f"\t\t\tMATERIAL \"{facej.material}\"\n")
-				w.write(f"\t\t\tPASSABLE \"{facej.passable}\"\n")
-				w.write(f"\t\t\tTRANSPARENT \"{facej.transparent}\"\n")
-				w.write(f"\t\t\tCOLLISIONREQUIRED \"{facej.collisionrequired}\"\n")
-				w.write(f"\t\t\tCULLED \"{facej.culled}\"\n")
-				w.write(f"\t\t\tDEGENERATE \"{facej.degenerate}\"\n")
-			w.write(f"\t\tNUMBONES \"{len(materiali.bones)}\"\n")
-			for bonej in materiali.bones:
-				w.write(f"\t\t\tBONE\n")
-				w.write(f"\t\t\tNAME \"{bonej.name}\"\n")
-				w.write(f"\t\t\tNEXT \"{bonej.next}\"\n")
-				w.write(f"\t\t\tCHILDREN \"{bonej.children}\"\n")
-				w.write(f"\t\t\tCHILDINDEX \"{bonej.childindex}\"\n")
-				w.write(f"\t\t\tPIVOT \"{bonej.pivot}\"\n")
-				w.write(f"\t\t\tQUATERNION \"{bonej.quaternion}\"\n")
-				w.write(f"\t\t\tSCALE \"{bonej.scale}\"\n")
+		w.write(f"\tNUMVERTICES \"{len(self.vertexs)}\"\n")
+		for vertexi in self.vertexs:
+			w.write(f"\t\tVERTEX\n")
+			w.write(f"\t\tXYZ \"{vertexi.xyz}\"\n")
+			w.write(f"\t\tUV \"{vertexi.uv}\"\n")
+			w.write(f"\t\tUV2 \"{vertexi.uv2}\"\n")
+			w.write(f"\t\tNORMAL \"{vertexi.normal}\"\n")
+			w.write(f"\t\tTINT \"{vertexi.tint}\"\n")
+			w.write(f"\t\tNUMWEIGHTS \"{len(vertexi.weights)}\"\n")
+			for weightj in vertexi.weights:
+				w.write(f"\t\t\tWEIGHT \"{weightj.weight}\"\n")
+		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
+		for facei in self.faces:
+			w.write(f"\t\tFACE\n")
+			w.write(f"\t\tTRIANGLE \"{facei.triangle}\"\n")
+			w.write(f"\t\tMATERIAL \"{facei.material}\"\n")
+			w.write(f"\t\tPASSABLE \"{facei.passable}\"\n")
+			w.write(f"\t\tTRANSPARENT \"{facei.transparent}\"\n")
+			w.write(f"\t\tCOLLISIONREQUIRED \"{facei.collisionrequired}\"\n")
+			w.write(f"\t\tCULLED \"{facei.culled}\"\n")
+			w.write(f"\t\tDEGENERATE \"{facei.degenerate}\"\n")
+		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
+		for bonei in self.bones:
+			w.write(f"\t\tBONE \"{bonei.bone}\"\n")
+			w.write(f"\t\tNEXT \"{bonei.next}\"\n")
+			w.write(f"\t\tCHILDREN \"{bonei.children}\"\n")
+			w.write(f"\t\tCHILDINDEX \"{bonei.childindex}\"\n")
+			w.write(f"\t\tPIVOT \"{bonei.pivot}\"\n")
+			w.write(f"\t\tQUATERNION \"{bonei.quaternion}\"\n")
+			w.write(f"\t\tSCALE \"{bonei.scale}\"\n")
 

@@ -17,6 +17,8 @@ class eqgparticlerenderdef:
 
 		particlepoint:str
 
+		particlesuffix:str
+
 		unknowna1:int
 
 		unknowna2:int
@@ -53,6 +55,8 @@ class eqgparticlerenderdef:
 			renderi.id2 = int(records[1])
 			records = property(r, "PARTICLEPOINT", 1)
 			renderi.particlepoint = str(records[1])
+			records = property(r, "PARTICLESUFFIX", 1)
+			renderi.particlesuffix = str(records[1])
 			records = property(r, "UNKNOWNA1", 1)
 			renderi.unknowna1 = int(records[1])
 			records = property(r, "UNKNOWNA2", 1)
@@ -81,6 +85,7 @@ class eqgparticlerenderdef:
 			w.write(f"\t\tRENDER \"{renderi.render}\"\n")
 			w.write(f"\t\tID2 \"{renderi.id2}\"\n")
 			w.write(f"\t\tPARTICLEPOINT \"{renderi.particlepoint}\"\n")
+			w.write(f"\t\tPARTICLESUFFIX \"{renderi.particlesuffix}\"\n")
 			w.write(f"\t\tUNKNOWNA1 \"{renderi.unknowna1}\"\n")
 			w.write(f"\t\tUNKNOWNA2 \"{renderi.unknowna2}\"\n")
 			w.write(f"\t\tUNKNOWNA3 \"{renderi.unknowna3}\"\n")
