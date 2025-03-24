@@ -234,6 +234,8 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
 
     def execute(self, context):
         material = context.object.active_material
+        if not material:
+            return {'CANCELLED'}
         material['quaildef'] = 'materialdefinition'
         material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
         material.quail_materialdefinition.rgbpen = "255 255 255 255"
@@ -244,27 +246,6 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         return {'FINISHED'}
 
 
-
-class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
-    """Add default EQG Material Def properties to the selected material"""
-    bl_idname = "material.add_default_eqgmatdef"
-    bl_label = "Add Default EQG MatDef"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.object and context.object.active_material
-
-    def execute(self, context):
-        material = context.object.active_material
-        material['quaildef'] = 'materialdefinition'
-        material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
-        material.quail_materialdefinition.rgbpen = "255 255 255 255"
-        material.quail_materialdefinition.brightness = 1
-        material.quail_materialdefinition.scaledambient = 1
-        material.quail_materialdefinition.hexfiftyflags = False
-        material.quail_materialdefinition.doublesided = False
-        return {'FINISHED'}
 
 
 def add_default_quaildef(self, context):
@@ -286,15 +267,21 @@ def draw_materialdefinition_in_transform(self, context):
     obj = context.object
     if not obj or not obj.active_material:
         return
-    layout = self.layout
-    box = layout.box()
 
     material = obj.active_material
-    if not material.get('quaildef') == 'materialdefinition':
+    if not material.get('quaildef') == 'materialdefinition' and not material.get('quaildef') == 'eqgmaterialdef':
+        layout = self.layout
+        box = layout.box()
         row = box.row(align=True)
         row.operator("material.add_default_wldmatdef", text="Set WLD Material")
         row.operator("material.add_default_eqgmatdef", text="Set EQG Material")
         return
+
+    if material.get('quaildef') == 'eqgmaterialdef':
+        return
+
+    layout = self.layout
+    box = layout.box()
 
     box.label(text="MATERIALDEFINITION")
 
@@ -319,69 +306,51 @@ def draw_materialdefinition_in_transform(self, context):
 
 # Register classes
 def register():
-    # ignored, auto_load bpy.utils.register_class(QuailMaterialDefinitionProperties)
-    # Add this line to register the operator
-    # bpy.utils.register_class(MATERIAL_OT_add_default_quaildef)
+    # Let auto_load handle class registration
+    # (it will register QuailMaterialDefinitionProperties, MATERIAL_OT_add_default_wldmatdef, etc.)
+
+    # Only register the property pointer which auto_load can't handle
     bpy.types.Material.quail_materialdefinition = PointerProperty(
         type=QuailMaterialDefinitionProperties)
 
-    # Try multiple Surface panel variants (Blender 4.2.1 has different panels per render engine)
+    # Attach the panel to the UI
     try:
-        # For Cycles render engine
         import _cycles
-        bpy.types.CYCLES_MATERIAL_PT_surface.prepend(
-            draw_materialdefinition_in_transform)
-        print("Added to Cycles material surface panel")
+        bpy.types.CYCLES_MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
     except (AttributeError, ImportError):
         pass
 
     try:
-        # For Eevee render engine
-        bpy.types.EEVEE_MATERIAL_PT_surface.prepend(
-            draw_materialdefinition_in_transform)
-        print("Added to Eevee material surface panel")
+        bpy.types.EEVEE_MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
     except AttributeError:
         pass
 
-    # Generic surface panel (fallback)
     try:
-        bpy.types.MATERIAL_PT_surface.prepend(
-            draw_materialdefinition_in_transform)
-        print("Added to generic material surface panel")
+        bpy.types.MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
     except AttributeError:
-        # Last resort, use viewport panel
-        print("Using viewport panel as fallback")
-        # Keep your existing code as fallback
-        bpy.types.MATERIAL_PT_viewport.prepend(
-            draw_materialdefinition_in_transform)
-
+        bpy.types.MATERIAL_PT_viewport.prepend(draw_materialdefinition_in_transform)
 
 def unregister():
-    # Add this line to unregister the operator
-    # bpy.utils.unregister_class(MATERIAL_OT_add_default_quaildef)
+    # Only unregister things we manually registered
     del bpy.types.Material.quail_materialdefinition
 
-    # Remove from all possible panels
+    # Remove from panels
     try:
-        bpy.types.CYCLES_MATERIAL_PT_surface.remove(
-            draw_materialdefinition_in_transform)
+        bpy.types.CYCLES_MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
     except AttributeError:
         pass
 
     try:
-        bpy.types.EEVEE_MATERIAL_PT_surface.remove(
-            draw_materialdefinition_in_transform)
+        bpy.types.EEVEE_MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
     except AttributeError:
         pass
 
     try:
-        bpy.types.MATERIAL_PT_surface.remove(
-            draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
     except AttributeError:
         pass
 
     try:
-        bpy.types.MATERIAL_PT_viewport.remove(
-            draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_viewport.remove(draw_materialdefinition_in_transform)
     except AttributeError:
         pass
