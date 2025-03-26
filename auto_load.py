@@ -37,14 +37,20 @@ def register():
 
 
 def unregister():
-    for cls in reversed(ordered_classes):
-        bpy.utils.unregister_class(cls)
+    global ordered_classes
 
-    for module in modules:
-        if module.__name__ == __name__:
-            continue
-        if hasattr(module, "unregister"):
-            module.unregister()
+    # Create a list of classes that are actually registered
+    registered_classes = []
+    for cls in reversed(ordered_classes):
+        if hasattr(cls, 'bl_rna'):  # Check if the class is currently registered
+            registered_classes.append(cls)
+
+    # Only attempt to unregister classes that are actually registered
+    for cls in registered_classes:
+        try:
+            bpy.utils.unregister_class(cls)
+        except (RuntimeError, ValueError):
+            print(f"Failed to unregister {cls.__name__}, it may not be registered")
 
 
 # Import modules
