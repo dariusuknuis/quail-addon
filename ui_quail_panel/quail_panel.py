@@ -13,14 +13,20 @@ import shutil
 from bpy_extras.wm_utils.progress_report import ProgressReport
 from ..bin_quail.convert import convert
 from ..decoder import wce_decode
+from ..logger.error import errors, error_clear
+
+# First, add a global variable to store the currently selected error
+current_error_message = ""
 
 class QUAIL_OT_ImportOperator(bpy.types.Operator):
     bl_idname = "quail.import"
     bl_label = "Import"
 
     def execute(self, context):
-        # filepath = "/src/eq/rof2lite/mim_chr.s3d"
-        filepath = "/src/eq/rof2/it12043.eqg"
+        filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        #filepath = "/src/eq/rof2/it12043.eqg"
+
+        error_clear()
 
         with ProgressReport() as progress:
             progress.enter_substeps(2, "Generating quail...")
@@ -29,6 +35,7 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
                 filepath = filepath.replace(".eqg", ".s3d")
 
             base_name = os.path.basename(filepath)
+            base_name = os.path.splitext(base_name)[0]
 
             # get base of filepath
             pfs_tmp = tempfile.gettempdir() + "/quail/" + base_name + ".quail"
@@ -67,6 +74,12 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
 
             for action in bpy.data.actions:
                 bpy.data.actions.remove(action)
+
+            for material in bpy.data.materials:
+                bpy.data.materials.remove(material)
+
+            for texture in bpy.data.textures:
+                bpy.data.textures.remove(texture)
 
 
             base_name = os.path.basename(filepath)
@@ -111,8 +124,73 @@ class QUAIL_PT_Panel(bpy.types.Panel):
         row.operator("quail.import", text="Import")
         row = layout.row()
         row.label(text="Error Log:")
-        row = layout.row()
-        row.label(text="Log Test", icon='NONE', translate=False)
-        row = layout.row()
-        row.label(text="Log Test2", icon='NONE', translate=False)
+        for error in errors():
+            row = layout.row()
+            # Truncate long messages for display
+            display_text = "..." + error[-30:]  if len(error) > 30 else error
+            row.label(text=display_text)
+            # Use a custom operator instead of wm.call_menu
+            op = row.operator("quail.show_error", text="", icon='ERROR')
+            op.error_message = error  # type: ignore
 
+# Create a custom operator to show the error
+class QUAIL_OT_ShowError(bpy.types.Operator):
+    bl_idname = "quail.show_error"
+    bl_label = "Show Error Details"
+    bl_options = {'REGISTER'}
+
+    error_message: StringProperty(
+        name="Error Message",
+        description="The full error message to display",
+        default=""
+    ) #type: ignore
+
+    def execute(self, context):
+        global current_error_message
+        current_error_message = self.error_message
+        bpy.ops.wm.call_menu(name="QUAIL_MT_ErrorPopup")
+        return {'FINISHED'}
+
+class QUAIL_MT_ErrorPopup(bpy.types.Menu):
+    bl_label = "Error Details"
+    bl_idname = "QUAIL_MT_ErrorPopup"
+
+    def draw(self, context):
+        global current_error_message
+        layout = self.layout
+
+        # Split the error message into multiple lines by newlines first
+        lines = current_error_message.split('\n')
+
+        for line in lines:
+            # Process each line
+            segments = []
+
+            # First, split on colons if they exist
+            if ':' in line:
+                parts = line.split(":")
+                for i, part in enumerate(parts):
+                    # Get the display text
+                    display = part[:80].strip()
+                    remaining = part[80:] if len(part) > 80 else ""
+                    segments.append(display)
+
+                # Continue processing the remaining part for length
+                while remaining:
+                    # Get next 80 chars or remainder if shorter
+                    display = remaining[:80].strip()
+                    remaining = remaining[80:] if len(remaining) > 80 else ""
+                    segments.append(display)
+            else:
+                # No colon, just split based on length
+                remaining = line
+                while remaining:
+                    # Get next 80 chars or remainder if shorter
+                    display = remaining[:80].strip()
+                    remaining = remaining[80:] if len(remaining) > 80 else ""
+                    segments.append(display)
+
+            # Draw all segments
+            for segment in segments:
+                if segment:  # Only add non-empty segments
+                    layout.label(text=segment)

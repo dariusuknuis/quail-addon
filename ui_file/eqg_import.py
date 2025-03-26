@@ -14,6 +14,7 @@ import io
 from bpy_extras.wm_utils.progress_report import ProgressReport
 from ..bin_quail.convert import convert
 from ..decoder import wce_decode
+from ..logger.error import errors, error_clear
 
 bl_info = {
     "name": "Import EQG",
@@ -32,26 +33,26 @@ class ImportEQG(bpy.types.Operator):
         default="*.eqg;*.s3d",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
-    )
+    ) # type: ignore
 
     filepath: bpy.props.StringProperty(
         name="File Path",
         description="Filepath used for importing the EQG file",
         maxlen=1024,
         default="",
-    )
+    ) # type: ignore
 
     is_scene_cleared: BoolProperty(
         name="Clear Scene Before Import",
         description="Clears the scene before importing, removing all objects, materials, collections etc",
         default=True,
-    )
+    ) # type: ignore
 
     is_scene_modified: BoolProperty(
         name="Modify Scene for Import",
         description="Sets view clip to 5000 (for large zones), other misc tweaks",
         default=True,
-    )
+    ) # type: ignore
 
     def execute(self, context):
         return import_data(context,
@@ -78,6 +79,8 @@ if __name__ == "__main__":
 
 
 def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modified: bool = True):
+
+    error_clear()
 
     with ProgressReport() as progress:
         progress.enter_substeps(2, "Generating quail...")
