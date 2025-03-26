@@ -17,7 +17,7 @@ def decode_hierarchicalspritedef(ctx:Context, sprite:hierarchicalspritedef) -> s
             return f"hsprite {sprite.tag} refers to dmsprite {skin.dmsprite} but not found"
         err = decode_dmspritedef2(ctx, dmspritedef2)
         if err:
-            return f"hsprite {sprite.tag}: {err}"
+            return f"dmspritedef2 {sprite.tag}: {err}"
 
         #empty.data = bpy.data.meshes.new(hsprite.tag)
         #empty.data.from_pydata(sprite.vertices, [], skin.faces)

@@ -6,7 +6,7 @@ from ..wce.materialdefinition import materialdefinition
 from .context import Context
 
 def decode_eqgmaterialdef(ctx:Context, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
-    matname = f"{materialname}_{modelname}"
+    matname = f"{modelname}_{materialname}"
     if matname in bpy.data.materials:
         return ""
 

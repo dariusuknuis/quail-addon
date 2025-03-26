@@ -16,10 +16,10 @@ def wce_decode(path:str):
     r = open(path+"/_root.wce", "r")
     parser.parse_definitions(path, r)
     base_file_name = os.path.basename(path)
-    base_file_name = os.path.splitext(base_file_name)[0]
-    base_collection = bpy.context.scene.collection
-    base_parent = bpy.data.objects.new(base_file_name, None)
-    base_collection.objects.link(base_parent)
+    base_collection = bpy.data.collections.new(base_file_name)
+    bpy.context.scene.collection.children.link(base_collection)
+    # base_file_name_no_ext = os.path.splitext(base_file_name)[0]
+    base_parent = None
 
     ctx = Context(parser, base_collection, base_parent)
 

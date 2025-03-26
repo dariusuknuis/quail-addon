@@ -6,4 +6,4 @@ from ..wce.wce import wce
 class Context:
     parser:wce
     collection:Collection
-    parent:Object
+    parent:Object|None
