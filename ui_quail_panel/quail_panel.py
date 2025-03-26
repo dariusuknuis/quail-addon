@@ -19,7 +19,9 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
     bl_label = "Import"
 
     def execute(self, context):
-        filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        # filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        filepath = "/src/eq/rof2/it12043.eqg"
+
         with ProgressReport() as progress:
             progress.enter_substeps(2, "Generating quail...")
             # check if file exists

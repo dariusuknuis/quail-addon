@@ -3,6 +3,7 @@
 import bpy
 import mathutils
 from ..wce.eqgmodeldef import eqgmodeldef
+from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 
 def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
@@ -12,6 +13,17 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
     obj.parent = ctx.parent
     obj.location = location
+
+    for _, mat in enumerate(eqgmodeldef.materials):
+        properties = []
+        for _, prop in enumerate(mat.propertys):
+            properties.append((prop.property[0], prop.property[1], prop.property[2]))
+        textures = []
+        for _, tex in enumerate(mat.textures):
+            textures.append(tex.texture)
+        err = decode_eqgmaterialdef(ctx, eqgmodeldef.tag, mat.material, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        if err != "":
+            return f"decode {mat.material}: {err}"
 
     faces_for_creation = []
     for face in eqgmodeldef.faces:
