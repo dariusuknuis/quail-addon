@@ -209,9 +209,9 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         default=1
     )
 
-    hexfiftyflags: BoolProperty(
-        name="Hex Fifty Flags",
-        description="Hex Fifty Flags",
+    simplespritehexfiftyflag: BoolProperty(
+        name="Sprite Hex Fifty Flags",
+        description="Sprite Hex Fifty Flags",
         default=False
     )
 
@@ -241,7 +241,7 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         material.quail_materialdefinition.rgbpen = "255 255 255 255"
         material.quail_materialdefinition.brightness = 1
         material.quail_materialdefinition.scaledambient = 1
-        material.quail_materialdefinition.hexfiftyflags = False
+        material.quail_materialdefinition.simplespritehexfiftyflag = False
         material.quail_materialdefinition.doublesided = False
         return {'FINISHED'}
 
@@ -259,7 +259,7 @@ def add_default_quaildef(self, context):
     material.quail_materialdefinition.rgbpen = "255 255 255 255"
     material.quail_materialdefinition.brightness = 1
     material.quail_materialdefinition.scaledambient = 1
-    material.quail_materialdefinition.hexfiftyflags = False
+    material.quail_materialdefinition.simplespritehexfiftyflag = False
     material.quail_materialdefinition.doublesided = False
 
 
@@ -298,7 +298,7 @@ def draw_materialdefinition_in_transform(self, context):
     row.prop(material.quail_materialdefinition, "scaledambient")
 
     row = box.row()
-    row.prop(material.quail_materialdefinition, "hexfiftyflags")
+    row.prop(material.quail_materialdefinition, "simplespritehexfiftyflag")
 
     row = box.row()
     row.prop(material.quail_materialdefinition, "doublesided")

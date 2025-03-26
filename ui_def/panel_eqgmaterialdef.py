@@ -113,7 +113,9 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
     e_TextureDiffuse0: StringProperty(
         name="e_TextureDiffuse0",
         description="Diffuse Texture",
-        default=""
+        default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'}
     )
 
     e_TextureDiffuse0mapChannel: StringProperty(
@@ -154,8 +156,10 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     e_TextureNormal0: StringProperty(
         name="e_TextureNormal0",
-        description="Normal Texture",
-        default=""
+        description="Diffuse Texture",
+        default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'}
     )
 
     e_TextureNormal0mapChannel: StringProperty(
@@ -586,8 +590,9 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
         row = box.row()
         row.prop(material.quail_eqgmaterialdef, "e_fShininess0")
     if is_shader_property(shadertag, "e_TextureDiffuse0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse0")
+        row = box.row(align=True)
+        row.label(text="Diffuse0:")
+        row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse0", text="")
     if is_shader_property(shadertag, "e_TextureDiffuse0mapChannel"):
         row = box.row()
         row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse0mapChannel")
@@ -607,8 +612,9 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
         row = box.row()
         row.prop(material.quail_eqgmaterialdef, "e_TextureFallback0")
     if is_shader_property(shadertag, "e_TextureNormal0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureNormal0")
+        row = box.row(align=True)
+        row.label(text="Normal0:")
+        row.prop(material.quail_eqgmaterialdef, "e_TextureNormal0", text="")
     if is_shader_property(shadertag, "e_TextureNormal0mapChannel"):
         row = box.row()
         row.prop(material.quail_eqgmaterialdef, "e_TextureNormal0mapChannel")

@@ -14,9 +14,9 @@ class materialdefinition:
 	rgbpen:tuple[int, int, int, int] # RGB Colorizing
 	brightness:float # Color brightness
 	scaledambient:float # Scaled ambient amount
-	tag:str # Simple sprite instance tag
+	simplespritetag:str # Simple sprite instance tag
 	simplespritetagindex:int
-	hexfiftyflag:int # Hex fifty flag
+	simplespritehexfiftyflag:int # Hex fifty flag
 	pairs:list[str] # Pairs of flags?
 	doublesided:int # Is material double sided?
 
@@ -36,12 +36,12 @@ class materialdefinition:
 		self.scaledambient = float(records[1])
 		property(r, "SIMPLESPRITEINST", 0)
 
-		records = property(r, "TAG", 1)
-		self.tag = str(records[1])
+		records = property(r, "SIMPLESPRITETAG", 1)
+		self.simplespritetag = str(records[1])
 		records = property(r, "SIMPLESPRITETAGINDEX", 1)
 		self.simplespritetagindex = int(records[1])
-		records = property(r, "HEXFIFTYFLAG", 1)
-		self.hexfiftyflag = int(records[1])
+		records = property(r, "SIMPLESPRITEHEXFIFTYFLAG", 1)
+		self.simplespritehexfiftyflag = int(records[1])
 		records = property(r, "PAIRS?", -1)
 		self.pairs = records[1:]
 
@@ -57,9 +57,9 @@ class materialdefinition:
 		w.write(f"\tBRIGHTNESS \"{self.brightness}\"\n")
 		w.write(f"\tSCALEDAMBIENT \"{self.scaledambient}\"\n")
 		w.write(f"\tSIMPLESPRITEINST\n")
-		w.write(f"\tTAG \"{self.tag}\"\n")
+		w.write(f"\tSIMPLESPRITETAG \"{self.simplespritetag}\"\n")
 		w.write(f"\tSIMPLESPRITETAGINDEX \"{self.simplespritetagindex}\"\n")
-		w.write(f"\tHEXFIFTYFLAG \"{self.hexfiftyflag}\"\n")
+		w.write(f"\tSIMPLESPRITEHEXFIFTYFLAG \"{self.simplespritehexfiftyflag}\"\n")
 		w.write(f"PAIRS? \"{self.pairs}\"\n")
 		w.write(f"\tDOUBLESIDED \"{self.doublesided}\"\n")
 
