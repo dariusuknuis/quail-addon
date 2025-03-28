@@ -1,7 +1,7 @@
 import bpy
 import os
 
-from node import node_generate
+from .node import node_generate
 from .context import Context
 from ..wce.materialdefinition import materialdefinition
 from ..wce.simplespritedef import simplespritedef

@@ -13,7 +13,7 @@ class hierarchicalspritedef:
 
 		tag:str
 
-		sprite:str
+		spritetag:str
 
 		spriteindex:int
 
@@ -52,8 +52,8 @@ class hierarchicalspritedef:
 
 			records = property(r, "TAG", 1)
 			dagi.tag = str(records[1])
-			records = property(r, "SPRITE", 1)
-			dagi.sprite = str(records[1])
+			records = property(r, "SPRITETAG", 1)
+			dagi.spritetag = str(records[1])
 			records = property(r, "SPRITEINDEX", 1)
 			dagi.spriteindex = int(records[1])
 			records = property(r, "TRACK", 1)
@@ -98,7 +98,7 @@ class hierarchicalspritedef:
 		for dagi in self.dags:
 			w.write(f"\t\tDAG\n")
 			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
-			w.write(f"\t\tSPRITE \"{dagi.sprite}\"\n")
+			w.write(f"\t\tSPRITETAG \"{dagi.spritetag}\"\n")
 			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
 			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
 			w.write(f"\t\tTRACKINDEX \"{dagi.trackindex}\"\n")

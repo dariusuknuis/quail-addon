@@ -2,46 +2,46 @@
 
 import bpy
 import mathutils
-from ..wce.eqgmodeldef import eqgmodeldef
+from ..wce.eqgterdef import eqgterdef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 
-def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
-    mesh = bpy.data.meshes.new(eqgmodeldef.tag)
-    obj = bpy.data.objects.new(eqgmodeldef.tag, mesh)
+def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector) -> str:
+    mesh = bpy.data.meshes.new(eqgterdef.tag)
+    obj = bpy.data.objects.new(eqgterdef.tag, mesh)
     ctx.collection.objects.link(obj)
 
     obj.parent = ctx.parent
     obj.location = location
-    obj['quaildef'] = 'eqgmodeldef'
-    obj.quail_eqgmodeldef.version = str(eqgmodeldef.version) # type: ignore
+    obj['quaildef'] = 'eqgterdef'
+    obj.quail_eqgterdef.version = str(eqgterdef.version) # type: ignore
 
-    for _, mat in enumerate(eqgmodeldef.materialtags):
+    for _, mat in enumerate(eqgterdef.materialtags):
         properties = []
         for _, prop in enumerate(mat.propertys):
             properties.append((prop.property[0], prop.property[1], prop.property[2]))
         textures = []
         for _, tex in enumerate(mat.textures):
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, eqgterdef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 
     faces_for_creation = []
-    for face in eqgmodeldef.faces:
+    for face in eqgterdef.faces:
         faces_for_creation.append(face.triangle)
 
     vertices = []
-    for _, vertex in enumerate(eqgmodeldef.vertexs):
+    for _, vertex in enumerate(eqgterdef.vertexs):
         vertices.append(mathutils.Vector(vertex.xyz))
     mesh.from_pydata(vertices, [], faces_for_creation)
     mesh.update()
 
-    uvlayer = mesh.uv_layers.new(name=eqgmodeldef.tag+"_uv")
+    uvlayer = mesh.uv_layers.new(name=eqgterdef.tag+"_uv")
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
-            src_vert = eqgmodeldef.vertexs[vertex]
+            src_vert = eqgterdef.vertexs[vertex]
             uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1]-1)
 
     return ""

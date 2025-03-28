@@ -149,15 +149,4 @@ def decode_eqgmaterialdef(ctx:Context, modelname:str, materialname:str, shaderta
     material.quail_eqgmaterialdef.animsleep = animsleep
 
     material.use_nodes = True
-    bsdf_index = 0
-    node_position = (-350, 280)
-    if material.node_tree is None:
-        return f"material {material.tag} has no node tree"
-
-    bsdf = material.node_tree.nodes.get('Principled BSDF')
-    if bsdf is None:
-        return f"material {material.tag} has no Principled BSDF node"
-    tex_image = material.node_tree.nodes.new('ShaderNodeTexImage')
-    # tex_image.image = bpy.data.images.load(material.texture_path)
-    material.node_tree.links.new(bsdf.inputs['Base Color'], tex_image.outputs['Color'])
     return ""

@@ -10,8 +10,8 @@ class eqgmodeldef:
 	tag:str
 	version:int
 
-	class material:
-		material:str
+	class materialtag:
+		materialtag:str
 
 		shadertag:str
 
@@ -31,7 +31,7 @@ class eqgmodeldef:
 
 		textures:list[texture]
 
-	materials:list[material]
+	materialtags:list[materialtag]
 
 	class vertex:
 
@@ -95,36 +95,36 @@ class eqgmodeldef:
 		records = property(r, "NUMMATERIALS", 1)
 		nummaterials = int(records[1])
 
-		self.materials = []
+		self.materialtags = []
 		for i in range(nummaterials):
-			materiali = self.material()
-			records = property(r, "MATERIAL", 1)
-			materiali.material = str(records[1])
+			materialtagi = self.materialtag()
+			records = property(r, "MATERIALTAG", 1)
+			materialtagi.materialtag = str(records[1])
 			records = property(r, "SHADERTAG", 1)
-			materiali.shadertag = str(records[1])
+			materialtagi.shadertag = str(records[1])
 			records = property(r, "HEXONEFLAG", 1)
-			materiali.hexoneflag = int(records[1])
+			materialtagi.hexoneflag = int(records[1])
 			records = property(r, "NUMPROPERTIES", 1)
 			numproperties = int(records[1])
 
-			materiali.propertys = []
+			materialtagi.propertys = []
 			for j in range(numproperties):
-				propertyj = self.material.property()
+				propertyj = self.materialtag.property()
 				records = property(r, "PROPERTY", 3)
 				propertyj.property = str(records[1]), int(records[2]), str(records[3])
-				materiali.propertys.append(propertyj)
+				materialtagi.propertys.append(propertyj)
 			records = property(r, "ANIMSLEEP", 1)
-			materiali.animsleep = int(records[1])
+			materialtagi.animsleep = int(records[1])
 			records = property(r, "NUMANIMTEXTURES", 1)
 			numanimtextures = int(records[1])
 
-			materiali.textures = []
+			materialtagi.textures = []
 			for j in range(numanimtextures):
-				texturej = self.material.texture()
+				texturej = self.materialtag.texture()
 				records = property(r, "TEXTURE", 1)
 				texturej.texture = str(records[1])
-				materiali.textures.append(texturej)
-			self.materials.append(materiali)
+				materialtagi.textures.append(texturej)
+			self.materialtags.append(materialtagi)
 		records = property(r, "NUMVERTICES", 1)
 		numvertices = int(records[1])
 
@@ -201,17 +201,17 @@ class eqgmodeldef:
 	def write(self, w:io.TextIOWrapper):
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION \"{self.version}\"\n")
-		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
-		for materiali in self.materials:
-			w.write(f"\t\tMATERIAL \"{materiali.material}\"\n")
-			w.write(f"\t\tSHADERTAG \"{materiali.shadertag}\"\n")
-			w.write(f"\t\tHEXONEFLAG \"{materiali.hexoneflag}\"\n")
-			w.write(f"\t\tNUMPROPERTIES \"{len(materiali.propertys)}\"\n")
-			for propertyj in materiali.propertys:
+		w.write(f"\tNUMMATERIALS \"{len(self.materialtags)}\"\n")
+		for materialtagi in self.materialtags:
+			w.write(f"\t\tMATERIALTAG \"{materialtagi.materialtag}\"\n")
+			w.write(f"\t\tSHADERTAG \"{materialtagi.shadertag}\"\n")
+			w.write(f"\t\tHEXONEFLAG \"{materialtagi.hexoneflag}\"\n")
+			w.write(f"\t\tNUMPROPERTIES \"{len(materialtagi.propertys)}\"\n")
+			for propertyj in materialtagi.propertys:
 				w.write(f"\t\t\tPROPERTY \"{propertyj.property}\"\n")
-			w.write(f"\t\tANIMSLEEP \"{materiali.animsleep}\"\n")
-			w.write(f"\t\tNUMANIMTEXTURES \"{len(materiali.textures)}\"\n")
-			for texturej in materiali.textures:
+			w.write(f"\t\tANIMSLEEP \"{materialtagi.animsleep}\"\n")
+			w.write(f"\t\tNUMANIMTEXTURES \"{len(materialtagi.textures)}\"\n")
+			for texturej in materialtagi.textures:
 				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
 		w.write(f"\tNUMVERTICES \"{len(self.vertexs)}\"\n")
 		for vertexi in self.vertexs:

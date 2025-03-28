@@ -8,13 +8,13 @@ import bpy
 import os
 import time
 import tempfile
-from ..common import dialog, quail, is_dev
+from ...common import dialog, quail, is_dev
 import shutil
 import io
 from bpy_extras.wm_utils.progress_report import ProgressReport
-from ..bin_quail.convert import convert
-from ..decoder import wce_decode
-from ..logger.error import errors, error_clear
+from ...bin_quail.convert import convert
+from ...decoder import wce_decode
+from ...logger.error import errors, error_clear
 
 bl_info = {
     "name": "Import EQG",

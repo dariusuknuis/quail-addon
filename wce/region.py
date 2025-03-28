@@ -20,50 +20,50 @@ class region:
 
 	xyzs:list[xyz]
 
-	class xyz:
-		xyz:tuple[float, float, float]
+	class vxyz:
+		vxyz:tuple[float, float, float]
 
-	xyzs:list[xyz]
+	vxyzs:list[vxyz]
 
 	class wall:
 
 		normalabcd:tuple[float, float, float, float]
 
 
-		class xyz:
-			xyz:tuple[float, float, float]
+		class wxyz:
+			wxyz:tuple[float, float, float]
 
-		xyzs:list[xyz]
+		wxyzs:list[wxyz]
 
 	walls:list[wall]
 
 	class obstacle:
 
-		normalabcd:tuple[float, float, float, float]
+		onormalabcd:tuple[float, float, float, float]
 
 
-		class xyz:
-			xyz:tuple[float, float, float]
+		class oxyz:
+			oxyz:tuple[float, float, float]
 
-		xyzs:list[xyz]
+		oxyzs:list[oxyz]
 
 	obstacles:list[obstacle]
 
 	class cuttingobstacle:
 
-		normalabcd:tuple[float, float, float, float]
+		cnormalabcd:tuple[float, float, float, float]
 
 
-		class xyz:
-			xyz:tuple[float, float, float]
+		class cxyz:
+			cxyz:tuple[float, float, float]
 
-		xyzs:list[xyz]
+		cxyzs:list[cxyz]
 
 	cuttingobstacles:list[cuttingobstacle]
 
 	class visnode:
 
-		normalabcd:tuple[float, float, float, float]
+		vnormalabcd:tuple[float, float, float, float]
 
 		vislistindex:int
 
@@ -108,12 +108,12 @@ class region:
 		records = property(r, "NUMRENDERVERTICES", 1)
 		numrendervertices = int(records[1])
 
-		self.xyzs = []
+		self.vxyzs = []
 		for i in range(numrendervertices):
-			xyzi = self.xyz()
-			records = property(r, "XYZ", 3)
-			xyzi.xyz = float(records[1]), float(records[2]), float(records[3])
-			self.xyzs.append(xyzi)
+			vxyzi = self.vxyz()
+			records = property(r, "VXYZ", 3)
+			vxyzi.vxyz = float(records[1]), float(records[2]), float(records[3])
+			self.vxyzs.append(vxyzi)
 		records = property(r, "NUMWALLS", 1)
 		numwalls = int(records[1])
 
@@ -127,12 +127,12 @@ class region:
 			records = property(r, "NUMVERTICES", 1)
 			numvertices = int(records[1])
 
-			walli.xyzs = []
+			walli.wxyzs = []
 			for j in range(numvertices):
-				xyzj = self.wall.xyz()
-				records = property(r, "XYZ", 3)
-				xyzj.xyz = float(records[1]), float(records[2]), float(records[3])
-				walli.xyzs.append(xyzj)
+				wxyzj = self.wall.wxyz()
+				records = property(r, "WXYZ", 3)
+				wxyzj.wxyz = float(records[1]), float(records[2]), float(records[3])
+				walli.wxyzs.append(wxyzj)
 			self.walls.append(walli)
 		records = property(r, "NUMOBSTACLES", 1)
 		numobstacles = int(records[1])
@@ -142,17 +142,17 @@ class region:
 			obstaclei = self.obstacle()
 			property(r, "OBSTACLE", 0)
 
-			records = property(r, "NORMALABCD", 4)
-			obstaclei.normalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
-			records = property(r, "NUMVERTICES", 1)
-			numvertices = int(records[1])
+			records = property(r, "ONORMALABCD", 4)
+			obstaclei.onormalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			records = property(r, "NUMOVERTICES", 1)
+			numovertices = int(records[1])
 
-			obstaclei.xyzs = []
-			for j in range(numvertices):
-				xyzj = self.obstacle.xyz()
-				records = property(r, "XYZ", 3)
-				xyzj.xyz = float(records[1]), float(records[2]), float(records[3])
-				obstaclei.xyzs.append(xyzj)
+			obstaclei.oxyzs = []
+			for j in range(numovertices):
+				oxyzj = self.obstacle.oxyz()
+				records = property(r, "OXYZ", 3)
+				oxyzj.oxyz = float(records[1]), float(records[2]), float(records[3])
+				obstaclei.oxyzs.append(oxyzj)
 			self.obstacles.append(obstaclei)
 		records = property(r, "NUMCUTTINGOBSTACLES", 1)
 		numcuttingobstacles = int(records[1])
@@ -162,17 +162,17 @@ class region:
 			cuttingobstaclei = self.cuttingobstacle()
 			property(r, "CUTTINGOBSTACLE", 0)
 
-			records = property(r, "NORMALABCD", 4)
-			cuttingobstaclei.normalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
-			records = property(r, "NUMVERTICES", 1)
-			numvertices = int(records[1])
+			records = property(r, "CNORMALABCD", 4)
+			cuttingobstaclei.cnormalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			records = property(r, "NUMCVERTICES", 1)
+			numcvertices = int(records[1])
 
-			cuttingobstaclei.xyzs = []
-			for j in range(numvertices):
-				xyzj = self.cuttingobstacle.xyz()
-				records = property(r, "XYZ", 3)
-				xyzj.xyz = float(records[1]), float(records[2]), float(records[3])
-				cuttingobstaclei.xyzs.append(xyzj)
+			cuttingobstaclei.cxyzs = []
+			for j in range(numcvertices):
+				cxyzj = self.cuttingobstacle.cxyz()
+				records = property(r, "CXYZ", 3)
+				cxyzj.cxyz = float(records[1]), float(records[2]), float(records[3])
+				cuttingobstaclei.cxyzs.append(cxyzj)
 			self.cuttingobstacles.append(cuttingobstaclei)
 		property(r, "VISTREE", 0)
 
@@ -184,8 +184,8 @@ class region:
 			visnodei = self.visnode()
 			property(r, "VISNODE", 0)
 
-			records = property(r, "NORMALABCD", 4)
-			visnodei.normalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			records = property(r, "VNORMALABCD", 4)
+			visnodei.vnormalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
 			records = property(r, "VISLISTINDEX", 1)
 			visnodei.vislistindex = int(records[1])
 			records = property(r, "FRONTTREE", 1)
@@ -223,35 +223,35 @@ class region:
 		w.write(f"\tNUMREGIONVERTEX \"{len(self.xyzs)}\"\n")
 		for xyzi in self.xyzs:
 			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
-		w.write(f"\tNUMRENDERVERTICES \"{len(self.xyzs)}\"\n")
-		for xyzi in self.xyzs:
-			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
+		w.write(f"\tNUMRENDERVERTICES \"{len(self.vxyzs)}\"\n")
+		for vxyzi in self.vxyzs:
+			w.write(f"\t\tVXYZ \"{vxyzi.vxyz}\"\n")
 		w.write(f"\tNUMWALLS \"{len(self.walls)}\"\n")
 		for walli in self.walls:
 			w.write(f"\t\tWALL\n")
 			w.write(f"\t\tNORMALABCD \"{walli.normalabcd}\"\n")
-			w.write(f"\t\tNUMVERTICES \"{len(walli.xyzs)}\"\n")
-			for xyzj in walli.xyzs:
-				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
+			w.write(f"\t\tNUMVERTICES \"{len(walli.wxyzs)}\"\n")
+			for wxyzj in walli.wxyzs:
+				w.write(f"\t\t\tWXYZ \"{wxyzj.wxyz}\"\n")
 		w.write(f"\tNUMOBSTACLES \"{len(self.obstacles)}\"\n")
 		for obstaclei in self.obstacles:
 			w.write(f"\t\tOBSTACLE\n")
-			w.write(f"\t\tNORMALABCD \"{obstaclei.normalabcd}\"\n")
-			w.write(f"\t\tNUMVERTICES \"{len(obstaclei.xyzs)}\"\n")
-			for xyzj in obstaclei.xyzs:
-				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
+			w.write(f"\t\tONORMALABCD \"{obstaclei.onormalabcd}\"\n")
+			w.write(f"\t\tNUMOVERTICES \"{len(obstaclei.oxyzs)}\"\n")
+			for oxyzj in obstaclei.oxyzs:
+				w.write(f"\t\t\tOXYZ \"{oxyzj.oxyz}\"\n")
 		w.write(f"\tNUMCUTTINGOBSTACLES \"{len(self.cuttingobstacles)}\"\n")
 		for cuttingobstaclei in self.cuttingobstacles:
 			w.write(f"\t\tCUTTINGOBSTACLE\n")
-			w.write(f"\t\tNORMALABCD \"{cuttingobstaclei.normalabcd}\"\n")
-			w.write(f"\t\tNUMVERTICES \"{len(cuttingobstaclei.xyzs)}\"\n")
-			for xyzj in cuttingobstaclei.xyzs:
-				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
+			w.write(f"\t\tCNORMALABCD \"{cuttingobstaclei.cnormalabcd}\"\n")
+			w.write(f"\t\tNUMCVERTICES \"{len(cuttingobstaclei.cxyzs)}\"\n")
+			for cxyzj in cuttingobstaclei.cxyzs:
+				w.write(f"\t\t\tCXYZ \"{cxyzj.cxyz}\"\n")
 		w.write(f"\tVISTREE\n")
 		w.write(f"\tNUMVISNODE \"{len(self.visnodes)}\"\n")
 		for visnodei in self.visnodes:
 			w.write(f"\t\tVISNODE\n")
-			w.write(f"\t\tNORMALABCD \"{visnodei.normalabcd}\"\n")
+			w.write(f"\t\tVNORMALABCD \"{visnodei.vnormalabcd}\"\n")
 			w.write(f"\t\tVISLISTINDEX \"{visnodei.vislistindex}\"\n")
 			w.write(f"\t\tFRONTTREE \"{visnodei.fronttree}\"\n")
 			w.write(f"\t\tBACKTREE \"{visnodei.backtree}\"\n")

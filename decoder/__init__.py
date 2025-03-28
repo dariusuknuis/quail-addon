@@ -7,6 +7,7 @@ from typing import Optional
 from .actordef import decode_actordef
 from .materialdefinition import decode_materialdefinition
 from .eqgmodeldef import decode_eqgmodeldef
+from .eqgterdef import decode_eqgterdef
 from ..logger.error import error
 from .context import Context
 import os
@@ -44,5 +45,13 @@ def wce_decode(path:str):
         ctx.parent = base_parent
 
         err = decode_eqgmodeldef(ctx, eqgmodel, mathutils.Vector())
+        if err:
+            error(err)
+
+    for _, eqgter in parser.eqgterdefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_eqgterdef(ctx, eqgter, mathutils.Vector())
         if err:
             error(err)

@@ -42,7 +42,7 @@ class QuailActorDefProperties(bpy.types.PropertyGroup):
         default=""
     )
 
-class OBJECT_OT_add_custom_empty(bpy.types.Operator):
+class OBJECT_OT_add_quail_actordef(bpy.types.Operator):
     """Create a new ActorDef"""
     bl_idname = "object.add_custom_actor"
     bl_label = "ActorDef"
@@ -87,22 +87,6 @@ class PROPERTIES_PT_quail_actordef(bpy.types.Panel):
     def draw(self, context):
         pass
 
-
-# Create a new Quail menu class
-class VIEW3D_MT_quail_add(bpy.types.Menu):
-    bl_idname = "VIEW3D_MT_quail_add"
-    bl_label = "Quail"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator(OBJECT_OT_add_custom_empty.bl_idname, icon='IMAGE_DATA')
-        # Add other Quail related operators here
-
-# Function to add the Quail menu to the Add menu
-def add_quail_menu(self, context):
-    self.layout.menu(VIEW3D_MT_quail_add.bl_idname, icon='GHOST_ENABLED')
-
-
 def draw_actordef_in_transform(self, context):
     obj = context.object
     if obj and obj.get('quaildef') == 'actordef':
@@ -134,11 +118,9 @@ def register():
     # ignored, auto_load bpy.utils.register_class(VIEW3D_MT_quail_add)
     # ignored, auto_load bpy.utils.register_class(PROPERTIES_PT_quail_actor)
     bpy.types.Object.quail_actordef = PointerProperty(type=QuailActorDefProperties)
-    bpy.types.VIEW3D_MT_add.append(add_quail_menu)
     bpy.types.OBJECT_PT_transform.prepend(draw_actordef_in_transform)
 
 def unregister():
-    bpy.types.VIEW3D_MT_add.remove(add_quail_menu)
     del bpy.types.Object.quail_actordef
     bpy.types.OBJECT_PT_transform.remove(draw_actordef_in_transform)
     # ignored, auto_load bpy.utils.unregister_class(PROPERTIES_PT_quail_actor)

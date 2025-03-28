@@ -8,12 +8,13 @@ import bpy
 import os
 import time
 import tempfile
-from ..common import dialog, quail, is_dev, version
+from ...common import dialog, quail, is_dev, version
 import shutil
 from bpy_extras.wm_utils.progress_report import ProgressReport
-from ..bin_quail.convert import convert
-from ..decoder import wce_decode
-from ..logger.error import errors, error_clear
+from ...bin_quail.convert import convert
+from ...decoder import wce_decode
+from ...encoder import wce_encode
+from ...logger.error import errors, error_clear, error
 
 # First, add a global variable to store the currently selected error
 current_error_message = ""
@@ -23,8 +24,8 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
     bl_label = "Import"
 
     def execute(self, context):
-        filepath = "/src/eq/rof2lite/mim_chr.s3d"
-        #filepath = "/src/eq/rof2/it12043.eqg"
+        #filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        filepath = "/src/eq/rof2/it12043.eqg"
 
         error_clear()
 
@@ -41,12 +42,11 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
             pfs_tmp = tempfile.gettempdir() + "/quail/" + base_name + ".quail"
             start_time = time.time()
 
-            result = convert(filepath, pfs_tmp)
-            if result != "":
-                msg = "Quail Failed: " + result
-                print(msg)
-                dialog.message_box(msg,
-                                "Quail Error", 'ERROR')
+            err = convert(filepath, pfs_tmp)
+            if err != "":
+                error(err)
+                msg = "Quail Failed: " + err
+                dialog.message_box(msg, "Quail Error", 'ERROR')
                 return {'CANCELLED'}
             progress.step()
 
@@ -111,6 +111,65 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
                                "Quail Info", 'INFO')
             return {'FINISHED'}
 
+
+class QUAIL_OT_ExportOperator(bpy.types.Operator):
+    bl_idname = "quail.export"
+    bl_label = "Export"
+
+    def execute(self, context):
+        #filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        filepath = "/src/eq/rof2/test.eqg"
+
+        error_clear()
+
+        with ProgressReport() as progress:
+            progress.enter_substeps(2, "Generating quail...")
+            # check if file exists
+            if not os.path.exists(filepath):
+                filepath = filepath.replace(".eqg", ".s3d")
+
+            base_name = os.path.basename(filepath)
+            base_name = os.path.splitext(base_name)[0]
+
+            # get base of filepath
+            pfs_tmp = tempfile.gettempdir() + "/quail/" + base_name + ".quail"
+            start_time = time.time()
+
+            err = wce_encode(filepath)
+            if err != "":
+                error(err)
+                msg = "Quail Failed: " + err
+                dialog.message_box(msg, "Quail Error", 'ERROR')
+                return {'CANCELLED'}
+
+
+            err = convert(pfs_tmp, filepath)
+            if err != "":
+                error(err)
+                msg = "Quail Failed: " + err
+
+                dialog.message_box(msg, "Quail Error", 'ERROR')
+                return {'CANCELLED'}
+            progress.step()
+
+            base_name = os.path.basename(filepath)
+            path = pfs_tmp
+
+            if os.path.exists(pfs_tmp) and not is_dev():
+                print("Removing cache")
+                shutil.rmtree(pfs_tmp)
+
+            if bpy.context.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+            print("Full path: %s" % pfs_tmp)
+            print("Exporting %s took %s seconds" %
+                (base_name, time.time() - start_time))
+            progress.leave_substeps("Finished!")
+            dialog.message_box("Export successful",
+                               "Quail Info", 'INFO')
+            return {'FINISHED'}
+
+
 class QUAIL_PT_Panel(bpy.types.Panel):
     bl_label = "Quail %s" % (version())
     bl_idname = "QUAIL_PT_panel"
@@ -122,6 +181,8 @@ class QUAIL_PT_Panel(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.operator("quail.import", text="Import")
+        row = layout.row()
+        row.operator("quail.export", text="Export")
         row = layout.row()
         row.label(text="Error Log:")
         for error in errors():
