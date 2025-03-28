@@ -1,7 +1,7 @@
 import bpy
-from .panel_eqgmodeldef import OBJECT_OT_add_quail_eqgmodeldef
-from .panel_actordef import OBJECT_OT_add_quail_actordef
-from .panel_eqgterdef import OBJECT_OT_add_quail_eqgterdef
+from ..panel.eqgmodeldef import OBJECT_OT_add_quail_eqgmodeldef
+from ..panel.actordef import OBJECT_OT_add_quail_actordef
+from ..panel.eqgterdef import OBJECT_OT_add_quail_eqgterdef
 
 # Create a new Quail menu class
 class VIEW3D_MT_quail_add(bpy.types.Menu):

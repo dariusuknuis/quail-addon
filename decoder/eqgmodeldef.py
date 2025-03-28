@@ -5,6 +5,7 @@ import mathutils
 from ..wce.eqgmodeldef import eqgmodeldef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
+from ..ui.panel.eqgface import set_face_property
 
 def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
     mesh = bpy.data.meshes.new(eqgmodeldef.tag)
@@ -44,6 +45,22 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
             src_vert = eqgmodeldef.vertexs[vertex]
             uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1]-1)
 
+    for i, face in enumerate(eqgmodeldef.faces):
+        poly = mesh.polygons[i]
+
+        if f"{eqgmodeldef.tag}_{face.material}" not in bpy.data.materials:
+            return f"Material {eqgmodeldef.tag}_{face.material} not found"
+
+        poly.material_index = bpy.data.materials.find(f"{eqgmodeldef.tag}_{face.material}")
+
+        set_face_property(mesh, i, "passable", face.passable)
+        set_face_property(mesh, i, "collisionrequired", face.collisionrequired)
+        set_face_property(mesh, i, "transparent", face.transparent)
+        set_face_property(mesh, i, "culled", face.culled)
+        set_face_property(mesh, i, "degenerate", face.degenerate)
+
+
+    mesh.update()
     return ""
 
 
