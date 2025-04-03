@@ -25,6 +25,7 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
 
     def execute(self, context):
         #filepath = "/src/eq/rof2lite/mim_chr.s3d"
+        #filepath = "/src/eq/rof2/anguish.eqg"
         filepath = "/src/eq/rof2/it12043.eqg"
 
         error_clear()

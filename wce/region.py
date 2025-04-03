@@ -75,7 +75,7 @@ class region:
 
 	class vislist:
 
-		regions:list[str]
+		range:list[str]
 
 	vislists:list[vislist]
 	sphere:tuple[float, float, float, float]
@@ -201,8 +201,8 @@ class region:
 			vislisti = self.vislist()
 			property(r, "VISLIST", 0)
 
-			records = property(r, "REGIONS", -1)
-			vislisti.regions = records[1:]
+			records = property(r, "RANGE", -1)
+			vislisti.range = records[1:]
 
 			self.vislists.append(vislisti)
 		records = property(r, "SPHERE", 4)
@@ -258,7 +258,7 @@ class region:
 		w.write(f"\tNUMVISIBLELIST \"{len(self.vislists)}\"\n")
 		for vislisti in self.vislists:
 			w.write(f"\t\tVISLIST\n")
-			w.write(f"REGIONS \"{vislisti.regions}\"\n")
+			w.write(f"RANGE \"{vislisti.range}\"\n")
 		w.write(f"\tSPHERE \"{self.sphere}\"\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
