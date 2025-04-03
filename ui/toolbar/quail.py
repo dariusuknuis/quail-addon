@@ -26,7 +26,7 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
     def execute(self, context):
         #filepath = "/src/eq/rof2lite/mim_chr.s3d"
         #filepath = "/src/eq/rof2/anguish.eqg"
-        filepath = "/src/eq/rof2/it12043.eqg"
+        filepath = "/src/eq/rof2/it13950.eqg"
 
         error_clear()
 
@@ -81,6 +81,9 @@ class QUAIL_OT_ImportOperator(bpy.types.Operator):
 
             for texture in bpy.data.textures:
                 bpy.data.textures.remove(texture)
+
+            for image in bpy.data.images:
+                bpy.data.images.remove(image)
 
 
             base_name = os.path.basename(filepath)

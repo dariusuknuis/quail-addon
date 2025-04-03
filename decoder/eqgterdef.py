@@ -23,7 +23,7 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
         textures = []
         for _, tex in enumerate(mat.textures):
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, eqgterdef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 

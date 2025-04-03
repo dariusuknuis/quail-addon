@@ -1,23 +1,31 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
 
 import bpy
+from bpy.types import Mesh
 from ..wce.wce import wce
 from ..wce.materialdefinition import materialdefinition
 from .context import Context
+from ..ui.panel.eqgmaterialdef import eqg_apply
 
-def decode_eqgmaterialdef(ctx:Context, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
+def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
     matname = f"{modelname}_{materialname}"
     if matname in bpy.data.materials:
+        if mesh.materials.get(matname) is None:
+            mesh.materials.append(bpy.data.materials[matname])
         return ""
 
     material = bpy.data.materials.new(matname)
+    mesh.materials.append(material)
     material['quaildef'] = 'eqgmaterialdef'
     material.quail_eqgmaterialdef.shadertag = shadertag
     for prop in properties:
         if prop[0] == "e_fShininess0":
-            material.quail_eqgmaterialdef.e_fShininess0 = prop[2]
+            material.quail_eqgmaterialdef.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
             material.quail_eqgmaterialdef.e_TextureDiffuse0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDiffuse0mapChannel":
             material.quail_eqgmaterialdef.e_TextureDiffuse0mapChannel = prop[2]
         elif prop[0] == "e_TextureDiffuse1":
@@ -32,6 +40,9 @@ def decode_eqgmaterialdef(ctx:Context, modelname:str, materialname:str, shaderta
             material.quail_eqgmaterialdef.e_TextureFallback0 = prop[2]
         elif prop[0] == "e_TextureNormal0":
             material.quail_eqgmaterialdef.e_TextureNormal0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0mapChannel":
             material.quail_eqgmaterialdef.e_TextureNormal0mapChannel = prop[2]
         elif prop[0] == "e_TextureNormal1":
@@ -148,5 +159,19 @@ def decode_eqgmaterialdef(ctx:Context, modelname:str, materialname:str, shaderta
     material.quail_eqgmaterialdef.hexoneflag = (hexoneflag == 1)
     material.quail_eqgmaterialdef.animsleep = animsleep
 
-    material.use_nodes = True
+
+    err =  eqg_apply(material)
+    if err:
+        return f"eqg_apply: {err}"
+
+    return ""
+
+def load_texture(ctx:Context, name:str) -> str:
+    # Load the texture
+    texture_path = f"{ctx.parser.path}/assets/{name}"
+    try:
+        bpy.data.images.load(texture_path)
+        print(f"Loaded texture {texture_path}")
+    except Exception as e:
+        return f"Error loading texture {texture_path}: {e}"
     return ""

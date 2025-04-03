@@ -89,66 +89,6 @@ class QuailEqgFaceProperties(bpy.types.PropertyGroup):
         default=False
     )
 
-def draw_eqgface_in_transform(self, context):
-    """Draw UI for face properties"""
-    try:
-        obj = context.object
-        if not obj:
-            return
-
-        if obj.get('quaildef') not in ('eqgmodeldef', 'eqgterdef'):
-            return
-
-        if context.mode != 'EDIT_MESH':
-            return
-
-        mesh = obj.data
-
-        try:
-            # This might fail if mesh is corrupted
-            ensure_face_layers(mesh)
-
-            bm = bmesh.from_edit_mesh(mesh)
-            selected_faces = [f for f in bm.faces if f.select]
-
-            if len(selected_faces) != 1:
-                return
-
-            face = selected_faces[0]
-            face_index = face.index
-
-            # Create temporary face properties in the scene
-            scene = context.scene
-            if not hasattr(scene, "quail_temp_face_props"):
-                bpy.types.Scene.quail_temp_face_props = PointerProperty(type=QuailEqgFaceProperties)
-
-            # Load properties from mesh attribute layers
-            for prop_name in FACE_PROPS:
-                value = get_face_property(mesh, face_index, prop_name)
-                setattr(scene.quail_temp_face_props, prop_name, value)
-
-            # Draw UI
-            layout = self.layout
-            box = layout.box()
-            box.label(text="EQGFACE")
-
-            for prop_name in FACE_PROPS:
-                row = box.row()
-                row.prop(scene.quail_temp_face_props, prop_name)
-
-            # Add update button
-            row = box.row()
-            op = row.operator("mesh.quail_update_face_property", text="Apply")
-            op.face_index = face_index
-
-        except Exception as e:
-            layout = self.layout
-            box = layout.box()
-            box.label(text=f"Error processing face data: {e}")
-
-    except Exception as e:
-        print(f"Error in draw_eqgface_in_transform: {e}")
-
 class MESH_OT_quail_update_face_property(bpy.types.Operator):
     """Update face properties for the selected face"""
     bl_idname = "mesh.quail_update_face_property"
@@ -207,21 +147,17 @@ def decode_eqgmodeldef(ctx, eqgmodeldef, location):
 # Register classes
 def register():
     try:
-        bpy.utils.register_class(QuailEqgFaceProperties)
-        bpy.utils.register_class(MESH_OT_quail_update_face_property)
+        ## bpy.utils.register_class(QuailEqgFaceProperties)
+        ## bpy.utils.register_class(MESH_OT_quail_update_face_property)
         bpy.types.Scene.quail_temp_face_props = PointerProperty(type=QuailEqgFaceProperties)
-        bpy.types.OBJECT_PT_transform.prepend(draw_eqgface_in_transform)
-        print("Successfully registered EQGFace panel")
     except Exception as e:
         print(f"Error registering EQGFace panel: {e}")
 
 def unregister():
     try:
-        bpy.types.OBJECT_PT_transform.remove(draw_eqgface_in_transform)
         if hasattr(bpy.types.Scene, "quail_temp_face_props"):
             del bpy.types.Scene.quail_temp_face_props
-        bpy.utils.unregister_class(MESH_OT_quail_update_face_property)
-        bpy.utils.unregister_class(QuailEqgFaceProperties)
-        print("Successfully unregistered EQGFace panel")
+        ## bpy.utils.unregister_class(MESH_OT_quail_update_face_property)
+        ## bpy.utils.unregister_class(QuailEqgFaceProperties)
     except Exception as e:
         print(f"Error unregistering EQGFace panel: {e}")

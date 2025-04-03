@@ -24,7 +24,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         textures = []
         for _, tex in enumerate(mat.textures):
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 
@@ -48,10 +48,9 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
     for i, face in enumerate(eqgmodeldef.faces):
         poly = mesh.polygons[i]
 
-        if f"{eqgmodeldef.tag}_{face.material}" not in bpy.data.materials:
+        poly.material_index = mesh.materials.find(f"{eqgmodeldef.tag}_{face.material}")
+        if poly.material_index == -1:
             return f"Material {eqgmodeldef.tag}_{face.material} not found"
-
-        poly.material_index = bpy.data.materials.find(f"{eqgmodeldef.tag}_{face.material}")
 
         set_face_property(mesh, i, "passable", face.passable)
         set_face_property(mesh, i, "collisionrequired", face.collisionrequired)
