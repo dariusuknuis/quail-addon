@@ -3,12 +3,22 @@
 import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
-from ..common.rendermethod import apply_userdefined
+from ...common.rendermethod import apply_userdefined, sync_rendermethod_node
 
-def update_userdefined_index(self, context):
+def update_userdefined(self, context):
     if not self.use_userdefined:
         return
     apply_userdefined(self, self.userdefined_index)
+    mat = context.material
+    if not mat:
+        return
+
+def update_rendermethod_node(self, context):
+    mat = self.id_data
+    if not isinstance(mat, bpy.types.Material):
+        return
+
+    sync_rendermethod_node(mat)
 
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
@@ -36,7 +46,7 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         min=1,
         max=42,
         default=2,
-        update=update_userdefined_index
+        update=update_userdefined
     )
 
     # ---------------------------
@@ -51,7 +61,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
             ('WIREFRAME', "Wireframe", ""),
             ('SOLIDFILL', "SolidFill", ""),
         ],
-        default='SOLIDFILL'
+        default='SOLIDFILL',
+        update=update_rendermethod_node
     )
 
     # ---------------------------
@@ -70,7 +81,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
             ('LIGHT6', "Light6", ""),
             ('LIGHT7', "Light7", ""),
         ],
-        default='AMBIENT'
+        default='AMBIENT',
+        update=update_rendermethod_node
     )
 
     # ---------------------------
@@ -85,7 +97,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
             ('GOURAUD1', "Gouraud1", ""),
             ('GOURAUD2', "Gouraud2", ""),
         ],
-        default='GOURAUD1'
+        default='GOURAUD1',
+        update=update_rendermethod_node
     )
 
     # ---------------------------
@@ -96,24 +109,26 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="Texture",
         min=0,
         max=255,
-        default=5
+        default=5,
+        update=update_rendermethod_node
     )
 
     # ---------------------------
     # Toggles
     # ---------------------------
 
-    masked: BoolProperty(name="Masked Transparency", default=False)
-    alphablend: BoolProperty(name="Alpha Blend", default=False)
-    additive: BoolProperty(name="Additive", default=False)
-    dynamic: BoolProperty(name="Dynamic Lighting", default=False)
-    prelit: BoolProperty(name="Prelit", default=False)
+    masked: BoolProperty(name="Masked Transparency", default=False, update=update_rendermethod_node)
+    alphablend: BoolProperty(name="Alpha Blend", default=False, update=update_rendermethod_node)
+    additive: BoolProperty(name="Additive", default=False, update=update_rendermethod_node)
+    dynamic: BoolProperty(name="Dynamic Lighting", default=False, update=update_rendermethod_node)
+    prelit: BoolProperty(name="Prelit", default=False, update=update_rendermethod_node)
 
     opacity: FloatProperty(
         name="Opacity %",
         min=0.0,
         max=100.0,
-        default=100.0
+        default=100.0,
+        update=update_rendermethod_node
     )
 
     rgbpen: FloatVectorProperty(

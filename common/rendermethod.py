@@ -73,3 +73,36 @@ def apply_userdefined(props, index: int):
     props.dynamic = dynamic
     props.prelit = prelit
     props.opacity = opacity
+
+def sync_rendermethod_node(mat):
+    if not mat or not mat.node_tree:
+        return
+
+    group_node = None
+
+    for node in mat.node_tree.nodes:
+        if node.type == 'GROUP' and node.node_tree and node.node_tree.name == "RENDERMETHOD":
+            group_node = node
+            break
+
+    if not group_node:
+        return
+
+    props = mat.quail_materialdefinition
+
+    group_node.inputs["Masked"].default_value = float(props.masked)
+    group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
+    group_node.inputs["Opacity"].default_value = props.opacity
+    group_node.inputs["Additive"].default_value = float(props.additive)
+    group_node.inputs["TextureIndex"].default_value = float(props.texture_index)
+
+    drawstyle_map = {
+        "DRAW0": 0.0,
+        "DRAW1": 1.0,
+        "WIREFRAME": 2.0,
+        "SOLIDFILL": 3.0,
+    }
+
+    group_node.inputs["Drawstyle"].default_value = drawstyle_map.get(
+        props.drawstyle, 0.0
+    )

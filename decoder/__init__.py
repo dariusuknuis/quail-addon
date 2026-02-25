@@ -14,8 +14,11 @@ import os
 
 def wce_decode(path:str):
     parser = wce(path)
-    r = open(path+"/_root.wce", "r")
-    parser.parse_definitions(path, r)
+    root_path = os.path.join(path, "_root.wce")
+
+    with open(root_path, "r") as r:
+        parser.parse_definitions(path, r)
+
     base_file_name = os.path.basename(path)
     base_collection = bpy.data.collections.new(base_file_name)
     bpy.context.scene.collection.children.link(base_collection)
