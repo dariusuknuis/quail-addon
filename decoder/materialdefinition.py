@@ -4,30 +4,569 @@ import bpy
 from ..wce.wce import wce
 from ..wce.materialdefinition import materialdefinition
 from .context import Context
+from ..common.rendermethod import apply_userdefined
+
+USERDEFINED_MAP = {
+
+1:  ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "TRANSPARENT"
+2:  ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, False, False, True,  False, 0.0),   #0x200557   "TEXTURE5SCALEDAMBIENTGOURAUD1DYNAMIC"
+3:  ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, False, False, True,  False, 0.0),   #0x20054b   "TEXTURE5CONSTANTGOURAUD1DYNAMIC"
+4:  ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 0, False, False, False, False, False, 0.0),   #0x57       "SOLIDFILLSCALEDAMBIENTGOURAUD1"
+5:  ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 0, False, False, False, False, False, 0.0),   #0x4b       "SOLIDFILLCONSTANTGOURAUD1"
+6:  ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, True,  False, 50.0),  #0x1280557  "TEXTURE5SCALEDAMBIENTGOURAUD1DYNAMICBLENDOPACITY50.0%"
+7:  ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, True,  False, True,  False, 25.0),  #0x124054b  "TEXTURE5CONSTANTGOURAUD1DYNAMICBLENDOPACITY25.0%"
+8:  ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, True,  False, False, True,  False, 0.0),   #0x2005d7   "TRANSTEXTURE5SCALEDAMBIENTGOURAUD1DYNAMIC"
+9:  ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, True,  False, False, False, False, 0.0),   #0x5cb      "TRANSTEXTURE5CONSTANTGOURAUD1"
+10: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, True,  False, 25.0),  #0x1240557  "TEXTURE5SCALEDAMBIENTGOURAUD1DYNAMICBLENDOPACITY25.0%"
+11: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, True,  False, 75.0),  #0x12c0557  "TEXTURE5SCALEDAMBIENTGOURAUD1DYNAMICBLENDOPACITY75.0%"
+12: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  True,  True,  False, 68.75), #0x13b0557  "TEXTURE5SCALEDAMBIENTGOURAUD1ADDITIVEDYNAMICBLENDOPACITY68.75%"
+13: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, False, False, False, False, False, 0.0),   #0x507      "TEXTURE5LIGHT1SHADE0"
+14: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   4, False, False, False, False, True,  0.0),   #0x40000407 "TEXTURE4LIGHT1SHADE0PRELIT"
+15: ('SOLIDFILL', 'LIGHT3',        'GOURAUD2', 4, False, False, False, False, True,  0.0),   #0x40000473 "TEXTURE4LIGHT3GOURAUD2PRELIT"
+16: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   4, False, True,  False, False, True,  50.0),  #0x41080407 "TEXTURE4LIGHT1SHADE0PRELITBLENDOPACITY50.0%"
+17: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   4, False, True,  True,  False, True,  68.75), #0x411b0407 "TEXTURE4LIGHT1SHADE0ADDITIVEPRELITBLENDOPACITY68.75%"
+18: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, False, False, False, False, False, 0.0),   #0x507      "TEXTURE5LIGHT1SHADE0"
+19: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, False, False, False, False, False, 0.0),   #0x507      "TEXTURE5LIGHT1SHADE0"
+20: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, True,  False, False, False, False, 0.0),   #0x5d7      "TRANSTEXTURE5SCALEDAMBIENTGOURAUD1"
+21: ('SOLIDFILL', 'LIGHT3',        'GOURAUD2', 4, False, False, False, True,  False, 0.0),   #0x200473   "TEXTURE4LIGHT3GOURAUD2DYNAMIC"
+22: ('SOLIDFILL', 'LIGHT3',        'GOURAUD2', 4, False, False, False, True,  False, 0.0),   #0x200473   "TEXTURE4LIGHT3GOURAUD2DYNAMIC"
+23: ('SOLIDFILL', 'LIGHT3',        'GOURAUD2', 4, True,  False, False, True,  False, 0.0),   #0x2004f3   "TRANSTEXTURE4LIGHT3GOURAUD2DYNAMIC"
+24: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, False, True,  True,  False, False, 68.75), #0x11b0507  "TEXTURE5LIGHT1SHADE0ADDITIVEBLENDOPACITY68.75%"
+25: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, False, True,  False, False, False, 50.0),  #0x1080507  "TEXTURE5LIGHT1SHADE0BLENDOPACITY50.0%"
+26: ('SOLIDFILL', 'LIGHT1',        'SHADE0',   5, True,  False, False, False, False, 0.0),   #0x587      "TRANSTEXTURE5LIGHT1SHADE0"
+27: ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "TRANSPARENT"
+28: ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "INVALID/RESERVED"
+29: ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "INVALID/RESERVED"
+30: ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "INVALID/RESERVED"
+31: ('DRAW0',     'ZEROINTENSITY', 'SHADE0',   0, False, False, False, False, False, 0.0),   #0          "TRANSPARENT"
+32: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, False, False, False, True,  0.0),   #0x40000557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELIT"
+33: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, False, False, False, True,  0.0),   #0x4000054b "TEXTURE5CONSTANTGOURAUD1PRELIT"
+34: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 0, False, False, False, False, True,  0.0),   #0x40000057 "SOLIDFILLSCALEDAMBIENTGOURAUD1PRELIT"
+35: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 0, False, False, False, False, True,  0.0),   #0x4000004b "SOLIDFILLCONSTANTGOURAUD1PRELIT"
+36: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  50.0),  #0x41080557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY50.0%"
+37: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, True,  False, False, True,  25.0),  #0x4104054b "TEXTURE5CONSTANTGOURAUD1PRELITBLENDOPACITY25.0%"
+38: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, False, False, False, True,  0.0),   #0x400005d7 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELIT"
+39: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, True,  False, False, True,  0.0),   #0x400005cb "TRANSTEXTURE5CONSTANTGOURAUD1PRELIT"
+40: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  25.0),  #0x41040557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY25.0%"
+41: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  68.75), #0x410c0557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY75.0%"
+}
+
+def apply_userdefined(props, index: int):
+    data = USERDEFINED_MAP.get(index)
+    if not data:
+        return
+
+    (
+        drawstyle,
+        lighting,
+        shading,
+        texture,
+        masked,
+        alphablend,
+        additive,
+        dynamic,
+        prelit,
+        opacity
+    ) = data
+
+    props.drawstyle = drawstyle
+    props.lighting = lighting
+    props.shading = shading
+    props.texture_index = texture
+    props.masked = masked
+    props.alphablend = alphablend
+    props.additive = additive
+    props.dynamic = dynamic
+    props.prelit = prelit
+    props.opacity = opacity
+
+def create_rendermethod_nodegroup():
+
+    name = "RENDERMETHOD"
+
+    # -----------------------------------------
+    # Reuse if already exists
+    # -----------------------------------------
+    if name in bpy.data.node_groups:
+        return bpy.data.node_groups[name]
+
+    group = bpy.data.node_groups.new(name, 'ShaderNodeTree')
+    nodes = group.nodes
+    links = group.links
+
+    # -----------------------------------------
+    # Group Input / Output
+    # -----------------------------------------
+    group_input = nodes.new("NodeGroupInput")
+    group_input.location = (-1255, 135)
+
+    group_output = nodes.new("NodeGroupOutput")
+    group_output.location = (1428, 12)
+
+    def add_input(name, socket_type):
+        group.interface.new_socket(
+            name=name,
+            in_out='INPUT',
+            socket_type=socket_type
+        )
+
+    def add_output(name, socket_type):
+        group.interface.new_socket(
+            name=name,
+            in_out='OUTPUT',
+            socket_type=socket_type
+        )
+
+    # -----------------------------------------
+    # Core Inputs
+    # -----------------------------------------
+    add_input("Index 0 Color", "NodeSocketColor")
+    add_input("Non-Color Texture", "NodeSocketColor")
+    add_input("sRGB Texture", "NodeSocketColor")
+    add_input("Alpha", "NodeSocketFloat")
+
+    add_input("Masked", "NodeSocketFloat")
+    add_input("AlphaBlend", "NodeSocketFloat")
+    add_input("Opacity", "NodeSocketFloat")
+    add_input("Additive", "NodeSocketFloat")
+
+    # Stored flags (future use)
+    add_input("Drawstyle", "NodeSocketFloat")
+    # add_input("Lighting", "NodeSocketFloat")
+    # add_input("Shading", "NodeSocketFloat")
+    add_input("TextureIndex", "NodeSocketFloat")
+    # add_input("Dynamic", "NodeSocketFloat")
+    # add_input("Prelit", "NodeSocketFloat")
+
+    add_output("Shader", "NodeSocketShader")
+
+    inp = group_input.outputs
+    out = group_output.inputs
+
+    # -----------------------------------------
+    # Base Principled Shader
+    # -----------------------------------------
+    principled = nodes.new("ShaderNodeBsdfPrincipled")
+    principled.location = (1108, 15)
+    principled.inputs["Metallic"].default_value = 0.0
+    principled.inputs["Specular IOR Level"].default_value = 0.0
+    principled.inputs["Roughness"].default_value = 1.0
+    principled.inputs["Anisotropic"].default_value = 0.0
+    principled.inputs["Transmission Weight"].default_value = 0.0
+    principled.inputs["Sheen Weight"].default_value = 0.0
+
+    # ------------------------------------------------
+    # Index-0 Bitmap Masked Transparency
+    # ------------------------------------------------
+
+    sep_color1 = nodes.new('ShaderNodeSeparateColor')
+    sep_color1.name = 'Separate Color 1'
+    sep_color1.location = (-988, 604)
+    links.new(inp["Index 0 Color"], sep_color1.inputs[0])
+
+    sep_color2 = nodes.new('ShaderNodeSeparateColor')
+    sep_color2.name = 'Separate Color 2'
+    sep_color2.location = (-988, 411)
+    links.new(inp["Non-Color Texture"], sep_color2.inputs[0])
+
+    subtract1 = nodes.new("ShaderNodeMath")
+    subtract1.name = 'Subtract Red'
+    subtract1.operation = 'SUBTRACT'
+    subtract1.location = (-774, 686)
+    links.new(sep_color2.outputs[0], subtract1.inputs[0])
+    links.new(sep_color1.outputs[0], subtract1.inputs[1])
+
+    subtract2 = nodes.new("ShaderNodeMath")
+    subtract2.name = 'Subtract Green'
+    subtract2.operation = 'SUBTRACT'
+    subtract2.location = (-774, 522)
+    links.new(sep_color2.outputs[1], subtract2.inputs[0])
+    links.new(sep_color1.outputs[1], subtract2.inputs[1])
+
+    subtract3 = nodes.new("ShaderNodeMath")
+    subtract3.name = 'Subtract Blue'
+    subtract3.operation = 'SUBTRACT'
+    subtract3.location = (-774, 355)
+    links.new(sep_color2.outputs[2], subtract3.inputs[0])
+    links.new(sep_color1.outputs[2], subtract3.inputs[1])
+
+    absolute1 = nodes.new("ShaderNodeMath")
+    absolute1.name = 'Absolute Red'
+    absolute1.operation = 'ABSOLUTE'
+    absolute1.location = (-584, 687)
+    links.new(subtract1.outputs[0], absolute1.inputs[0])
+
+    absolute2 = nodes.new("ShaderNodeMath")
+    absolute2.name = 'Absolute Green'
+    absolute2.operation = 'ABSOLUTE'
+    absolute2.location = (-584, 523)
+    links.new(subtract2.outputs[0], absolute2.inputs[0])
+
+    absolute3 = nodes.new("ShaderNodeMath")
+    absolute3.name = 'Absolute Blue'
+    absolute3.operation = 'ABSOLUTE'
+    absolute3.location = (-584, 354)
+    links.new(subtract3.outputs[0], absolute3.inputs[0])
+
+    add1 = nodes.new("ShaderNodeMath")
+    add1.name = 'Add Red & Green'
+    add1.operation = 'ADD'
+    add1.location = (-380, 661)
+    links.new(absolute1.outputs[0], add1.inputs[0])
+    links.new(absolute2.outputs[0], add1.inputs[1])
+
+    add2 = nodes.new("ShaderNodeMath")
+    add2.name = 'Add Red/Green & Blue'
+    add2.operation = 'ADD'
+    add2.location = (-189, 593)
+    links.new(add1.outputs[0], add2.inputs[0])
+    links.new(absolute3.outputs[0], add2.inputs[1])
+
+    bitmap_alpha = nodes.new("ShaderNodeMath")
+    bitmap_alpha.name = 'Bitmap Alpha'
+    bitmap_alpha.label = 'BitmapAlpha'
+    bitmap_alpha.operation = 'GREATER_THAN'
+    bitmap_alpha.location = (1, 599)
+    bitmap_alpha.inputs[1].default_value = 0.00001
+    links.new(add2.outputs[0], bitmap_alpha.inputs[0])
+
+    # ------------------------------------------------
+    # NotAlphaBlend = 1 - AlphaBlend
+    # ------------------------------------------------
+    not_alpha = nodes.new("ShaderNodeMath")
+    not_alpha.name = 'Not Alpha Blend'
+    not_alpha.label = 'NotAlphaBlend'
+    not_alpha.operation = 'SUBTRACT'
+    not_alpha.location = (-173, 181)
+    not_alpha.inputs[0].default_value = 1.0
+    links.new(inp["AlphaBlend"], not_alpha.inputs[1])
+
+    # ------------------------------------------------
+    # BlendAlpha = Opacity/100
+    # ------------------------------------------------
+    blend_alpha = nodes.new("ShaderNodeMath")
+    blend_alpha.name = 'Blend Alpha'
+    blend_alpha.label = 'BlendAlpha'
+    blend_alpha.operation = 'DIVIDE'
+    blend_alpha.location = (-534, -108)
+    blend_alpha.inputs[1].default_value = 100.0
+    links.new(inp["Opacity"], blend_alpha.inputs[0])
+
+    # ------------------------------------------------
+    # MaskEnable = Masked * NotAlphaBlend
+    # ------------------------------------------------
+    mask_enable = nodes.new("ShaderNodeMath")
+    mask_enable.name = 'Mask Enable'
+    mask_enable.label = 'MaskEnable'
+    mask_enable.operation = 'MULTIPLY'
+    mask_enable.location = (7, 318)
+    links.new(inp["Masked"], mask_enable.inputs[0])
+    links.new(not_alpha.outputs[0], mask_enable.inputs[1])
+
+    # ------------------------------------------------
+    # Bitmap/Alpha Channel Gate
+    # ------------------------------------------------
+    alpha_gate = nodes.new("ShaderNodeMath")
+    alpha_gate.name = 'Alpha Gate'
+    alpha_gate.label = 'AlphaGate'
+    alpha_gate.operation = 'MAXIMUM'
+    alpha_gate.location = (186, 484)
+    links.new(inp["Alpha"], alpha_gate.inputs[1])
+    links.new(bitmap_alpha.outputs[0], alpha_gate.inputs[0])
+
+    # ------------------------------------------------
+    # MaskAllowed = max(Additive, MaskEnable)
+    # ------------------------------------------------
+    mask_allow = nodes.new("ShaderNodeMath")
+    mask_allow.name = 'Mask Allowed'
+    mask_allow.label = 'MaskAllowed'
+    mask_allow.operation = 'MAXIMUM'
+    mask_allow.location = (255, 165)
+    links.new(inp["Additive"], mask_allow.inputs[1])
+    links.new(mask_enable.outputs[0], mask_allow.inputs[0])
+
+    # ------------------------------------------------
+    # MaskAlpha = mix(AlphaGate, MaskAllowed)
+    # ------------------------------------------------
+    mask_mix = nodes.new("ShaderNodeMix")
+    mask_mix.name = 'Mask Alpha'
+    mask_mix.label = 'MaskAlpha'
+    mask_mix.data_type = 'FLOAT'
+    mask_mix.location = (455, 332)
+    mask_mix.inputs[2].default_value = 1
+    links.new(mask_allow.outputs[0], mask_mix.inputs["Factor"])
+    links.new(alpha_gate.outputs[0], mask_mix.inputs[3])
+
+    # ------------------------------------------------
+    # BlendEffective = mix(AlphaBlend, BlendAlpha)
+    # ------------------------------------------------
+    blend_effect = nodes.new("ShaderNodeMix")
+    blend_effect.name = 'Blend Effective'
+    blend_effect.label = 'BlendEffective'
+    blend_effect.data_type = 'FLOAT'
+    blend_effect.location = (405, -35)
+    blend_effect.inputs[2].default_value = 1
+    links.new(inp["AlphaBlend"], blend_effect.inputs["Factor"])
+    links.new(blend_alpha.outputs[0], blend_effect.inputs[3])
+
+    # ------------------------------------------------
+    # FinalAlpha = MaskAlpha * BlendEffective
+    # ------------------------------------------------
+    final_mix = nodes.new("ShaderNodeMath")
+    final_mix.name = 'Final Alpha'
+    final_mix.label = 'FinalAlpha'
+    final_mix.operation = 'MULTIPLY'
+    final_mix.location = (706, 188)
+    links.new(mask_mix.outputs[0], final_mix.inputs[0])
+    links.new(blend_effect.outputs[0], final_mix.inputs[1])
+
+    links.new(final_mix.outputs[0], principled.inputs["Alpha"])
+
+    # ------------------------------------------------
+    # EmissionStrength = Additive * FinalAlpha * 0.75
+    # ------------------------------------------------
+    add_effective = nodes.new("ShaderNodeMath")
+    add_effective.name = 'Additive Effective'
+    add_effective.label = 'AdditiveEffective'
+    add_effective.operation = 'MULTIPLY'
+    add_effective.location = (-609, -272)
+    links.new(inp["AlphaBlend"], add_effective.inputs[0])
+    links.new(inp["Additive"], add_effective.inputs[1])
+
+    glow_strength = nodes.new("ShaderNodeMath")
+    glow_strength.name = 'Glow Strength'
+    glow_strength.label = 'GlowStrength'
+    glow_strength.operation = 'MULTIPLY'
+    glow_strength.location = (-436, -281)
+    glow_strength.inputs[1].default_value = 0.25
+    links.new(add_effective.outputs[0], glow_strength.inputs[0])
+
+    emission_strength = nodes.new("ShaderNodeMath")
+    emission_strength.name = 'Emission Strength'
+    emission_strength.label = 'EmissionStrength'
+    emission_strength.operation = 'MULTIPLY'
+    emission_strength.location = (747, -206)
+    links.new(mask_mix.outputs[0], emission_strength.inputs[0])
+    links.new(glow_strength.outputs[0], emission_strength.inputs[1])
+
+    links.new(emission_strength.outputs[0], principled.inputs["Emission Strength"])
+
+    # ------------------------------------------------
+    # Base Color
+    # ------------------------------------------------
+    links.new(inp["sRGB Texture"], principled.inputs["Base Color"])
+
+    # ------------------------------------------------
+    # Output
+    # ------------------------------------------------
+    links.new(principled.outputs["BSDF"], out["Shader"])
+
+    return group
+
+def parse_rendermethod_string(rm: str) -> dict:
+
+    result = {
+        "use_userdefined": False,
+        "userdefined_index": 0,
+
+        "drawstyle": "SOLIDFILL",
+        "lighting": "AMBIENT",
+        "shading": "GOURAUD1",
+        "texture_index": 0,
+
+        "masked": False,
+        "alphablend": False,
+        "opacity": 100.0,
+        "additive": False,
+        "dynamic": False,
+        "prelit": False,
+    }
+
+    if not rm:
+        return result
+
+    # ----------------------------------------
+    # USERDEFINED
+    # ----------------------------------------
+    if rm.startswith("USERDEFINED_"):
+        try:
+            idx = int(rm.split("_")[1])
+            result["use_userdefined"] = True
+            result["userdefined_index"] = idx
+            return result
+        except:
+            return result
+
+    # ----------------------------------------
+    # Masked
+    # ----------------------------------------
+    if "TRANS" in rm:
+        result["masked"] = True
+
+    # ----------------------------------------
+    # Additive
+    # ----------------------------------------
+    if "ADDITIVE" in rm:
+        result["additive"] = True
+
+    if "DYNAMIC" in rm:
+        result["dynamic"] = True
+
+    if "PRELIT" in rm:
+        result["prelit"] = True
+
+    # ----------------------------------------
+    # Alpha Blend + Opacity
+    # ----------------------------------------
+    if "BLEND" in rm:
+        result["alphablend"] = True
+
+    if "OPACITY" in rm:
+        try:
+            start = rm.index("OPACITY") + len("OPACITY")
+            end = rm.index("%", start)
+            val = float(rm[start:end])
+            result["opacity"] = val
+        except:
+            pass
+
+    # ----------------------------------------
+    # Drawstyle
+    # ----------------------------------------
+    if "WIREFRAME" in rm:
+        result["drawstyle"] = "WIREFRAME"
+    elif "DRAW0" in rm:
+        result["drawstyle"] = "DRAW0"
+    elif "DRAW1" in rm:
+        result["drawstyle"] = "DRAW1"
+    elif "SOLIDFILL" in rm:
+        result["drawstyle"] = "SOLIDFILL"
+
+    # ----------------------------------------
+    # Lighting
+    # ----------------------------------------
+    lighting_keywords = [
+        "ZEROINTENSITY",
+        "LIGHT1",
+        "CONSTANT",
+        "LIGHT3",
+        "AMBIENT",
+        "SCALEDAMBIENT",
+        "LIGHT6",
+        "LIGHT7",
+    ]
+
+    for key in lighting_keywords:
+        if key in rm:
+            result["lighting"] = key
+            break
+
+    # ----------------------------------------
+    # Shading
+    # ----------------------------------------
+    if "GOURAUD1" in rm:
+        result["shading"] = "GOURAUD1"
+    elif "GOURAUD2" in rm:
+        result["shading"] = "GOURAUD2"
+    elif "SHADE1" in rm:
+        result["shading"] = "SHADE1"
+    elif "SHADE0" in rm:
+        result["shading"] = "SHADE0"
+
+    # ----------------------------------------
+    # Texture index
+    # ----------------------------------------
+    if "TEXTURE" in rm:
+        try:
+            idx = rm.index("TEXTURE") + len("TEXTURE")
+            num = ""
+            while idx < len(rm) and rm[idx].isdigit():
+                num += rm[idx]
+                idx += 1
+            result["texture_index"] = int(num)
+        except:
+            pass
+
+    return result
 
 def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     if material.tag in bpy.data.materials:
         return ""
     mat = bpy.data.materials.new(material.tag)
     mat['quaildef'] = 'materialdefinition'
-    mat.quail_materialdefinition.rendermethod = material.rendermethod
-    mat.quail_materialdefinition.rgbpen = f"{material.rgbpen[0]} {material.rgbpen[1]} {material.rgbpen[2]}"
-    mat.quail_materialdefinition.brightness = material.brightness
-    mat.quail_materialdefinition.scaledambient = material.scaledambient
-    mat.quail_materialdefinition.simplespritehexfiftyflag = material.simplespritehexfiftyflag == 1
-    mat.quail_materialdefinition.doublesided = material.doublesided == 1
+
+    # --------------------------------------------------
+    # Parse RenderMethod
+    # --------------------------------------------------
+    parsed = parse_rendermethod_string(material.rendermethod)
+
+    props = mat.quail_materialdefinition
+
+    if parsed["use_userdefined"]:
+        props.use_userdefined = True
+        props.userdefined_index = parsed["userdefined_index"]
+
+        apply_userdefined(props, props.userdefined_index)
+
+    else:
+        props.use_userdefined = False
+
+        props.drawstyle = parsed["drawstyle"]
+        props.lighting = parsed["lighting"]
+        props.shading = parsed["shading"]
+        props.texture_index = parsed["texture_index"]
+
+        props.masked = parsed["masked"]
+        props.alphablend = parsed["alphablend"]
+        props.opacity = parsed["opacity"]
+        props.additive = parsed["additive"]
+        props.dynamic = parsed["dynamic"]
+        props.prelit = parsed["prelit"]
+
+    props.rgbpen = (
+        material.rgbpen[0] / 255.0,
+        material.rgbpen[1] / 255.0,
+        material.rgbpen[2] / 255.0,
+    )
+    props.brightness = material.brightness
+    props.scaledambient = material.scaledambient
+    props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
+    props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
+    props.uvshiftperms = material.uvshiftperms
+    props.twosided = material.twosided == 1
 
     mat.use_nodes = True
-    bsdf_index = 0
-    node_position = (-350, 280)
+
     if mat.node_tree is None:
         return f"material {material.tag} has no node tree"
 
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
 
-    bsdf = mat.node_tree.nodes.get('Principled BSDF')
-    if bsdf is None:
-        return f"material {material.tag} has no Principled BSDF node"
-    tex_image = mat.node_tree.nodes.new('ShaderNodeTexImage')
-    # tex_image.image = bpy.data.images.load(material.texture_path)
-    mat.node_tree.links.new(bsdf.inputs['Base Color'], tex_image.outputs['Color'])
+    # Clear default nodes
+    for n in nodes:
+        nodes.remove(n)
+
+    # Create RenderMethod group (lazy)
+    group_tree = create_rendermethod_nodegroup()
+
+    group_node = nodes.new("ShaderNodeGroup")
+    group_node.node_tree = group_tree
+    group_node.location = (0, 0)
+
+    # Apply values to group inputs
+    group_node.inputs["Masked"].default_value = float(props.masked)
+    group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
+    group_node.inputs["Opacity"].default_value = props.opacity / 100.0
+    group_node.inputs["Additive"].default_value = float(props.additive)
+
+    # Add Material Output
+    output = nodes.new("ShaderNodeOutputMaterial")
+    output.location = (300, 0)
+
+    links.new(group_node.outputs["Shader"], output.inputs["Surface"])
+
+    # Backface culling
+    mat.use_backface_culling = not props.twosided
+
     return ""

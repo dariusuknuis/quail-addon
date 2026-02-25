@@ -8,20 +8,44 @@ class materialdefinition:
 		return "MATERIALDEFINITION"
 
 	tag:str
-	tagindex:int # For tag variations, starts at 0, increases by 1
-	variation:int # For variations
-	rendermethod:str # Method for rendering
-	rgbpen:tuple[int, int, int, int] # RGB Colorizing
-	brightness:float # Color brightness
-	scaledambient:float # Scaled ambient amount
-	simplespritetag:str # Simple sprite instance tag
-	simplespritetagindex:int
-	simplespritehexfiftyflag:int # Hex fifty flag
-	pairs:list[str] # Pairs of flags?
-	doublesided:int # Is material double sided?
+	tagindex:int
+	variation:int
+	rendermethod:str
+	rgbpen:tuple[int, int, int, int]
+	brightness:float
+	scaledambient:float
+	uvshiftperms:tuple[tuple[float, None], tuple[float, None]]
+	twosided:int
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def __init__(self):
+		self.tag = ""
+		self.tagindex = 0 #2
+		self.variation = 0 #2
+		self.rendermethod = "" #2
+		self.rgbpen = tuple[int, int, int, int] #2
+		self.brightness = 0.0 #2
+		self.scaledambient = 0.0 #2
+		self.uvshiftperms = tuple[tuple[float, None], tuple[float, None]] #2
+		self.twosided = 0 #2
+		self.simplespriteinst = self.simplespriteinst()
+
+	class simplespriteinst:
+		simplespritetag:str
+		simplespritetagindex:int
+		simplespritehaveskipframes:int
+		simplespriteskipframes:int
+
+		def __init__(self):
+			self.simplespritetag = "" #3
+			self.simplespritetagindex = 0 #3
+			self.simplespritehaveskipframes = 0 #3
+			self.simplespriteskipframes = 0 #3
+
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "TAGINDEX", 1)
 		self.tagindex = int(records[1])
 		records = property(r, "VARIATION", 1)
@@ -37,18 +61,20 @@ class materialdefinition:
 		property(r, "SIMPLESPRITEINST", 0)
 
 		records = property(r, "SIMPLESPRITETAG", 1)
-		self.simplespritetag = str(records[1])
+		self.simplespriteinst.simplespritetag = str(records[1])
 		records = property(r, "SIMPLESPRITETAGINDEX", 1)
-		self.simplespritetagindex = int(records[1])
-		records = property(r, "SIMPLESPRITEHEXFIFTYFLAG", 1)
-		self.simplespritehexfiftyflag = int(records[1])
-		records = property(r, "PAIRS?", -1)
-		self.pairs = records[1:]
+		self.simplespriteinst.simplespritetagindex = int(records[1])
+		records = property(r, "SIMPLESPRITEHAVESKIPFRAMES", 1)
+		self.simplespriteinst.simplespritehaveskipframes = int(records[1])
+		records = property(r, "SIMPLESPRITESKIPFRAMES", 1)
+		self.simplespriteinst.simplespriteskipframes = int(records[1])
+		records = property(r, "UVSHIFTPERMS?", 2)
+		self.uvshiftperms = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None)
+		records = property(r, "TWOSIDED", 1)
+		self.twosided = int(records[1])
+		return ""
 
-		records = property(r, "DOUBLESIDED", 1)
-		self.doublesided = int(records[1])
-
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tVARIATION \"{self.variation}\"\n")
@@ -57,9 +83,11 @@ class materialdefinition:
 		w.write(f"\tBRIGHTNESS \"{self.brightness}\"\n")
 		w.write(f"\tSCALEDAMBIENT \"{self.scaledambient}\"\n")
 		w.write(f"\tSIMPLESPRITEINST\n")
-		w.write(f"\tSIMPLESPRITETAG \"{self.simplespritetag}\"\n")
-		w.write(f"\tSIMPLESPRITETAGINDEX \"{self.simplespritetagindex}\"\n")
-		w.write(f"\tSIMPLESPRITEHEXFIFTYFLAG \"{self.simplespritehexfiftyflag}\"\n")
-		w.write(f"PAIRS? \"{self.pairs}\"\n")
-		w.write(f"\tDOUBLESIDED \"{self.doublesided}\"\n")
+		w.write(f"\tSIMPLESPRITETAG \"{self.simplespriteinst.simplespritetag}\"\n")
+		w.write(f"\tSIMPLESPRITETAGINDEX \"{self.simplespriteinst.simplespritetagindex}\"\n")
+		w.write(f"\tSIMPLESPRITEHAVESKIPFRAMES \"{self.simplespriteinst.simplespritehaveskipframes}\"\n")
+		w.write(f"\tSIMPLESPRITESKIPFRAMES \"{self.simplespriteinst.simplespriteskipframes}\"\n")
+		w.write(f"\tUVSHIFTPERMS? \"{self.uvshiftperms}\"\n")
+		w.write(f"\tTWOSIDED \"{self.twosided}\"\n")
+		return ""
 

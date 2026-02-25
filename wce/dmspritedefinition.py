@@ -8,55 +8,83 @@ class dmspritedefinition:
 		return "DMSPRITEDEFINITION"
 
 	tag:str
-	tagindex:int # The index of the tag
-	fragment1:int # Fragment 1
-	materialpalette:str # Material palette tag
-	fragment3:int # Fragment 3
-	center:tuple[tuple[float, None], tuple[float, None], tuple[float, None]] # center?
-	params1:tuple[tuple[int, None], tuple[int, None], tuple[int, None]] # params1
+	tagindex:int
+	fragment1:int
+	materialpalette:str
+	fragment3:int
+	center:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+	params1:tuple[tuple[int, None], tuple[int, None], tuple[int, None]]
+	skinassignmentgroups:list[str]
+	data8:int
+	facematerialgroups:tuple[int, int, int]
+	vertexmaterialgroups:tuple[int, int, int]
+	params2:tuple[tuple[int, None], tuple[int, None], tuple[int, None]]
+
+	def __init__(self):
+		self.tag = ""
+		self.tagindex = 0 #2
+		self.fragment1 = 0 #2
+		self.materialpalette = "" #2
+		self.fragment3 = 0 #2
+		self.center = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
+		self.params1 = tuple[tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.skinassignmentgroups = list[str] #2
+		self.data8 = 0 #2
+		self.facematerialgroups = tuple[int, int, int] #2
+		self.vertexmaterialgroups = tuple[int, int, int] #2
+		self.params2 = tuple[tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.vertices = []
+		self.texcoords = []
+		self.normals = []
+		self.colors = []
+		self.faces = []
+		self.meshops = []
 
 	class vxyz:
-		vxyz:tuple[float, float, float] # The coordinates of a vertex
+		vxyz:tuple[float, float, float]
 
-	vxyzs:list[vxyz]
+		def __init__(self):
+			self.vxyz = tuple[float, float, float] #3
 
 	class uv:
-		uv:tuple[float, float] # The coordinates of a texture normal
+		uv:tuple[float, float]
 
-	uvs:list[uv]
+		def __init__(self):
+			self.uv = tuple[float, float] #3
 
 	class nxyz:
-		nxyz:tuple[float, float, float] # The coordinates of a texture normal
+		nxyz:tuple[float, float, float]
 
-	nxyzs:list[nxyz]
+		def __init__(self):
+			self.nxyz = tuple[float, float, float] #3
 
 	class rgba:
-		rgba:tuple[int, int, int, int] # The coordinates of a vertex
+		rgba:tuple[int, int, int, int]
 
-	rgbas:list[rgba]
+		def __init__(self):
+			self.rgba = tuple[int, int, int, int] #3
 
 	class dmface:
+		flag:int
+		data:tuple[int, int, int, int]
+		triangle:tuple[int, int, int]
 
-		flag:int # face flags
-
-		data:tuple[int, int, int, int] # face data
-
-		triangle:tuple[int, int, int] # Triangle indexes
-
-	dmfaces:list[dmface]
+		def __init__(self):
+			self.flag = 0 #3
+			self.data = tuple[int, int, int, int] #3
+			self.triangle = tuple[int, int, int] #3
 
 	class meshop:
-		meshop:tuple[int, int, float, int, int] # A mesh operation
+		meshop:tuple[int, int, float, int, int]
 
-	meshops:list[meshop]
-	skinassignmentgroups:tuple[list[str]] # The skin assignment groups
-	data8:int # data 8 information
-	facematerialgroups:tuple[int, int, int] # The face material groups
-	vertexmaterialgroups:tuple[int, int, int] # The vertex material groups
-	params2:tuple[tuple[int, None], tuple[int, None], tuple[int, None]] # params2
+		def __init__(self):
+			self.meshop = tuple[int, int, float, int, int] #3
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "TAGINDEX", 1)
 		self.tagindex = int(records[1])
 		records = property(r, "FRAGMENT1", 1)
@@ -72,45 +100,45 @@ class dmspritedefinition:
 		records = property(r, "NUMVERTICES", 1)
 		numvertices = int(records[1])
 
-		self.vxyzs = []
+		self.vertices = []
 		for i in range(numvertices):
-			vxyzi = self.vxyz()
+			vxyzi = type(self).vxyz()
 			records = property(r, "VXYZ", 3)
 			vxyzi.vxyz = float(records[1]), float(records[2]), float(records[3])
-			self.vxyzs.append(vxyzi)
+			self.vertices.append(vxyzi)
 		records = property(r, "NUMTEXCOORDS", 1)
 		numtexcoords = int(records[1])
 
-		self.uvs = []
+		self.texcoords = []
 		for i in range(numtexcoords):
-			uvi = self.uv()
+			uvi = type(self).uv()
 			records = property(r, "UV", 2)
 			uvi.uv = float(records[1]), float(records[2])
-			self.uvs.append(uvi)
+			self.texcoords.append(uvi)
 		records = property(r, "NUMNORMALS", 1)
 		numnormals = int(records[1])
 
-		self.nxyzs = []
+		self.normals = []
 		for i in range(numnormals):
-			nxyzi = self.nxyz()
+			nxyzi = type(self).nxyz()
 			records = property(r, "NXYZ", 3)
 			nxyzi.nxyz = float(records[1]), float(records[2]), float(records[3])
-			self.nxyzs.append(nxyzi)
+			self.normals.append(nxyzi)
 		records = property(r, "NUMCOLORS", 1)
 		numcolors = int(records[1])
 
-		self.rgbas = []
+		self.colors = []
 		for i in range(numcolors):
-			rgbai = self.rgba()
+			rgbai = type(self).rgba()
 			records = property(r, "RGBA", 4)
 			rgbai.rgba = int(records[1]), int(records[2]), int(records[3]), int(records[4])
-			self.rgbas.append(rgbai)
+			self.colors.append(rgbai)
 		records = property(r, "NUMFACES", 1)
 		numfaces = int(records[1])
 
-		self.dmfaces = []
+		self.faces = []
 		for i in range(numfaces):
-			dmfacei = self.dmface()
+			dmfacei = type(self).dmface()
 			property(r, "DMFACE", 0)
 
 			records = property(r, "FLAG", 1)
@@ -119,13 +147,13 @@ class dmspritedefinition:
 			dmfacei.data = int(records[1]), int(records[2]), int(records[3]), int(records[4])
 			records = property(r, "TRIANGLE", 3)
 			dmfacei.triangle = int(records[1]), int(records[2]), int(records[3])
-			self.dmfaces.append(dmfacei)
+			self.faces.append(dmfacei)
 		records = property(r, "NUMMESHOPS", 1)
 		nummeshops = int(records[1])
 
 		self.meshops = []
 		for i in range(nummeshops):
-			meshopi = self.meshop()
+			meshopi = type(self).meshop()
 			records = property(r, "MESHOP", 5)
 			meshopi.meshop = int(records[1]), int(records[2]), float(records[3]), int(records[4]), int(records[5])
 			self.meshops.append(meshopi)
@@ -140,8 +168,9 @@ class dmspritedefinition:
 		self.vertexmaterialgroups = int(records[1]), int(records[2]), int(records[3])
 		records = property(r, "PARAMS2?", 3)
 		self.params2 = (int(records[1]) if records[1] != "NULL" else None), (int(records[2]) if records[2] != "NULL" else None), (int(records[3]) if records[3] != "NULL" else None)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tFRAGMENT1 \"{self.fragment1}\"\n")
@@ -149,20 +178,20 @@ class dmspritedefinition:
 		w.write(f"\tFRAGMENT3 \"{self.fragment3}\"\n")
 		w.write(f"\tCENTER? \"{self.center}\"\n")
 		w.write(f"\tPARAMS1? \"{self.params1}\"\n")
-		w.write(f"\tNUMVERTICES \"{len(self.vxyzs)}\"\n")
-		for vxyzi in self.vxyzs:
+		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
+		for vxyzi in self.vertices:
 			w.write(f"\t\tVXYZ \"{vxyzi.vxyz}\"\n")
-		w.write(f"\tNUMTEXCOORDS \"{len(self.uvs)}\"\n")
-		for uvi in self.uvs:
+		w.write(f"\tNUMTEXCOORDS \"{len(self.texcoords)}\"\n")
+		for uvi in self.texcoords:
 			w.write(f"\t\tUV \"{uvi.uv}\"\n")
-		w.write(f"\tNUMNORMALS \"{len(self.nxyzs)}\"\n")
-		for nxyzi in self.nxyzs:
+		w.write(f"\tNUMNORMALS \"{len(self.normals)}\"\n")
+		for nxyzi in self.normals:
 			w.write(f"\t\tNXYZ \"{nxyzi.nxyz}\"\n")
-		w.write(f"\tNUMCOLORS \"{len(self.rgbas)}\"\n")
-		for rgbai in self.rgbas:
+		w.write(f"\tNUMCOLORS \"{len(self.colors)}\"\n")
+		for rgbai in self.colors:
 			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")
-		w.write(f"\tNUMFACES \"{len(self.dmfaces)}\"\n")
-		for dmfacei in self.dmfaces:
+		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
+		for dmfacei in self.faces:
 			w.write(f"\t\tDMFACE\n")
 			w.write(f"\t\tFLAG \"{dmfacei.flag}\"\n")
 			w.write(f"\t\tDATA \"{dmfacei.data}\"\n")
@@ -175,4 +204,5 @@ class dmspritedefinition:
 		w.write(f"\tFACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
 		w.write(f"\tVERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
 		w.write(f"\tPARAMS2? \"{self.params2}\"\n")
+		return ""
 

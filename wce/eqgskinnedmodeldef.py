@@ -10,103 +10,119 @@ class eqgskinnedmodeldef:
 	tag:str
 	version:int
 
+	def __init__(self):
+		self.tag = ""
+		self.version = 0 #2
+		self.materials = []
+		self.bones = []
+		self.models = []
+
 	class materialtag:
 		materialtag:str
-
 		shadertag:str
-
 		hexoneflag:int
+		animsleep:int
 
+		def __init__(self):
+			self.materialtag = "" #3
+			self.shadertag = "" #3
+			self.hexoneflag = 0 #3
+			self.animsleep = 0 #3
+			self.properties = []
+			self.animtextures = []
 
 		class property:
 			property:tuple[str, int, str]
 
-		propertys:list[property]
-
-		animsleep:int
-
+			def __init__(self):
+				self.property = tuple[str, int, str] #4
 
 		class texture:
 			texture:str
 
-		textures:list[texture]
-
-	materialtags:list[materialtag]
+			def __init__(self):
+				self.texture = "" #4
 
 	class bone:
 		bone:str
-
 		next:int
-
 		children:int
-
 		childindex:int
-
 		pivot:tuple[float, float, float]
-
 		quaternion:tuple[float, float, float, float]
-
 		scale:tuple[float, float, float]
 
-	bones:list[bone]
+		def __init__(self):
+			self.bone = "" #3
+			self.next = 0 #3
+			self.children = 0 #3
+			self.childindex = 0 #3
+			self.pivot = tuple[float, float, float] #3
+			self.quaternion = tuple[float, float, float, float] #3
+			self.scale = tuple[float, float, float] #3
 
 	class model:
 		model:str
-
 		mainpiece:int
 
+		def __init__(self):
+			self.model = "" #3
+			self.mainpiece = 0 #3
+			self.vertices = []
+			self.faces = []
 
 		class vertex:
-
 			xyz:tuple[float, float, float]
-
 			uv:tuple[float, float]
-
 			uv2:tuple[float, float]
-
 			normal:tuple[float, float, float]
-
 			tint:tuple[int, int, int, int]
 
+			def __init__(self):
+				self.xyz = tuple[float, float, float] #4
+				self.uv = tuple[float, float] #4
+				self.uv2 = tuple[float, float] #4
+				self.normal = tuple[float, float, float] #4
+				self.tint = tuple[int, int, int, int] #4
+				self.weights = []
 
 			class weight:
 				weight:tuple[int, float]
 
-			weights:list[weight]
-
-		vertexs:list[vertex]
-
+				def __init__(self):
+					self.weight = tuple[int, float] #5
 
 		class face:
-
 			triangle:tuple[int, int, int]
-
 			material:str
-
 			passable:int
-
 			transparent:int
-
 			collisionrequired:int
-
 			culled:int
-
 			degenerate:int
 
-		faces:list[face]
+			def __init__(self):
+				self.triangle = tuple[int, int, int] #4
+				self.material = "" #4
+				self.passable = 0 #4
+				self.transparent = 0 #4
+				self.collisionrequired = 0 #4
+				self.culled = 0 #4
+				self.degenerate = 0 #4
 
-	models:list[model]
-
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "VERSION", 1)
 		self.version = int(records[1])
 		records = property(r, "NUMMATERIALS", 1)
 		nummaterials = int(records[1])
 
-		self.materialtags = []
+		self.materials = []
 		for i in range(nummaterials):
-			materialtagi = self.materialtag()
+			materialtagi = type(self).materialtag()
 			records = property(r, "MATERIALTAG", 1)
 			materialtagi.materialtag = str(records[1])
 			records = property(r, "SHADERTAG", 1)
@@ -116,30 +132,30 @@ class eqgskinnedmodeldef:
 			records = property(r, "NUMPROPERTIES", 1)
 			numproperties = int(records[1])
 
-			materialtagi.propertys = []
+			materialtagi.properties = []
 			for j in range(numproperties):
-				propertyj = self.materialtag.property()
+				propertyj = type(materialtagi).property()
 				records = property(r, "PROPERTY", 3)
 				propertyj.property = str(records[1]), int(records[2]), str(records[3])
-				materialtagi.propertys.append(propertyj)
+				materialtagi.properties.append(propertyj)
 			records = property(r, "ANIMSLEEP", 1)
 			materialtagi.animsleep = int(records[1])
 			records = property(r, "NUMANIMTEXTURES", 1)
 			numanimtextures = int(records[1])
 
-			materialtagi.textures = []
+			materialtagi.animtextures = []
 			for j in range(numanimtextures):
-				texturej = self.materialtag.texture()
+				texturej = type(materialtagi).texture()
 				records = property(r, "TEXTURE", 1)
 				texturej.texture = str(records[1])
-				materialtagi.textures.append(texturej)
-			self.materialtags.append(materialtagi)
+				materialtagi.animtextures.append(texturej)
+			self.materials.append(materialtagi)
 		records = property(r, "NUMBONES", 1)
 		numbones = int(records[1])
 
 		self.bones = []
 		for i in range(numbones):
-			bonei = self.bone()
+			bonei = type(self).bone()
 			records = property(r, "BONE", 1)
 			bonei.bone = str(records[1])
 			records = property(r, "NEXT", 1)
@@ -160,7 +176,7 @@ class eqgskinnedmodeldef:
 
 		self.models = []
 		for i in range(nummodels):
-			modeli = self.model()
+			modeli = type(self).model()
 			records = property(r, "MODEL", 1)
 			modeli.model = str(records[1])
 			records = property(r, "MAINPIECE", 1)
@@ -168,9 +184,9 @@ class eqgskinnedmodeldef:
 			records = property(r, "NUMVERTICES", 1)
 			numvertices = int(records[1])
 
-			modeli.vertexs = []
+			modeli.vertices = []
 			for j in range(numvertices):
-				vertexj = self.model.vertex()
+				vertexj = type(modeli).vertex()
 				property(r, "VERTEX", 0)
 
 				records = property(r, "XYZ", 3)
@@ -188,17 +204,17 @@ class eqgskinnedmodeldef:
 
 				vertexj.weights = []
 				for k in range(numweights):
-					weightk = self.model.vertex.weight()
+					weightk = type(vertexj).weight()
 					records = property(r, "WEIGHT", 2)
 					weightk.weight = int(records[1]), float(records[2])
 					vertexj.weights.append(weightk)
-				modeli.vertexs.append(vertexj)
+				modeli.vertices.append(vertexj)
 			records = property(r, "NUMFACES", 1)
 			numfaces = int(records[1])
 
 			modeli.faces = []
 			for j in range(numfaces):
-				facej = self.model.face()
+				facej = type(modeli).face()
 				property(r, "FACE", 0)
 
 				records = property(r, "TRIANGLE", 3)
@@ -217,21 +233,22 @@ class eqgskinnedmodeldef:
 				facej.degenerate = int(records[1])
 				modeli.faces.append(facej)
 			self.models.append(modeli)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION \"{self.version}\"\n")
-		w.write(f"\tNUMMATERIALS \"{len(self.materialtags)}\"\n")
-		for materialtagi in self.materialtags:
+		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
+		for materialtagi in self.materials:
 			w.write(f"\t\tMATERIALTAG \"{materialtagi.materialtag}\"\n")
 			w.write(f"\t\tSHADERTAG \"{materialtagi.shadertag}\"\n")
 			w.write(f"\t\tHEXONEFLAG \"{materialtagi.hexoneflag}\"\n")
-			w.write(f"\t\tNUMPROPERTIES \"{len(materialtagi.propertys)}\"\n")
-			for propertyj in materialtagi.propertys:
+			w.write(f"\t\tNUMPROPERTIES \"{len(materialtagi.properties)}\"\n")
+			for propertyj in materialtagi.properties:
 				w.write(f"\t\t\tPROPERTY \"{propertyj.property}\"\n")
 			w.write(f"\t\tANIMSLEEP \"{materialtagi.animsleep}\"\n")
-			w.write(f"\t\tNUMANIMTEXTURES \"{len(materialtagi.textures)}\"\n")
-			for texturej in materialtagi.textures:
+			w.write(f"\t\tNUMANIMTEXTURES \"{len(materialtagi.animtextures)}\"\n")
+			for texturej in materialtagi.animtextures:
 				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
 		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
 		for bonei in self.bones:
@@ -246,8 +263,8 @@ class eqgskinnedmodeldef:
 		for modeli in self.models:
 			w.write(f"\t\tMODEL \"{modeli.model}\"\n")
 			w.write(f"\t\tMAINPIECE \"{modeli.mainpiece}\"\n")
-			w.write(f"\t\tNUMVERTICES \"{len(modeli.vertexs)}\"\n")
-			for vertexj in modeli.vertexs:
+			w.write(f"\t\tNUMVERTICES \"{len(modeli.vertices)}\"\n")
+			for vertexj in modeli.vertices:
 				w.write(f"\t\t\tVERTEX\n")
 				w.write(f"\t\t\tXYZ \"{vertexj.xyz}\"\n")
 				w.write(f"\t\t\tUV \"{vertexj.uv}\"\n")
@@ -267,4 +284,5 @@ class eqgskinnedmodeldef:
 				w.write(f"\t\t\tCOLLISIONREQUIRED \"{facej.collisionrequired}\"\n")
 				w.write(f"\t\t\tCULLED \"{facej.culled}\"\n")
 				w.write(f"\t\t\tDEGENERATE \"{facej.degenerate}\"\n")
+		return ""
 

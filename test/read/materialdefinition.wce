@@ -23,16 +23,22 @@ MATERIALDEFINITION "tag"
 	SCALEDAMBIENT 1.12345678
 	// Simple sprite instance section
 	SIMPLESPRITEINST
-	// Simple sprite instance tag
- 	 // Argument 1 (%s): Simple sprite instance tag
-	SIMPLESPRITETAG "1"
-	SIMPLESPRITETAGINDEX 1
-	// Hex fifty flag
- 	 // Argument 1 (%d): Hex fifty flag
-	SIMPLESPRITEHEXFIFTYFLAG 1
-	// Pairs of flags?
- 	 // Argument 1 (%d...): Pairs 0
-	PAIRS? 1 2
+		// Simple sprite instance tag
+ 		 // Argument 1 (%s): Simple sprite instance tag
+		SIMPLESPRITETAG "1"
+		// Index of simple sprite tag
+ 		 // Argument 1 (%d): Simple sprite tag index
+		SIMPLESPRITETAGINDEX 1
+		// 0x10 flag; enables SIMPLESPRITESKIPFRAMES flag to be evaluated
+ 		 // Argument 1 (%d): 0 or 1
+		SIMPLESPRITEHAVESKIPFRAMES 1
+		// 0x40 flag; used only if SIMPLESPRITEHAVESKIPFRAMES is set
+ 		 // Argument 1 (%d): 0 or 1
+		SIMPLESPRITESKIPFRAMES 1
+	// Optional UV shift per millisecond values
+ 	 // Argument 1 (%0.8e): U shift per ms
+ 	 // Argument 2 (%0.8e): V shift per ms
+	UVSHIFTPERMS? 1.12345678 2.12345678
 	// Is material double sided?
  	 // Argument 1 (%d): 0: False, 1: True
-	DOUBLESIDED 1
+	TWOSIDED 1

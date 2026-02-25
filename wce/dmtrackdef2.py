@@ -13,17 +13,30 @@ class dmtrackdef2:
 	fpscale:int
 	size6:int
 
+	def __init__(self):
+		self.tag = ""
+		self.sleep = 0 #2
+		self.param2 = 0 #2
+		self.fpscale = 0 #2
+		self.size6 = 0 #2
+		self.frames = []
+
 	class numvertices:
+
+		def __init__(self):
+			self.vertices = []
 
 		class xyz:
 			xyz:tuple[float, float, float]
 
-		xyzs:list[xyz]
+			def __init__(self):
+				self.xyz = tuple[float, float, float] #4
 
-	numverticess:list[numvertices]
-
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "SLEEP", 1)
 		self.sleep = int(records[1])
 		records = property(r, "PARAM2", 1)
@@ -35,29 +48,31 @@ class dmtrackdef2:
 		records = property(r, "NUMFRAMES", 1)
 		numframes = int(records[1])
 
-		self.numverticess = []
+		self.frames = []
 		for i in range(numframes):
-			numverticesi = self.numvertices()
+			numverticesi = type(self).numvertices()
 			records = property(r, "NUMVERTICES", 1)
 			numvertices = int(records[1])
 
-			numverticesi.xyzs = []
+			numverticesi.vertices = []
 			for j in range(numvertices):
-				xyzj = self.numvertices.xyz()
+				xyzj = type(numverticesi).xyz()
 				records = property(r, "XYZ", 3)
 				xyzj.xyz = float(records[1]), float(records[2]), float(records[3])
-				numverticesi.xyzs.append(xyzj)
-			self.numverticess.append(numverticesi)
+				numverticesi.vertices.append(xyzj)
+			self.frames.append(numverticesi)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tSLEEP \"{self.sleep}\"\n")
 		w.write(f"\tPARAM2 \"{self.param2}\"\n")
 		w.write(f"\tFPSCALE \"{self.fpscale}\"\n")
 		w.write(f"\tSIZE6 \"{self.size6}\"\n")
-		w.write(f"\tNUMFRAMES \"{len(self.numverticess)}\"\n")
-		for numverticesi in self.numverticess:
-			w.write(f"\t\tNUMVERTICES \"{len(numverticesi.xyzs)}\"\n")
-			for xyzj in numverticesi.xyzs:
+		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
+		for numverticesi in self.frames:
+			w.write(f"\t\tNUMVERTICES \"{len(numverticesi.vertices)}\"\n")
+			for xyzj in numverticesi.vertices:
 				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
+		return ""
 

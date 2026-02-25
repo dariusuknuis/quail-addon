@@ -14,7 +14,7 @@ def decode_actordef(ctx:Context, actordef:actordef) -> str:
     obj.quail_actordef.boundsref = actordef.boundsref
     obj.quail_actordef.callback = actordef.callback
     obj.quail_actordef.activegeometry = actordef.activegeometry or ""
-    obj.quail_actordef.collider = actordef.usemodelcollider == 1
+    obj.quail_actordef.spritevolumeonly = actordef.spritevolumeonly == 1
     obj.quail_actordef.userdata = actordef.userdata
     if actordef.location[0]:
         obj.location = mathutils.Vector(actordef.location[0:3])
@@ -24,7 +24,7 @@ def decode_actordef(ctx:Context, actordef:actordef) -> str:
 
 
     for action in actordef.actions:
-        for lod in action.levelofdetails:
+        for lod in action.levelsofdetails:
             hsprite = ctx.parser.hierarchicalspritedefs[lod.sprite]
             if not hsprite:
                 return f"actordef {actordef.tag} refers to hsprite {lod.sprite} but not found"

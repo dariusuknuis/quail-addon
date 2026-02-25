@@ -9,26 +9,33 @@ class worldtree:
 
 	tag:str
 
+	def __init__(self):
+		self.tag = ""
+		self.worldnodes = []
+
 	class worldnode:
-
 		normalabcd:tuple[float, float, float, float]
-
 		worldregiontag:str
-
 		fronttree:int
-
 		backtree:int
 
-	worldnodes:list[worldnode]
+		def __init__(self):
+			self.normalabcd = tuple[float, float, float, float] #3
+			self.worldregiontag = "" #3
+			self.fronttree = 0 #3
+			self.backtree = 0 #3
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "NUMWORLDNODES", 1)
 		numworldnodes = int(records[1])
 
 		self.worldnodes = []
 		for i in range(numworldnodes):
-			worldnodei = self.worldnode()
+			worldnodei = type(self).worldnode()
 			property(r, "WORLDNODE", 0)
 
 			records = property(r, "NORMALABCD", 4)
@@ -40,8 +47,9 @@ class worldtree:
 			records = property(r, "BACKTREE", 1)
 			worldnodei.backtree = int(records[1])
 			self.worldnodes.append(worldnodei)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tNUMWORLDNODES \"{len(self.worldnodes)}\"\n")
 		for worldnodei in self.worldnodes:
@@ -50,4 +58,5 @@ class worldtree:
 			w.write(f"\t\tWORLDREGIONTAG \"{worldnodei.worldregiontag}\"\n")
 			w.write(f"\t\tFRONTTREE \"{worldnodei.fronttree}\"\n")
 			w.write(f"\t\tBACKTREE \"{worldnodei.backtree}\"\n")
+		return ""
 

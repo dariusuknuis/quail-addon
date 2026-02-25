@@ -10,21 +10,30 @@ class eqgparticlepointdef:
 	tag:str
 	version:int
 
+	def __init__(self):
+		self.tag = ""
+		self.version = 0 #2
+		self.points = []
+
 	class point:
 		point:str
-
 		bonename:str
-
 		translation:tuple[float, float, float]
-
 		rotation:tuple[float, float, float]
-
 		scale:tuple[float, float, float]
 
-	points:list[point]
+		def __init__(self):
+			self.point = "" #3
+			self.bonename = "" #3
+			self.translation = tuple[float, float, float] #3
+			self.rotation = tuple[float, float, float] #3
+			self.scale = tuple[float, float, float] #3
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "VERSION", 1)
 		self.version = int(records[1])
 		records = property(r, "NUMPOINTS", 1)
@@ -32,7 +41,7 @@ class eqgparticlepointdef:
 
 		self.points = []
 		for i in range(numpoints):
-			pointi = self.point()
+			pointi = type(self).point()
 			records = property(r, "POINT", 1)
 			pointi.point = str(records[1])
 			records = property(r, "BONENAME", 1)
@@ -44,8 +53,9 @@ class eqgparticlepointdef:
 			records = property(r, "SCALE", 3)
 			pointi.scale = float(records[1]), float(records[2]), float(records[3])
 			self.points.append(pointi)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION \"{self.version}\"\n")
 		w.write(f"\tNUMPOINTS \"{len(self.points)}\"\n")
@@ -55,4 +65,5 @@ class eqgparticlepointdef:
 			w.write(f"\t\tTRANSLATION \"{pointi.translation}\"\n")
 			w.write(f"\t\tROTATION \"{pointi.rotation}\"\n")
 			w.write(f"\t\tSCALE \"{pointi.scale}\"\n")
+		return ""
 

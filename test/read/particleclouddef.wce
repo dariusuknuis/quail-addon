@@ -1,31 +1,80 @@
-// Wld Particle Cloud
+// Wld Particle Cloud Definition
 PARTICLECLOUDDEF "tag"
+	// Index of tag variation
 	TAGINDEX 1
+	// Referenced blit sprite definition tag
 	BLITTAG "1"
+	// Particle rendering type (1=Single pixel, 2=Tails, 3=Blit)
 	PARTICLETYPE 1
+	// Spawn movement type (BOX, SPHERE, PLANE, STREAM, DISK)
 	MOVEMENT "1"
-	HIGHOPACITY 1
-	FOLLOWITEM 1
+	// Number of particles to emit
 	SIZE 1
-	GRAVITYMULTIPLIER 1.12345678
-	GRAVITY 1.12345678 2.12345678 3.12345678
+	// Gravity scalar applied to particles
+	GRAVITY 1.12345678
+	// Initial spawn direction vector
+	SPAWNNORMAL 1.12345678 2.12345678 3.12345678
+	// Duration of emitter
 	DURATION 1
+	// Sphere spawn radius
 	SPAWNRADIUS 1.12345678
+	// Cone spawn angle
 	SPAWNANGLE 1.12345678
+	// Particle lifespan
 	LIFESPAN 1
+	// Multiplier applied to spawn velocity
 	SPAWNVELOCITYMULTIPLIER 1.12345678
+	// Initial velocity vector
 	SPAWNVELOCITY 1.12345678 2.12345678 3.12345678
+	// Particle spawn rate
 	SPAWNRATE 1
+	// Scale of spawned blit sprite
 	SPAWNSCALE 1.12345678
+	// RGBA tint color
 	TINT 1 2 3 4
+	// Optional spawn box minimum bounds
 	SPAWNBOXMIN? 1.12345678 2.12345678 3.12345678
+	// Optional spawn box maximum bounds
 	SPAWNBOXMAX? 1.12345678 2.12345678 3.12345678
+	// Optional bounding box minimum
 	BOXMIN? 1.12345678 2.12345678 3.12345678
+	// Optional bounding box maximum
 	BOXMAX? 1.12345678 2.12345678 3.12345678
-	HEXEIGHTYFLAG 1
-	HEXONEHUNDREDFLAG 1
-	HEXFOURHUNDREDFLAG 1
-	HEXFOURTHOUSANDFLAG 1
-	HEXEIGHTTHOUSANDFLAG 1
-	HEXTENTHOUSANDFLAG 1
-	HEXTWENTYTHOUSANDFLAG 1
+	// Use blit sprite flag
+	USESPRITE 1
+	// Free movement flag
+	FREE 1
+	// Enable particle collision
+	COLLISION 1
+	// Respawn particles when expired
+	RESPAWN 1
+	// View relative X flag
+	VIEWRELX 1
+	// View relative Y flag
+	VIEWRELY 1
+	// View relative Z flag
+	VIEWRELZ 1
+	// Warp relative to view
+	VIEWWARP 1
+	// Enable Brownian motion
+	BROWNIAN 1
+	// Enable particle fading
+	FADE 1
+	// Enable bounding box
+	BOUNDINGBOX 1
+	// Update bounding box dynamically
+	UPDATEBBOX 1
+	// Enable point gravity
+	POINTGRAVITY 1
+	// Gravity behavior flag
+	GRAVITYFLAG 1
+	// Free definition flag
+	FREEDEF 1
+	// Object relative positioning
+	OBJECTRELATIVE 1
+	// Parent object relative positioning
+	PARENTOBJRELATIVE 1
+	// Spawn scale relative to parent
+	SPAWNSCALERELATIVE 1
+	// Hide particles with spawn object
+	HIDEWITHSPAWNOBJECT 1

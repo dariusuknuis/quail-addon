@@ -36,13 +36,16 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
             err = create_material(ctx, src_material)
             if err != "":
                 return f"create material {mat_name}: {err}"
+            mat = bpy.data.materials.get(mat_name)
+            if mat and obj.data.materials.find(mat_name) == -1:
+                obj.data.materials.append(mat)
 
     faces_for_creation = []
-    for face in sprite.dmface2s:
+    for face in sprite.face2s:
         faces_for_creation.append(face.triangle)
 
     vertices = []
-    for _, vertex in enumerate(sprite.vxyzs):
+    for _, vertex in enumerate(sprite.vertices):
         vertices.append(mathutils.Vector(vertex.vxyz))
     mesh.from_pydata(vertices, [], faces_for_creation)
     mesh.update()
@@ -55,7 +58,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
         for j, vertex in enumerate(vertices):
             uvlayer.data[triangle.loop_indices[j]].uv = (sprite.uvs[vertex].uv[0], sprite.uvs[vertex].uv[1]-1)
 
-    if len(sprite.nxyzs) == 0:
+    if len(sprite.vertexnormals) == 0:
         return f"{sprite.tag} has no normals assigned"
 
     #mesh.use_auto_smooth = True # type: ignore
@@ -63,15 +66,15 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     normals = list[list[float]]
     normals = []
-    for _, normal in enumerate(sprite.nxyzs):
+    for _, normal in enumerate(sprite.vertexnormals):
         normals.append(normal.nxyz)
 
     mesh.normals_split_custom_set_from_vertices(normals)
 
-    if len(sprite.rgbas) > 0:
+    if len(sprite.vertexcolors) > 0:
         color_attribute = mesh.color_attributes.new(name="RGBA", domain="POINT", type='FLOAT_COLOR')
         v_index = 0
-        for _, color in enumerate(sprite.rgbas):
+        for _, color in enumerate(sprite.vertexcolors):
             count = color.rgba[0]
             for i in range(count):
                 color_attribute.data[v_index].color = (color.rgba[1] / 255.0, color.rgba[2] / 255.0, color.rgba[3] / 255.0) # type: ignore
@@ -90,24 +93,35 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
             vertex_material_attribute.data[j].value = int(vmg) # type: ignore
 
     if len(sprite.facematerialgroups) > 0:
-        count = 0
-        face_index = 0
-        for i, fmg in enumerate(sprite.facematerialgroups):
-            if i % 2 == 0:
-                count = int(fmg)
-                continue
-            for j in range(count):
-                mat_index = int(fmg)
-                if face_index < len(mesh.polygons):
-                    return f"fmg assign: face index {face_index} out of range ({0-len(mesh.polygons)})"
 
-                materialName = materialpalette.materials[mat_index]
-                if materialName is None:
-                    return f"material index {mat_index} not found in material palette {materialpalette.tag}"
-                obj_mat_index = obj.data.materials.find(materialName) # type: ignore
-                if obj_mat_index == -1:
-                    return f"material {materialName} not found in object {obj.name}"
-                mesh.polygons[j].material_index = obj_mat_index
+        groups = sprite.facematerialgroups
+
+        group_count = int(groups[0])
+        expected_len = 1 + group_count * 2
+
+        if len(groups) != expected_len:
+            return f"FACEMATERIALGROUPS length mismatch: expected {expected_len}, got {len(groups)}"
+
+        face_index = 0
+
+        for g in range(group_count):
+            count = int(groups[1 + g*2])
+            mat_index = int(groups[1 + g*2 + 1])
+
+            if mat_index < 0 or mat_index >= len(materialpalette.materials):
+                return f"material index {mat_index+1} out of range (1-{len(materialpalette.materials)})"
+
+            materialName = materialpalette.materials[mat_index].material
+
+            obj_mat_index = obj.data.materials.find(materialName)
+            if obj_mat_index == -1:
+                return f"material {materialName} not found in object {obj.name}"
+
+            for _ in range(count):
+                if face_index >= len(mesh.polygons):
+                    return f"fmg assign: face index {face_index} out of range (0-{len(mesh.polygons)-1})"
+
+                mesh.polygons[face_index].material_index = obj_mat_index
                 face_index += 1
 
     return ""

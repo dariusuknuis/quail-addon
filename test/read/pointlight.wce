@@ -1,8 +1,25 @@
-// Wld Point Light
+// Wld Point Light Definition
 POINTLIGHT "tag"
+	// Referenced light definition tag
+ 	 // Argument 1 (%s): Light definition tag
 	LIGHT "1"
+	// Is this light static (0 or 1)
+ 	 // Argument 1 (%d): 0: dynamic, 1: static
 	STATIC 1
-	STATICINFLUENCE "1"
-	HASREGIONS 1
+	// Static influence flag
+ 	 // Argument 1 (%d): Static influence behavior
+	STATICINFLUENCE 1
+	// Dynamic influence flag
+ 	 // Argument 1 (%d): Dynamic influence behavior
+	DYNAMICINFLUENCE 1
+	// Light world position
+ 	 // Argument 1 (%0.8e): X coordinate
+ 	 // Argument 2 (%0.8e): Y coordinate
+ 	 // Argument 3 (%0.8e): Z coordinate
 	XYZ 1.12345678 2.12345678 3.12345678
+	// Radius of light influence
+ 	 // Argument 1 (%0.8e): Influence radius
 	RADIUSOFINFLUENCE 1.12345678
+	// Optional list of region indices affected by this light
+ 	 // Argument 1 (%d...): Count followed by region indices
+	REGIONS? 3 5 7 9

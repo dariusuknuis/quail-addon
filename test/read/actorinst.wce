@@ -27,8 +27,8 @@ ACTORINST "tag"
  	 // Argument 1 (%d): NULL if empty, 1 if set to true
 	ACTIVE? 1
 	// Uses sprite volume?
- 	 // Argument 1 (%d): NULL empty
-	SPRITEVOLUMEONLY? 1
+ 	 // Argument 1 (%d): 0: false, 1: true
+	SPRITEVOLUMEONLY 1
 	// References an RGB Track?
  	 // Argument 1 (%s): NULL if not set, tag otherwise
 	DMRGBTRACK? "1"

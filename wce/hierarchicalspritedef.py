@@ -8,46 +8,59 @@ class hierarchicalspritedef:
 		return "HIERARCHICALSPRITEDEF"
 
 	tag:str
-
-	class dag:
-
-		tag:str
-
-		spritetag:str
-
-		spriteindex:int
-
-		track:str
-
-		trackindex:str
-
-		subdaglist:list[str]
-
-	dags:list[dag]
-
-	class attachedskin:
-
-		dmsprite:str
-
-		dmspriteindex:int
-
-		linkskinupdatestodagindex:int
-
-	attachedskins:list[attachedskin]
 	sprite:str
 	centeroffset:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
 	boundingradius:tuple[float, None]
-	hextwohundredflag:int # also known as HAVEATTACHEDSKINS
-	hextwentythousandflag:int # also known as DAGCOLLISONS
+	haveattachedskins:int
+	dagcollisions:int
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def __init__(self):
+		self.tag = ""
+		self.sprite = "" #2
+		self.centeroffset = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
+		self.boundingradius = tuple[float, None] #2
+		self.haveattachedskins = 0 #2
+		self.dagcollisions = 0 #2
+		self.dags = []
+		self.attachedskins = []
+
+	class dag:
+		tag:str
+		spritetag:str
+		spriteindex:int
+		track:str
+		trackindex:int
+		subdaglist:list[str]
+
+		def __init__(self):
+			self.tag = "" #3
+			self.spritetag = "" #3
+			self.spriteindex = 0 #3
+			self.track = "" #3
+			self.trackindex = 0 #3
+			self.subdaglist = list[str] #3
+
+	class attachedskin:
+		dmsprite:str
+		dmspriteindex:int
+		linkskinupdatestodagindex:int
+
+		def __init__(self):
+			self.dmsprite = "" #3
+			self.dmspriteindex = 0 #3
+			self.linkskinupdatestodagindex = 0 #3
+
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "NUMDAGS", 1)
 		numdags = int(records[1])
 
 		self.dags = []
 		for i in range(numdags):
-			dagi = self.dag()
+			dagi = type(self).dag()
 			property(r, "DAG", 0)
 
 			records = property(r, "TAG", 1)
@@ -59,7 +72,7 @@ class hierarchicalspritedef:
 			records = property(r, "TRACK", 1)
 			dagi.track = str(records[1])
 			records = property(r, "TRACKINDEX", 1)
-			dagi.trackindex = str(records[1])
+			dagi.trackindex = int(records[1])
 			records = property(r, "SUBDAGLIST", -1)
 			dagi.subdaglist = records[1:]
 
@@ -69,7 +82,7 @@ class hierarchicalspritedef:
 
 		self.attachedskins = []
 		for i in range(numattachedskins):
-			attachedskini = self.attachedskin()
+			attachedskini = type(self).attachedskin()
 			property(r, "ATTACHEDSKIN", 0)
 
 			records = property(r, "DMSPRITE", 1)
@@ -87,12 +100,13 @@ class hierarchicalspritedef:
 		self.centeroffset = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
 		records = property(r, "BOUNDINGRADIUS?", 1)
 		self.boundingradius = (float(records[1]) if records[1] != "NULL" else None)
-		records = property(r, "HEXTWOHUNDREDFLAG", 1)
-		self.hextwohundredflag = int(records[1])
-		records = property(r, "HEXTWENTYTHOUSANDFLAG", 1)
-		self.hextwentythousandflag = int(records[1])
+		records = property(r, "HAVEATTACHEDSKINS", 1)
+		self.haveattachedskins = int(records[1])
+		records = property(r, "DAGCOLLISIONS", 1)
+		self.dagcollisions = int(records[1])
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tNUMDAGS \"{len(self.dags)}\"\n")
 		for dagi in self.dags:
@@ -113,6 +127,7 @@ class hierarchicalspritedef:
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		w.write(f"\tCENTEROFFSET? \"{self.centeroffset}\"\n")
 		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
-		w.write(f"\tHEXTWOHUNDREDFLAG \"{self.hextwohundredflag}\"\n")
-		w.write(f"\tHEXTWENTYTHOUSANDFLAG \"{self.hextwentythousandflag}\"\n")
+		w.write(f"\tHAVEATTACHEDSKINS \"{self.haveattachedskins}\"\n")
+		w.write(f"\tDAGCOLLISIONS \"{self.dagcollisions}\"\n")
+		return ""
 

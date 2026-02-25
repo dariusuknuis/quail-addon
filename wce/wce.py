@@ -70,6 +70,16 @@ class wce:
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
 
+    def _instantiate_definition(self, cls, tag, r):
+        if cls.__init__.__code__.co_argcount > 1:
+            return cls(tag, r)
+        else:
+            obj = cls()
+            error = obj.read(tag, r)
+            if error:
+                raise Exception(error)
+            return obj
+
     def __init__(self, path:str):
         self.path = path
 
@@ -141,224 +151,224 @@ class wce:
 
             if line.startswith(actordef.definition()):
                 try:
-                    self.actordefs[tag] = actordef(tag, r)
+                    self.actordefs[tag] = self._instantiate_definition(actordef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} actordef: {e}")
                 continue
 
             if line.startswith(actorinst.definition()):
                 try:
-                    self.actorinsts[tag] = actorinst(tag, r)
+                    self.actorinsts[tag] = self._instantiate_definition(actorinst, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} actorinst: {e}")
                 continue
 
             if line.startswith(ambientlight.definition()):
                 try:
-                    self.ambientlights[tag] = ambientlight(tag, r)
+                    self.ambientlights[tag] = self._instantiate_definition(ambientlight, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} ambientlight: {e}")
                 continue
 
             if line.startswith(blitspritedef.definition()):
                 try:
-                    self.blitspritedefs[tag] = blitspritedef(tag, r)
+                    self.blitspritedefs[tag] = self._instantiate_definition(blitspritedef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} blitspritedef: {e}")
                 continue
 
             if line.startswith(dmspritedef2.definition()):
                 try:
-                    self.dmspritedef2s[tag] = dmspritedef2(tag, r)
+                    self.dmspritedef2s[tag] = self._instantiate_definition(dmspritedef2, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmspritedef2: {e}")
                 continue
 
             if line.startswith(dmspritedefinition.definition()):
                 try:
-                    self.dmspritedefinitions[tag] = dmspritedefinition(tag, r)
+                    self.dmspritedefinitions[tag] = self._instantiate_definition(dmspritedefinition, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmspritedefinition: {e}")
                 continue
 
             if line.startswith(dmtrackdef2.definition()):
                 try:
-                    self.dmtrackdef2s[tag] = dmtrackdef2(tag, r)
+                    self.dmtrackdef2s[tag] = self._instantiate_definition(dmtrackdef2, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmtrackdef2: {e}")
                 continue
 
             if line.startswith(eqganidef.definition()):
                 try:
-                    self.eqganidefs[tag] = eqganidef(tag, r)
+                    self.eqganidefs[tag] = self._instantiate_definition(eqganidef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqganidef: {e}")
                 continue
 
             if line.startswith(eqglayerdef.definition()):
                 try:
-                    self.eqglayerdefs[tag] = eqglayerdef(tag, r)
+                    self.eqglayerdefs[tag] = self._instantiate_definition(eqglayerdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqglayerdef: {e}")
                 continue
 
             if line.startswith(eqgmodeldef.definition()):
                 try:
-                    self.eqgmodeldefs[tag] = eqgmodeldef(tag, r)
+                    self.eqgmodeldefs[tag] = self._instantiate_definition(eqgmodeldef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgmodeldef: {e}")
                 continue
 
             if line.startswith(eqgskinnedmodeldef.definition()):
                 try:
-                    self.eqgskinnedmodeldefs[tag] = eqgskinnedmodeldef(tag, r)
+                    self.eqgskinnedmodeldefs[tag] = self._instantiate_definition(eqgskinnedmodeldef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgskinnedmodeldef: {e}")
                 continue
 
             if line.startswith(eqgterdef.definition()):
                 try:
-                    self.eqgterdefs[tag] = eqgterdef(tag, r)
+                    self.eqgterdefs[tag] = self._instantiate_definition(eqgterdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgterdef: {e}")
                 continue
 
             if line.startswith(eqgparticlepointdef.definition()):
                 try:
-                    self.eqgterdefs[tag] = eqgparticlepointdef(tag, r)
+                    self.eqgterdefs[tag] = self._instantiate_definition(eqgparticlepointdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlepointdef: {e}")
                 continue
 
             if line.startswith(eqgparticlerenderdef.definition()):
                 try:
-                    self.eqgterdefs[tag] = eqgparticlerenderdef(tag, r)
+                    self.eqgterdefs[tag] = self._instantiate_definition(eqgparticlerenderdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlerenderdef: {e}")
                 continue
 
             if line.startswith(globalambientlightdef.definition()):
                 try:
-                    self.globalambientlightdefs[tag] = globalambientlightdef(tag, r)
+                    self.globalambientlightdefs[tag] = self._instantiate_definition(globalambientlightdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} globalambientlightdef: {e}")
                 continue
 
             if line.startswith(hierarchicalspritedef.definition()):
                 try:
-                    self.hierarchicalspritedefs[tag] = hierarchicalspritedef(tag, r)
+                    self.hierarchicalspritedefs[tag] = self._instantiate_definition(hierarchicalspritedef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} hierarchicalspritedef: {e}")
                 continue
 
             if line.startswith(lightdefinition.definition()):
                 try:
-                    self.lightdefinitions[tag] = lightdefinition(tag, r)
+                    self.lightdefinitions[tag] = self._instantiate_definition(lightdefinition, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} lightdefinition: {e}")
                 continue
 
             if line.startswith(materialdefinition.definition()):
                 try:
-                    self.materialdefinitions[tag] = materialdefinition(tag, r)
+                    self.materialdefinitions[tag] = self._instantiate_definition(materialdefinition, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} materialdefinition: {e}")
                 continue
 
             if line.startswith(materialpalette.definition()):
                 try:
-                    self.materialpalettes[tag] = materialpalette(tag, r)
+                    self.materialpalettes[tag] = self._instantiate_definition(materialpalette, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} materialpalette: {e}")
                 continue
 
             if line.startswith(particleclouddef.definition()):
                 try:
-                    self.particleclouddefs[tag] = particleclouddef(tag, r)
+                    self.particleclouddefs[tag] = self._instantiate_definition(particleclouddef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} particleclouddef: {e}")
                 continue
 
             if line.startswith(pointlight.definition()):
                 try:
-                    self.pointlights[tag] = pointlight(tag, r)
+                    self.pointlights[tag] = self._instantiate_definition(pointlight, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} pointlight: {e}")
                 continue
 
             if line.startswith(polyhedrondefinition.definition()):
                 try:
-                    self.polyhedrondefinitions[tag] = polyhedrondefinition(tag, r)
+                    self.polyhedrondefinitions[tag] = self._instantiate_definition(polyhedrondefinition, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} polyhedrondefinition: {e}")
                 continue
 
             if line.startswith(region.definition()):
                 try:
-                    self.regions[tag] = region(tag, r)
+                    self.regions[tag] = self._instantiate_definition(region, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} region: {e}")
                 continue
 
             if line.startswith(rgbdeformationtrackdef.definition()):
                 try:
-                    self.rgbdeformationtrackdefs[tag] = rgbdeformationtrackdef(tag, r)
+                    self.rgbdeformationtrackdefs[tag] = self._instantiate_definition(rgbdeformationtrackdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} rgbdeformationtrackdef: {e}")
                 continue
 
             if line.startswith(simplespritedef.definition()):
                 try:
-                    self.simplespritedefs[tag] = simplespritedef(tag, r)
+                    self.simplespritedefs[tag] = self._instantiate_definition(simplespritedef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} simplespritedef: {e}")
                 continue
 
             if line.startswith(sprite2ddef.definition()):
                 try:
-                    self.sprite2ddefs[tag] = sprite2ddef(tag, r)
+                    self.sprite2ddefs[tag] = self._instantiate_definition(sprite2ddef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} sprite2ddef: {e}")
                 continue
 
             if line.startswith(sprite3ddef.definition()):
                 try:
-                    self.sprite3ddefs[tag] = sprite3ddef(tag, r)
+                    self.sprite3ddefs[tag] = self._instantiate_definition(sprite3ddef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} sprite3ddef: {e}")
                 continue
 
             if line.startswith(trackdefinition.definition()):
                 try:
-                    self.trackdefinitions[tag] = trackdefinition(tag, r)
+                    self.trackdefinitions[tag] = self._instantiate_definition(trackdefinition, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} trackdefinition: {e}")
                 continue
 
             if line.startswith(trackinstance.definition()):
                 try:
-                    self.trackinstances[tag] = trackinstance(tag, r)
+                    self.trackinstances[tag] = self._instantiate_definition(trackinstance, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} trackinstance: {e}")
                 continue
 
             if line.startswith(worlddef.definition()):
                 try:
-                    self.worlddefs[tag] = worlddef(tag, r)
+                    self.worlddefs[tag] = self._instantiate_definition(worlddef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} worlddef: {e}")
                 continue
 
             if line.startswith(worldtree.definition()):
                 try:
-                    self.worldtrees[tag] = worldtree(tag, r)
+                    self.worldtrees[tag] = self._instantiate_definition(worldtree, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} worldtree: {e}")
                 continue
 
             if line.startswith(zone.definition()):
                 try:
-                    self.zones[tag] = zone(tag, r)
+                    self.zones[tag] = self._instantiate_definition(zone, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} zone: {e}")
                 continue

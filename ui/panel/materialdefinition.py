@@ -2,199 +2,128 @@
 
 import bpy
 import os
-from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty
+from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
+from ..common.rendermethod import apply_userdefined
 
-# Define Actor properties
-
+def update_userdefined_index(self, context):
+    if not self.use_userdefined:
+        return
+    apply_userdefined(self, self.userdefined_index)
 
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
-    rendermethod: EnumProperty(
-        name="Render Method",
-        description="Render Method",
-        items=[
-            ('TRANSPARENT', "TRANSPARENT", ""),
-            ('WIREFRAME', "WIREFRAME", ""),
-            ('WIREFRAMECONSTANTZEROINTENSITY',
-             "WIREFRAMECONSTANTZEROINTENSITY", ""),
-            ('WIREFRAMECONSTANT', "WIREFRAMECONSTANT", ""),
-            ('WIREFRAMEAMBIENT', "WIREFRAMEAMBIENT", ""),
-            ('WIREFRAMESCALEDAMBIENT', "WIREFRAMESCALEDAMBIENT", ""),
-            ('SOLIDFILL', "SOLIDFILL", ""),
-            ('SOLIDFILLZEROINTENSITY', "SOLIDFILLZEROINTENSITY", ""),
-            ('SOLIDFILLCONSTANT', "SOLIDFILLCONSTANT", ""),
-            ('SOLIDFILLAMBIENT', "SOLIDFILLAMBIENT", ""),
-            ('SOLIDFILLSCALEDAMBIENT', "SOLIDFILLSCALEDAMBIENT", ""),
-            ('SOLIDFILLGOURAUD1', "SOLIDFILLGOURAUD1", ""),
-            ('SOLIDFILLGOURAUD2', "SOLIDFILLGOURAUD2", ""),
-            ('SOLIDFILLCONSTANTGOURAUD1', "SOLIDFILLCONSTANTGOURAUD1", ""),
-            ('SOLIDFILLCONSTANTGOURAUD2', "SOLIDFILLCONSTANTGOURAUD2", ""),
-            ('SOLIDFILLAMBIENTGOURAUD1', "SOLIDFILLAMBIENTGOURAUD1", ""),
-            ('SOLIDFILLAMBIENTGOURAUD2', "SOLIDFILLAMBIENTGOURAUD2", ""),
-            ('SOLIDFILLSCALEDAMBIENTGOURAUD1',
-             "SOLIDFILLSCALEDAMBIENTGOURAUD1", ""),
-            ('SOLIDFILLSCALEDAMBIENTGOURAUD2',
-             "SOLIDFILLSCALEDAMBIENTGOURAUD2", ""),
-            ('TEXTURE1', "TEXTURE1", ""),
-            ('TEXTURE1CONSTANT', "TEXTURE1CONSTANT", ""),
-            ('TEXTURE1AMBIENT', "TEXTURE1AMBIENT", ""),
-            ('TEXTURE1SCALEDAMBIENT', "TEXTURE1SCALEDAMBIENT", ""),
-            ('TEXTURE1GOURAUD1', "TEXTURE1GOURAUD1", ""),
-            ('TEXTURE1GOURAUD2', "TEXTURE1GOURAUD2", ""),
-            ('TEXTURE1CONSTANTGOURAUD1', "TEXTURE1CONSTANTGOURAUD1", ""),
-            ('TEXTURE1CONSTANTGOURAUD2', "TEXTURE1CONSTANTGOURAUD2", ""),
-            ('TEXTURE1AMBIENTGOURAUD1', "TEXTURE1AMBIENTGOURAUD1", ""),
-            ('TEXTURE1AMBIENTGOURAUD2', "TEXTURE1AMBIENTGOURAUD2", ""),
-            ('TEXTURE1SCALEDAMBIENTGOURAUD1', "TEXTURE1SCALEDAMBIENTGOURAUD1", ""),
-            ('TEXTURE1SCALEDAMBIENTGOURAUD2', "TEXTURE1SCALEDAMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE1', "TRANSTEXTURE1", ""),
-            ('TRANSTEXTURE1ZEROINTENSITY', "TRANSTEXTURE1ZEROINTENSITY", ""),
-            ('TRANSTEXTURE1CONSTANT', "TRANSTEXTURE1CONSTANT", ""),
-            ('TRANSTEXTURE1AMBIENT', "TRANSTEXTURE1AMBIENT", ""),
-            ('TRANSTEXTURE1SCALEDAMBIENT', "TRANSTEXTURE1SCALEDAMBIENT", ""),
-            ('TRANSTEXTURE1GOURAUD1', "TRANSTEXTURE1GOURAUD1", ""),
-            ('TRANSTEXTURE1GOURAUD2', "TRANSTEXTURE1GOURAUD2", ""),
-            ('TRANSTEXTURE1CONSTANTGOURAUD1', "TRANSTEXTURE1CONSTANTGOURAUD1", ""),
-            ('TRANSTEXTURE1CONSTANTGOURAUD2', "TRANSTEXTURE1CONSTANTGOURAUD2", ""),
-            ('TRANSTEXTURE1AMBIENTGOURAUD1', "TRANSTEXTURE1AMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE1AMBIENTGOURAUD2', "TRANSTEXTURE1AMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE1SCALEDAMBIENTGOURAUD1',
-             "TRANSTEXTURE1SCALEDAMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE1SCALEDAMBIENTGOURAUD2',
-             "TRANSTEXTURE1SCALEDAMBIENTGOURAUD2", ""),
-            ('TEXTURE2', "TEXTURE2", ""),
-            ('TEXTURE2CONSTANT', "TEXTURE2CONSTANT", ""),
-            ('TEXTURE2AMBIENT', "TEXTURE2AMBIENT", ""),
-            ('TEXTURE2SCALEDAMBIENT', "TEXTURE2SCALEDAMBIENT", ""),
-            ('TEXTURE2GOURAUD1', "TEXTURE2GOURAUD1", ""),
-            ('TEXTURE2GOURAUD2', "TEXTURE2GOURAUD2", ""),
-            ('TEXTURE2CONSTANTGOURAUD1', "TEXTURE2CONSTANTGOURAUD1", ""),
-            ('TEXTURE2CONSTANTGOURAUD2', "TEXTURE2CONSTANTGOURAUD2", ""),
-            ('TEXTURE2AMBIENTGOURAUD1', "TEXTURE2AMBIENTGOURAUD1", ""),
-            ('TEXTURE2AMBIENTGOURAUD2', "TEXTURE2AMBIENTGOURAUD2", ""),
-            ('TEXTURE2SCALEDAMBIENTGOURAUD1', "TEXTURE2SCALEDAMBIENTGOURAUD1", ""),
-            ('TEXTURE2SCALEDAMBIENTGOURAUD2', "TEXTURE2SCALEDAMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE2', "TRANSTEXTURE2", ""),
-            ('TRANSTEXTURE2ZEROINTENSITY', "TRANSTEXTURE2ZEROINTENSITY", ""),
-            ('TRANSTEXTURE2CONSTANT', "TRANSTEXTURE2CONSTANT", ""),
-            ('TRANSTEXTURE2AMBIENT', "TRANSTEXTURE2AMBIENT", ""),
-            ('TRANSTEXTURE2SCALEDAMBIENT', "TRANSTEXTURE2SCALEDAMBIENT", ""),
-            ('TRANSTEXTURE2GOURAUD1', "TRANSTEXTURE2GOURAUD1", ""),
-            ('TRANSTEXTURE2GOURAUD2', "TRANSTEXTURE2GOURAUD2", ""),
-            ('TRANSTEXTURE2CONSTANTGOURAUD1', "TRANSTEXTURE2CONSTANTGOURAUD1", ""),
-            ('TRANSTEXTURE2CONSTANTGOURAUD2', "TRANSTEXTURE2CONSTANTGOURAUD2", ""),
-            ('TRANSTEXTURE2AMBIENTGOURAUD1', "TRANSTEXTURE2AMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE2AMBIENTGOURAUD2', "TRANSTEXTURE2AMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE2SCALEDAMBIENTGOURAUD1',
-             "TRANSTEXTURE2SCALEDAMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE2SCALEDAMBIENTGOURAUD2',
-             "TRANSTEXTURE2SCALEDAMBIENTGOURAUD2", ""),
-            ('TEXTURE3', "TEXTURE3", ""),
-            ('TEXTURE3CONSTANT', "TEXTURE3CONSTANT", ""),
-            ('TEXTURE3AMBIENT', "TEXTURE3AMBIENT", ""),
-            ('TEXTURE3SCALEDAMBIENT', "TEXTURE3SCALEDAMBIENT", ""),
-            ('TEXTURE3GOURAUD1', "TEXTURE3GOURAUD1", ""),
-            ('TEXTURE3GOURAUD2', "TEXTURE3GOURAUD2", ""),
-            ('TEXTURE3CONSTANTGOURAUD1', "TEXTURE3CONSTANTGOURAUD1", ""),
-            ('TEXTURE3CONSTANTGOURAUD2', "TEXTURE3CONSTANTGOURAUD2", ""),
-            ('TEXTURE3AMBIENTGOURAUD1', "TEXTURE3AMBIENTGOURAUD1", ""),
-            ('TEXTURE3AMBIENTGOURAUD2', "TEXTURE3AMBIENTGOURAUD2", ""),
-            ('TEXTURE3SCALEDAMBIENTGOURAUD1', "TEXTURE3SCALEDAMBIENTGOURAUD1", ""),
-            ('TEXTURE3SCALEDAMBIENTGOURAUD2', "TEXTURE3SCALEDAMBIENTGOURAUD2", ""),
-            ('TEXTURE4', "TEXTURE4", ""),
-            ('TEXTURE4CONSTANT', "TEXTURE4CONSTANT", ""),
-            ('TEXTURE4AMBIENT', "TEXTURE4AMBIENT", ""),
-            ('TEXTURE4SCALEDAMBIENT', "TEXTURE4SCALEDAMBIENT", ""),
-            ('TEXTURE4GOURAUD1', "TEXTURE4GOURAUD1", ""),
-            ('TEXTURE4GOURAUD2', "TEXTURE4GOURAUD2", ""),
-            ('TEXTURE4CONSTANTGOURAUD1', "TEXTURE4CONSTANTGOURAUD1", ""),
-            ('TEXTURE4CONSTANTGOURAUD2', "TEXTURE4CONSTANTGOURAUD2", ""),
-            ('TEXTURE4AMBIENTGOURAUD1', "TEXTURE4AMBIENTGOURAUD1", ""),
-            ('TEXTURE4AMBIENTGOURAUD2', "TEXTURE4AMBIENTGOURAUD2", ""),
-            ('TEXTURE4SCALEDAMBIENTGOURAUD1', "TEXTURE4SCALEDAMBIENTGOURAUD1", ""),
-            ('TEXTURE4SCALEDAMBIENTGOURAUD2', "TEXTURE4SCALEDAMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE4', "TRANSTEXTURE4", ""),
-            ('TRANSTEXTURE4ZEROINTENSITY', "TRANSTEXTURE4ZEROINTENSITY", ""),
-            ('TRANSTEXTURE4CONSTANT', "TRANSTEXTURE4CONSTANT", ""),
-            ('TRANSTEXTURE4AMBIENT', "TRANSTEXTURE4AMBIENT", ""),
-            ('TRANSTEXTURE4SCALEDAMBIENT', "TRANSTEXTURE4SCALEDAMBIENT", ""),
-            ('TRANSTEXTURE4GOURAUD1', "TRANSTEXTURE4GOURAUD1", ""),
-            ('TRANSTEXTURE4GOURAUD2', "TRANSTEXTURE4GOURAUD2", ""),
-            ('TRANSTEXTURE4CONSTANTGOURAUD1', "TRANSTEXTURE4CONSTANTGOURAUD1", ""),
-            ('TRANSTEXTURE4CONSTANTGOURAUD2', "TRANSTEXTURE4CONSTANTGOURAUD2", ""),
-            ('TRANSTEXTURE4AMBIENTGOURAUD1', "TRANSTEXTURE4AMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE4AMBIENTGOURAUD2', "TRANSTEXTURE4AMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE4SCALEDAMBIENTGOURAUD1',
-             "TRANSTEXTURE4SCALEDAMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE4SCALEDAMBIENTGOURAUD2',
-             "TRANSTEXTURE4SCALEDAMBIENTGOURAUD2", ""),
-            ('TEXTURE5', "TEXTURE5", ""),
-            ('TEXTURE5CONSTANT', "TEXTURE5CONSTANT", ""),
-            ('TEXTURE5AMBIENT', "TEXTURE5AMBIENT", ""),
-            ('TEXTURE5SCALEDAMBIENT', "TEXTURE5SCALEDAMBIENT", ""),
-            ('TEXTURE5GOURAUD1', "TEXTURE5GOURAUD1", ""),
-            ('TEXTURE5GOURAUD2', "TEXTURE5GOURAUD2", ""),
-            ('TEXTURE5CONSTANTGOURAUD1', "TEXTURE5CONSTANTGOURAUD1", ""),
-            ('TEXTURE5CONSTANTGOURAUD2', "TEXTURE5CONSTANTGOURAUD2", ""),
-            ('TEXTURE5AMBIENTGOURAUD1', "TEXTURE5AMBIENTGOURAUD1", ""),
-            ('TEXTURE5AMBIENTGOURAUD2', "TEXTURE5AMBIENTGOURAUD2", ""),
-            ('TEXTURE5SCALEDAMBIENTGOURAUD1', "TEXTURE5SCALEDAMBIENTGOURAUD1", ""),
-            ('TEXTURE5SCALEDAMBIENTGOURAUD2', "TEXTURE5SCALEDAMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE5', "TRANSTEXTURE5", ""),
-            ('TRANSTEXTURE5ZEROINTENSITY', "TRANSTEXTURE5ZEROINTENSITY", ""),
-            ('TRANSTEXTURE5CONSTANT', "TRANSTEXTURE5CONSTANT", ""),
-            ('TRANSTEXTURE5AMBIENT', "TRANSTEXTURE5AMBIENT", ""),
-            ('TRANSTEXTURE5SCALEDAMBIENT', "TRANSTEXTURE5SCALEDAMBIENT", ""),
-            ('TRANSTEXTURE5GOURAUD1', "TRANSTEXTURE5GOURAUD1", ""),
-            ('TRANSTEXTURE5GOURAUD2', "TRANSTEXTURE5GOURAUD2", ""),
-            ('TRANSTEXTURE5CONSTANTGOURAUD1', "TRANSTEXTURE5CONSTANTGOURAUD1", ""),
-            ('TRANSTEXTURE5CONSTANTGOURAUD2', "TRANSTEXTURE5CONSTANTGOURAUD2", ""),
-            ('TRANSTEXTURE5AMBIENTGOURAUD1', "TRANSTEXTURE5AMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE5AMBIENTGOURAUD2', "TRANSTEXTURE5AMBIENTGOURAUD2", ""),
-            ('TRANSTEXTURE5SCALEDAMBIENTGOURAUD1',
-             "TRANSTEXTURE5SCALEDAMBIENTGOURAUD1", ""),
-            ('TRANSTEXTURE5SCALEDAMBIENTGOURAUD2',
-             "TRANSTEXTURE5SCALEDAMBIENTGOURAUD2", ""),
-            ('USERDEFINED_1', "USERDEFINED_1", ""),
-            ('USERDEFINED_2', "USERDEFINED_2", ""),
-            ('USERDEFINED_3', "USERDEFINED_3", ""),
-            ('USERDEFINED_4', "USERDEFINED_4", ""),
-            ('USERDEFINED_5', "USERDEFINED_5", ""),
-            ('USERDEFINED_6', "USERDEFINED_6", ""),
-            ('USERDEFINED_7', "USERDEFINED_7", ""),
-            ('USERDEFINED_8', "USERDEFINED_8", ""),
-            ('USERDEFINED_9', "USERDEFINED_9", ""),
-            ('USERDEFINED_10', "USERDEFINED_10", ""),
-            ('USERDEFINED_11', "USERDEFINED_11", ""),
-            ('USERDEFINED_12', "USERDEFINED_12", ""),
-            ('USERDEFINED_13', "USERDEFINED_13", ""),
-            ('USERDEFINED_14', "USERDEFINED_14", ""),
-            ('USERDEFINED_15', "USERDEFINED_15", ""),
-            ('USERDEFINED_16', "USERDEFINED_16", ""),
-            ('USERDEFINED_17', "USERDEFINED_17", ""),
-            ('USERDEFINED_18', "USERDEFINED_18", ""),
-            ('USERDEFINED_19', "USERDEFINED_19", ""),
-            ('USERDEFINED_20', "USERDEFINED_20", ""),
-            ('USERDEFINED_21', "USERDEFINED_21", ""),
-            ('USERDEFINED_22', "USERDEFINED_22", ""),
-            ('USERDEFINED_23', "USERDEFINED_23", ""),
-            ('USERDEFINED_24', "USERDEFINED_24", ""),
-            ('USERDEFINED_25', "USERDEFINED_25", ""),
-            ('USERDEFINED_26', "USERDEFINED_26", ""),
-            ('USERDEFINED_27', "USERDEFINED_27", ""),
-            ('USERDEFINED_28', "USERDEFINED_28", ""),
-            ('USERDEFINED_29', "USERDEFINED_29", ""),
-            ('USERDEFINED_30', "USERDEFINED_30", ""),
-            ('USERDEFINED_31', "USERDEFINED_31", ""),
-            ('USERDEFINED_32', "USERDEFINED_32", ""),
-            ('USERDEFINED_33', "USERDEFINED_33", ""),
-        ],
-        default='USERDEFINED_2'
+
+    # ---------------------------
+    # Transparent Override
+    # ---------------------------
+
+    transparent_override: bpy.props.BoolProperty(
+        name="Transparent",
+        description="Force material to behave as fully transparent",
+        default=False
     )
 
-    rgbpen: StringProperty(
+    # ---------------------------
+    # Userdefined
+    # ---------------------------
+
+    use_userdefined: BoolProperty(
+        name="Userdefined",
+        default=False
+    )
+
+    userdefined_index: IntProperty(
+        name="Userdefined Index",
+        min=1,
+        max=42,
+        default=2,
+        update=update_userdefined_index
+    )
+
+    # ---------------------------
+    # Drawstyle
+    # ---------------------------
+
+    drawstyle: EnumProperty(
+        name="Drawstyle",
+        items=[
+            ('DRAW0', "Draw0", ""),
+            ('DRAW1', "Draw1", ""),
+            ('WIREFRAME', "Wireframe", ""),
+            ('SOLIDFILL', "SolidFill", ""),
+        ],
+        default='SOLIDFILL'
+    )
+
+    # ---------------------------
+    # Lighting
+    # ---------------------------
+
+    lighting: EnumProperty(
+        name="Lighting",
+        items=[
+            ('ZEROINTENSITY', "ZeroIntensity", ""),
+            ('LIGHT1', "Light1", ""),
+            ('CONSTANT', "Constant", ""),
+            ('LIGHT3', "Light3", ""),
+            ('AMBIENT', "Ambient", ""),
+            ('SCALEDAMBIENT', "ScaledAmbient", ""),
+            ('LIGHT6', "Light6", ""),
+            ('LIGHT7', "Light7", ""),
+        ],
+        default='AMBIENT'
+    )
+
+    # ---------------------------
+    # Shading
+    # ---------------------------
+
+    shading: EnumProperty(
+        name="Shading",
+        items=[
+            ('SHADE0', "Shade0", ""),
+            ('SHADE1', "Shade1", ""),
+            ('GOURAUD1', "Gouraud1", ""),
+            ('GOURAUD2', "Gouraud2", ""),
+        ],
+        default='GOURAUD1'
+    )
+
+    # ---------------------------
+    # Texture index
+    # ---------------------------
+
+    texture_index: IntProperty(
+        name="Texture",
+        min=0,
+        max=255,
+        default=5
+    )
+
+    # ---------------------------
+    # Toggles
+    # ---------------------------
+
+    masked: BoolProperty(name="Masked Transparency", default=False)
+    alphablend: BoolProperty(name="Alpha Blend", default=False)
+    additive: BoolProperty(name="Additive", default=False)
+    dynamic: BoolProperty(name="Dynamic Lighting", default=False)
+    prelit: BoolProperty(name="Prelit", default=False)
+
+    opacity: FloatProperty(
+        name="Opacity %",
+        min=0.0,
+        max=100.0,
+        default=100.0
+    )
+
+    rgbpen: FloatVectorProperty(
         name="RGB",
         description="RGB Pen",
-        default=""
+        subtype='COLOR',
+        size=3,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0)
     )
 
     brightness: FloatProperty(
@@ -209,15 +138,30 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         default=1
     )
 
-    simplespritehexfiftyflag: BoolProperty(
-        name="Sprite Hex Fifty Flags",
-        description="Sprite Hex Fifty Flags",
-        default=False
+    simplespritehaveskipframes: BoolProperty(
+        name="Simplesprite Have Skip Frames",
+        description="Simplesprite Have Skip Frames",
+        default=True
     )
 
-    doublesided: BoolProperty(
-        name="Double Sided",
-        description="Double Sided",
+    simplespriteskipframes: BoolProperty(
+        name="Simplesprite Skip Frames",
+        description="Simplesprite Skip Frames",
+        default=True
+    )
+
+    uvshiftperms: FloatVectorProperty(
+        name="UV Shift / ms",
+        description="UV shift per millisecond (U, V)",
+        size=2,
+        subtype='NONE',  # keep numeric, not color
+        default=(0.0, 0.0),
+        precision=4
+    )
+
+    twosided: BoolProperty(
+        name="Two-Sided",
+        description="Two-Sided",
         default=False
     )
 
@@ -238,15 +182,14 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
             return {'CANCELLED'}
         material['quaildef'] = 'materialdefinition'
         material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
-        material.quail_materialdefinition.rgbpen = "255 255 255 255"
+        material.quail_materialdefinition.rgbpen = (1.0, 1.0, 1.0)
         material.quail_materialdefinition.brightness = 1
         material.quail_materialdefinition.scaledambient = 1
-        material.quail_materialdefinition.simplespritehexfiftyflag = False
-        material.quail_materialdefinition.doublesided = False
+        material.quail_materialdefinition.simplespritehaveskipframes = True
+        material.quail_materialdefinition.simplespriteskipframes = True
+        material.quail_materialdefinition.uvshiftperms = (0.0, 0.0)
+        material.quail_materialdefinition.twosided = False
         return {'FINISHED'}
-
-
-
 
 def add_default_quaildef(self, context):
     obj = context.object
@@ -256,53 +199,92 @@ def add_default_quaildef(self, context):
     if not material.get('quaildef') == 'materialdefinition':
         return
     material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
-    material.quail_materialdefinition.rgbpen = "255 255 255 255"
+    material.quail_materialdefinition.rgbpen = (1.0, 1.0, 1.0)
     material.quail_materialdefinition.brightness = 1
     material.quail_materialdefinition.scaledambient = 1
-    material.quail_materialdefinition.simplespritehexfiftyflag = False
-    material.quail_materialdefinition.doublesided = False
-
+    material.quail_materialdefinition.simplespritehaveskipframes = True
+    material.quail_materialdefinition.simplespriteskipframes = True
+    material.quail_materialdefinition.uvshiftperms = (0.0, 0.0)
+    material.quail_materialdefinition.twosided = False
 
 def draw_materialdefinition_in_transform(self, context):
     obj = context.object
     if not obj or not obj.active_material:
         return
 
-    material = obj.active_material
-    if not material.get('quaildef') == 'materialdefinition' and not material.get('quaildef') == 'eqgmaterialdef':
-        layout = self.layout
-        box = layout.box()
-        row = box.row(align=True)
-        row.operator("material.add_default_wldmatdef", text="Set WLD Material")
-        row.operator("material.add_default_eqgmatdef", text="Set EQG Material")
-        return
-
-    if material.get('quaildef') == 'eqgmaterialdef':
-        return
-
+    mat = obj.active_material
     layout = self.layout
-    box = layout.box()
 
+    if mat.get('quaildef') != 'materialdefinition':
+        box = layout.box()
+        row = box.row()
+        row.operator("material.add_default_wldmatdef", text="Set WLD Material")
+        return
+
+    props = mat.quail_materialdefinition
+
+    # ----------------------------------------------------
+    # MAIN BOX
+    # ----------------------------------------------------
+
+    box = layout.box()
     box.label(text="MATERIALDEFINITION")
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "rendermethod")
+    # ----------------------------------------------------
+    # RENDERMETHOD SECTION
+    # ----------------------------------------------------
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "rgbpen")
+    box.label(text="Rendermethod")
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "brightness")
+    if props.use_userdefined:
+        # Show only userdefined controls
+        box.prop(props, "use_userdefined")
+        box.prop(props, "userdefined_index")
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "scaledambient")
+    elif props.transparent_override:
+        # Show only transparent toggle
+        box.prop(props, "transparent_override")
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "simplespritehexfiftyflag")
+    else:
+        # Normal Mode (show everything)
+        box.prop(props, "use_userdefined")
+        box.prop(props, "transparent_override")
 
-    row = box.row()
-    row.prop(material.quail_materialdefinition, "doublesided")
+        box.prop(props, "drawstyle")
+        box.prop(props, "lighting")
+        box.prop(props, "shading")
+        box.prop(props, "texture_index")
+        box.prop(props, "masked")
+        box.prop(props, "alphablend")
 
+        if props.alphablend:
+            box.prop(props, "opacity")
+
+        box.prop(props, "additive")
+        box.prop(props, "dynamic")
+        box.prop(props, "prelit")
+
+    # ----------------------------------------------------
+    # VISUAL SEPARATOR
+    # ----------------------------------------------------
+
+    line = box.row()
+    line.alignment = 'CENTER'
+    line.label(text="────────────────────────────")
+
+    # ----------------------------------------------------
+    # OTHER MATERIAL FIELDS
+    # ----------------------------------------------------
+
+    row = box.row(align=True)
+    row.prop(props, "rgbpen", text="RGBPen")
+
+    box.prop(props, "brightness")
+    box.prop(props, "scaledambient")
+    box.prop(props, "simplespritehaveskipframes")
+    box.prop(props, "simplespriteskipframes")
+    box.prop(props, "uvshiftperms")
+    box.prop(props, "twosided")
 
 # Register classes
 def register():

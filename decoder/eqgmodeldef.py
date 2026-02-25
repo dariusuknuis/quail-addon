@@ -17,12 +17,12 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
     obj['quaildef'] = 'eqgmodeldef'
     obj.quail_eqgmodeldef.version = str(eqgmodeldef.version) # type: ignore
 
-    for _, mat in enumerate(eqgmodeldef.materialtags):
+    for _, mat in enumerate(eqgmodeldef.materials):
         properties = []
-        for _, prop in enumerate(mat.propertys):
+        for _, prop in enumerate(mat.properties):
             properties.append((prop.property[0], prop.property[1], prop.property[2]))
         textures = []
-        for _, tex in enumerate(mat.textures):
+        for _, tex in enumerate(mat.animtextures):
             textures.append(tex.texture)
         err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
         if err != "":
@@ -33,7 +33,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         faces_for_creation.append(face.triangle)
 
     vertices = []
-    for _, vertex in enumerate(eqgmodeldef.vertexs):
+    for _, vertex in enumerate(eqgmodeldef.vertices):
         vertices.append(mathutils.Vector(vertex.xyz))
     mesh.from_pydata(vertices, [], faces_for_creation)
     mesh.update()
@@ -42,7 +42,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
-            src_vert = eqgmodeldef.vertexs[vertex]
+            src_vert = eqgmodeldef.vertices[vertex]
             uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1]-1)
 
     for i, face in enumerate(eqgmodeldef.faces):

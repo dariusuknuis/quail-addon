@@ -10,18 +10,26 @@ class eqglayerdef:
 	tag:str
 	version:int
 
+	def __init__(self):
+		self.tag = ""
+		self.version = 0 #2
+		self.layers = []
+
 	class layer:
-
 		material:str
-
 		diffuse:str
-
 		normal:str
 
-	layers:list[layer]
+		def __init__(self):
+			self.material = "" #3
+			self.diffuse = "" #3
+			self.normal = "" #3
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "VERSION", 1)
 		self.version = int(records[1])
 		records = property(r, "NUMLAYERS", 1)
@@ -29,7 +37,7 @@ class eqglayerdef:
 
 		self.layers = []
 		for i in range(numlayers):
-			layeri = self.layer()
+			layeri = type(self).layer()
 			property(r, "LAYER", 0)
 
 			records = property(r, "MATERIAL", 1)
@@ -39,8 +47,9 @@ class eqglayerdef:
 			records = property(r, "NORMAL", 1)
 			layeri.normal = str(records[1])
 			self.layers.append(layeri)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION \"{self.version}\"\n")
 		w.write(f"\tNUMLAYERS \"{len(self.layers)}\"\n")
@@ -49,4 +58,5 @@ class eqglayerdef:
 			w.write(f"\t\tMATERIAL \"{layeri.material}\"\n")
 			w.write(f"\t\tDIFFUSE \"{layeri.diffuse}\"\n")
 			w.write(f"\t\tNORMAL \"{layeri.normal}\"\n")
+		return ""
 

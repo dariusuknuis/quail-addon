@@ -8,33 +8,47 @@ class actordef:
 		return "ACTORDEF"
 
 	tag:str
-	callback:str # The callback function for the actor
-	boundsref:int # The bounds reference for the actor
-	currentaction:tuple[str, None] # The current action of the actor
-	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] # The location of the actor
-	activegeometry:tuple[str, None] # The active geometry of the actor
+	callback:str
+	boundsref:int
+	currentaction:tuple[str, None]
+	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]]
+	activegeometry:tuple[str, None]
+	spritevolumeonly:int
+	userdata:str
+
+	def __init__(self):
+		self.tag = ""
+		self.callback = "" #2
+		self.boundsref = 0 #2
+		self.currentaction = tuple[str, None] #2
+		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.activegeometry = tuple[str, None] #2
+		self.spritevolumeonly = 0 #2
+		self.userdata = "" #2
+		self.actions = []
 
 	class action:
+		unk1:int
 
-		unk1:int # Unknown entry 1
-
+		def __init__(self):
+			self.unk1 = 0 #3
+			self.levelsofdetails = []
 
 		class levelofdetail:
+			sprite:str
+			spriteindex:int
+			mindistance:float
 
-			sprite:str # Sprite entry tag
+			def __init__(self):
+				self.sprite = "" #4
+				self.spriteindex = 0 #4
+				self.mindistance = 0.0 #4
 
-			spriteindex:int # Sprite index
-
-			mindistance:float # Minimum distance to render LOD
-
-		levelofdetails:list[levelofdetail]
-
-	actions:list[action]
-	usemodelcollider:int # Ignored in RoF2. 0x80 flag. This gets ignored if ActorInst doesn't have it. Likely need to use hierarchysprite flag for things like boats
-	userdata:str # User Data
-
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "CALLBACK", 1)
 		self.callback = str(records[1])
 		records = property(r, "BOUNDSREF", 1)
@@ -50,17 +64,17 @@ class actordef:
 
 		self.actions = []
 		for i in range(numactions):
-			actioni = self.action()
+			actioni = type(self).action()
 			property(r, "ACTION", 0)
 
 			records = property(r, "UNK1", 1)
 			actioni.unk1 = int(records[1])
-			records = property(r, "NUMLEVELSOFDETAIL", 1)
-			numlevelsofdetail = int(records[1])
+			records = property(r, "NUMLEVELSOFDETAILS", 1)
+			numlevelsofdetails = int(records[1])
 
-			actioni.levelofdetails = []
-			for j in range(numlevelsofdetail):
-				levelofdetailj = self.action.levelofdetail()
+			actioni.levelsofdetails = []
+			for j in range(numlevelsofdetails):
+				levelofdetailj = type(actioni).levelofdetail()
 				property(r, "LEVELOFDETAIL", 0)
 
 				records = property(r, "SPRITE", 1)
@@ -69,14 +83,15 @@ class actordef:
 				levelofdetailj.spriteindex = int(records[1])
 				records = property(r, "MINDISTANCE", 1)
 				levelofdetailj.mindistance = float(records[1])
-				actioni.levelofdetails.append(levelofdetailj)
+				actioni.levelsofdetails.append(levelofdetailj)
 			self.actions.append(actioni)
-		records = property(r, "USEMODELCOLLIDER", 1)
-		self.usemodelcollider = int(records[1])
+		records = property(r, "SPRITEVOLUMEONLY", 1)
+		self.spritevolumeonly = int(records[1])
 		records = property(r, "USERDATA", 1)
 		self.userdata = str(records[1])
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tCALLBACK \"{self.callback}\"\n")
 		w.write(f"\tBOUNDSREF \"{self.boundsref}\"\n")
@@ -87,12 +102,13 @@ class actordef:
 		for actioni in self.actions:
 			w.write(f"\t\tACTION\n")
 			w.write(f"\t\tUNK1 \"{actioni.unk1}\"\n")
-			w.write(f"\t\tNUMLEVELSOFDETAIL \"{len(actioni.levelofdetails)}\"\n")
-			for levelofdetailj in actioni.levelofdetails:
+			w.write(f"\t\tNUMLEVELSOFDETAILS \"{len(actioni.levelsofdetails)}\"\n")
+			for levelofdetailj in actioni.levelsofdetails:
 				w.write(f"\t\t\tLEVELOFDETAIL\n")
 				w.write(f"\t\t\tSPRITE \"{levelofdetailj.sprite}\"\n")
 				w.write(f"\t\t\tSPRITEINDEX \"{levelofdetailj.spriteindex}\"\n")
 				w.write(f"\t\t\tMINDISTANCE \"{levelofdetailj.mindistance}\"\n")
-		w.write(f"\tUSEMODELCOLLIDER \"{self.usemodelcollider}\"\n")
+		w.write(f"\tSPRITEVOLUMEONLY \"{self.spritevolumeonly}\"\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
+		return ""
 

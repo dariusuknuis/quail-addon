@@ -11,16 +11,26 @@ class ambientlight:
 	light:float
 	regionlist:list[str]
 
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def __init__(self):
+		self.tag = ""
+		self.light = 0.0 #2
+		self.regionlist = list[str] #2
+
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "LIGHT", 1)
 		self.light = float(records[1])
 		records = property(r, "REGIONLIST", -1)
 		self.regionlist = records[1:]
 
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tLIGHT \"{self.light}\"\n")
 		w.write(f"REGIONLIST \"{self.regionlist}\"\n")
+		return ""
 

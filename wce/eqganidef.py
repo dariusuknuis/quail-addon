@@ -11,26 +11,36 @@ class eqganidef:
 	version:int
 	strict:int
 
+	def __init__(self):
+		self.tag = ""
+		self.version = 0 #2
+		self.strict = 0 #2
+		self.bones = []
+
 	class bone:
 		bone:str
 
+		def __init__(self):
+			self.bone = "" #3
+			self.frames = []
 
 		class frame:
-
 			milliseconds:int
-
 			translation:tuple[float, float, float]
-
 			rotation:tuple[float, float, float, float]
-
 			scale:tuple[float, float, float]
 
-		frames:list[frame]
+			def __init__(self):
+				self.milliseconds = 0 #4
+				self.translation = tuple[float, float, float] #4
+				self.rotation = tuple[float, float, float, float] #4
+				self.scale = tuple[float, float, float] #4
 
-	bones:list[bone]
-
-	def __init__(self, tag:str, r:io.TextIOWrapper):
+	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
+		if r is None:
+			return "no reader provided"
+
 		records = property(r, "VERSION", 1)
 		self.version = int(records[1])
 		records = property(r, "STRICT", 1)
@@ -40,7 +50,7 @@ class eqganidef:
 
 		self.bones = []
 		for i in range(numbones):
-			bonei = self.bone()
+			bonei = type(self).bone()
 			records = property(r, "BONE", 1)
 			bonei.bone = str(records[1])
 			records = property(r, "NUMFRAMES", 1)
@@ -48,7 +58,7 @@ class eqganidef:
 
 			bonei.frames = []
 			for j in range(numframes):
-				framej = self.bone.frame()
+				framej = type(bonei).frame()
 				property(r, "FRAME", 0)
 
 				records = property(r, "MILLISECONDS", 1)
@@ -61,8 +71,9 @@ class eqganidef:
 				framej.scale = float(records[1]), float(records[2]), float(records[3])
 				bonei.frames.append(framej)
 			self.bones.append(bonei)
+		return ""
 
-	def write(self, w:io.TextIOWrapper):
+	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION \"{self.version}\"\n")
 		w.write(f"\tSTRICT \"{self.strict}\"\n")
@@ -76,4 +87,5 @@ class eqganidef:
 				w.write(f"\t\t\tTRANSLATION \"{framej.translation}\"\n")
 				w.write(f"\t\t\tROTATION \"{framej.rotation}\"\n")
 				w.write(f"\t\t\tSCALE \"{framej.scale}\"\n")
+		return ""
 

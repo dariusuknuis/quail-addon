@@ -50,6 +50,9 @@ DMSPRITEDEF2 "tag"
 	// The DM track instance
  	 // Argument 1 (%s): The track instance
 	DMTRACKINST "1"
+	// The DMRGB track instance
+ 	 // Argument 1 (%s): The DMRGB track instance
+	DMRGBTRACK "1"
 	// The polyhedron definition
 	POLYHEDRON
 	// The definition reference
@@ -72,11 +75,11 @@ DMSPRITEDEF2 "tag"
  	 // Argument 1 (%d): The number of mesh operations
 	NUMMESHOPS 1
 		// A mesh operation
- 		 // Argument 1 (%d): arg 0
- 		 // Argument 2 (%d): arg 1
- 		 // Argument 3 (%0.8e): arg 2
- 		 // Argument 4 (%d): arg 3
- 		 // Argument 5 (%d): arg 4
+ 		 // Argument 1 (%d): Primary index value
+ 		 // Argument 2 (%d): Secondary index value
+ 		 // Argument 3 (%0.8e): Offset value (used when type indicates float operation)
+ 		 // Argument 4 (%d): Auxiliary parameter
+ 		 // Argument 5 (%d): Mesh operation type identifier
 		MESHOP 1 2 3.12345678 4 5
 	// The face material groups
  	 // Argument 1 (%d...): The size of the group
@@ -84,6 +87,11 @@ DMSPRITEDEF2 "tag"
 	// The vertex material groups
  	 // Argument 1 (%d...): The size of the group
 	VERTEXMATERIALGROUPS 1 1 1
+	// Additional parameter vector
+ 	 // Argument 1 (%0.8e): Parameter x
+ 	 // Argument 2 (%0.8e): Parameter y
+ 	 // Argument 3 (%0.8e): Parameter z
+	PARAMS2 1.12345678 2.12345678 3.12345678
 	// The minimum bounding box coordinates
  	 // Argument 1 (%0.8e): The x coordinate
  	 // Argument 2 (%0.8e): The y coordinate
@@ -100,21 +108,21 @@ DMSPRITEDEF2 "tag"
 	// The FPS scale of the sprite
  	 // Argument 1 (%d): The FPS scale
 	FPSCALE 1
-	// The hex one flag
- 	 // Argument 1 (%d): The hex one flag
-	HEXONEFLAG 1
-	// The hex two flag
- 	 // Argument 1 (%d): The hex two flag
-	HEXTWOFLAG 1
-	// The hex four thousand flag
- 	 // Argument 1 (%d): The hex four thousand flag
-	HEXFOURTHOUSANDFLAG 1
-	// The hex eight thousand flag
- 	 // Argument 1 (%d): The hex eight thousand flag
-	HEXEIGHTTHOUSANDFLAG 1
-	// The hex ten thousand flag
- 	 // Argument 1 (%d): The hex ten thousand flag
-	HEXTENTHOUSANDFLAG 1
-	// The hex twenty thousand flag
- 	 // Argument 1 (%d): The hex twenty thousand flag
-	HEXTWENTYTHOUSANDFLAG 1
+	// If 0, center offset will be set to 0,0,0 in game
+ 	 // Argument 1 (%d): Use center offset flag
+	USECENTEROFFSET 1
+	// If 0, bounding radius will default to 1.0 in game
+ 	 // Argument 1 (%d): Use bounding radius flag
+	USEBOUNDINGRADIUS 1
+	// If 0, params2 will be set to 0,0,0 in game
+ 	 // Argument 1 (%d): Use params2 flag
+	USEPARAMS2 1
+	// If 0, bounding box is calculated from object AABB at runtime
+ 	 // Argument 1 (%d): Use bounding box flag
+	USEBOUNDINGBOX 1
+	// If 0, vertex colors will only use RGB value, alpha ignored
+ 	 // Argument 1 (%d): Use vertex color alpha flag
+	USEVERTEXCOLORALPHA 1
+	// Used in objects and terrain meshes to enable collision
+ 	 // Argument 1 (%d): Sprite polyhedron flag
+	SPRITEDEFPOLYHEDRON 1
