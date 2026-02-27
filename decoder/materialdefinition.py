@@ -163,7 +163,7 @@ def create_rendermethod_nodegroup():
     not_alpha.name = 'Not Alpha Blend'
     not_alpha.label = 'NotAlphaBlend'
     not_alpha.operation = 'SUBTRACT'
-    not_alpha.location = (-173, 181)
+    not_alpha.location = (-181, 89)
     not_alpha.inputs[0].default_value = 1.0
     links.new(inp["AlphaBlend"], not_alpha.inputs[1])
 
@@ -174,7 +174,7 @@ def create_rendermethod_nodegroup():
     blend_alpha.name = 'Blend Alpha'
     blend_alpha.label = 'BlendAlpha'
     blend_alpha.operation = 'DIVIDE'
-    blend_alpha.location = (-534, -108)
+    blend_alpha.location = (-460, -58)
     blend_alpha.inputs[1].default_value = 100.0
     links.new(inp["Opacity"], blend_alpha.inputs[0])
 
@@ -207,7 +207,7 @@ def create_rendermethod_nodegroup():
     mask_allow.name = 'Mask Allowed'
     mask_allow.label = 'MaskAllowed'
     mask_allow.operation = 'MAXIMUM'
-    mask_allow.location = (255, 165)
+    mask_allow.location = (210, 288)
     links.new(inp["Additive"], mask_allow.inputs[1])
     links.new(mask_enable.outputs[0], mask_allow.inputs[0])
 
@@ -218,7 +218,7 @@ def create_rendermethod_nodegroup():
     mask_mix.name = 'Mask Alpha'
     mask_mix.label = 'MaskAlpha'
     mask_mix.data_type = 'FLOAT'
-    mask_mix.location = (455, 332)
+    mask_mix.location = (444, 323)
     mask_mix.inputs[2].default_value = 1
     links.new(mask_allow.outputs[0], mask_mix.inputs["Factor"])
     links.new(alpha_gate.outputs[0], mask_mix.inputs[3])
@@ -230,7 +230,7 @@ def create_rendermethod_nodegroup():
     blend_effect.name = 'Blend Effective'
     blend_effect.label = 'BlendEffective'
     blend_effect.data_type = 'FLOAT'
-    blend_effect.location = (405, -35)
+    blend_effect.location = (419, 10)
     blend_effect.inputs[2].default_value = 1
     links.new(inp["AlphaBlend"], blend_effect.inputs["Factor"])
     links.new(blend_alpha.outputs[0], blend_effect.inputs[3])
@@ -242,20 +242,73 @@ def create_rendermethod_nodegroup():
     final_mix.name = 'Final Alpha'
     final_mix.label = 'FinalAlpha'
     final_mix.operation = 'MULTIPLY'
-    final_mix.location = (706, 188)
+    final_mix.location = (717, 105)
     links.new(mask_mix.outputs[0], final_mix.inputs[0])
     links.new(blend_effect.outputs[0], final_mix.inputs[1])
 
-    links.new(final_mix.outputs[0], principled.inputs["Alpha"])
+    # ------------------------------------------------
+    # Texture Toggle nodes
+    # ------------------------------------------------
+    texture0 = nodes.new('ShaderNodeMath')
+    texture0.name = 'Texture Index 0'
+    texture0.label = 'Texture0'
+    texture0.operation = 'COMPARE'
+    texture0.location = (-1019, -490)
+    texture0.inputs[1].default_value = 0.0
+    texture0.inputs[2].default_value = 0.0
+    links.new(inp["TextureIndex"], texture0.inputs[0])
+
+    solid_override = nodes.new('ShaderNodeMix')
+    solid_override.name = 'SolidFill Override'
+    solid_override.label = 'SolidFillOverride'
+    solid_override.data_type = 'RGBA'
+    solid_override.location = (902, 329)
+    solid_override.inputs[7].default_value = (1.0, 1.0, 1.0, 1.0)
+    links.new(texture0.outputs[0], solid_override.inputs[0])
+    links.new(inp["sRGB Texture"], solid_override.inputs[6])
+
+    links.new(solid_override.outputs[2], principled.inputs["Base Color"])
 
     # ------------------------------------------------
-    # EmissionStrength = Additive * FinalAlpha * 0.75
+    # Transparent Toggle nodes
     # ------------------------------------------------
+    draw0 = nodes.new('ShaderNodeMath')
+    draw0.name = 'Drawstyle 0'
+    draw0.label = 'Draw0'
+    draw0.operation = 'COMPARE'
+    draw0.location = (-1018, -266)
+    draw0.inputs[1].default_value = 0.0
+    draw0.inputs[2].default_value = 0.0
+    links.new(inp["Drawstyle"], draw0.inputs[0])
+
+    trans_effective = nodes.new('ShaderNodeMath')
+    trans_effective.name = 'Transparent Effective'
+    trans_effective.label = 'TransparentEffective'
+    trans_effective.operation = 'MULTIPLY'
+    trans_effective.location = (-720, -540)
+    links.new(draw0.outputs[0], trans_effective.inputs[0])
+    links.new(texture0.outputs[0], trans_effective.inputs[1])
+
+    trans_override = nodes.new('ShaderNodeMix')
+    trans_override.name = 'Transparent Override'
+    trans_override.label = 'TransparentOverride'
+    trans_override.location = (914, -29)
+    trans_override.inputs[3].default_value = 0.1
+    links.new(trans_effective.outputs[0], trans_override.inputs[0])
+    links.new(final_mix.outputs[0], trans_override.inputs[2])
+
+    links.new(trans_override.outputs[0], principled.inputs["Alpha"])
+
+    # ------------------------------------------------
+    # Additive Toggle nodes
+    # ------------------------------------------------
+
+    # EmissionStrength = Additive * FinalAlpha * 0.75
     add_effective = nodes.new("ShaderNodeMath")
     add_effective.name = 'Additive Effective'
     add_effective.label = 'AdditiveEffective'
     add_effective.operation = 'MULTIPLY'
-    add_effective.location = (-609, -272)
+    add_effective.location = (-707, -233)
     links.new(inp["AlphaBlend"], add_effective.inputs[0])
     links.new(inp["Additive"], add_effective.inputs[1])
 
@@ -263,24 +316,39 @@ def create_rendermethod_nodegroup():
     glow_strength.name = 'Glow Strength'
     glow_strength.label = 'GlowStrength'
     glow_strength.operation = 'MULTIPLY'
-    glow_strength.location = (-436, -281)
-    glow_strength.inputs[1].default_value = 0.25
+    glow_strength.location = (-291, -126)
+    glow_strength.inputs[1].default_value = 8.0
     links.new(add_effective.outputs[0], glow_strength.inputs[0])
 
     emission_strength = nodes.new("ShaderNodeMath")
     emission_strength.name = 'Emission Strength'
     emission_strength.label = 'EmissionStrength'
     emission_strength.operation = 'MULTIPLY'
-    emission_strength.location = (747, -206)
+    emission_strength.location = (725, -187)
     links.new(mask_mix.outputs[0], emission_strength.inputs[0])
     links.new(glow_strength.outputs[0], emission_strength.inputs[1])
 
     links.new(emission_strength.outputs[0], principled.inputs["Emission Strength"])
 
-    # ------------------------------------------------
-    # Base Color
-    # ------------------------------------------------
-    links.new(inp["sRGB Texture"], principled.inputs["Base Color"])
+    # sRGB Texture * 2 -> Saturation 1.4
+    add_color = nodes.new('ShaderNodeMix')
+    add_color.name = 'Additive Color'
+    add_color.label = "AdditiveColor"
+    add_color.data_type = 'RGBA'
+    add_color.blend_type = 'MULTIPLY'
+    add_color.location = (213, -345)
+    add_color.inputs[0].default_value = 1.0
+    links.new(inp["sRGB Texture"], add_color.inputs[6])
+    links.new(inp["sRGB Texture"], add_color.inputs[7])
+
+    saturation = nodes.new('ShaderNodeHueSaturation')
+    saturation.name = 'Saturation Adjust'
+    saturation.label = 'SaturationAdjust'
+    saturation.location = (475, -401)
+    saturation.inputs[1].default_value = 1.4
+    links.new(add_color.outputs[2], saturation.inputs[4])
+
+    links.new(saturation.outputs[0], principled.inputs["Emission Color"])
 
     # ------------------------------------------------
     # Output
@@ -495,6 +563,8 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
             socket.hide = True
 
     # Apply values to group inputs
+    group_node.inputs["Non-Color Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
+    group_node.inputs["sRGB Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
     group_node.inputs["Masked"].default_value = float(props.masked)
     group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
     group_node.inputs["Opacity"].default_value = props.opacity

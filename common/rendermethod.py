@@ -40,7 +40,7 @@ USERDEFINED_MAP = {
 36: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  50.0),  #0x41080557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY50.0%"
 37: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, True,  False, False, True,  25.0),  #0x4104054b "TEXTURE5CONSTANTGOURAUD1PRELITBLENDOPACITY25.0%"
 38: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, False, False, False, True,  0.0),   #0x400005d7 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELIT"
-39: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, False, True,  False, False, True,  0.0),   #0x400005cb "TRANSTEXTURE5CONSTANTGOURAUD1PRELIT"
+39: ('SOLIDFILL', 'CONSTANT',      'GOURAUD1', 5, True,  False, False, False, True,  0.0),   #0x400005cb "TRANSTEXTURE5CONSTANTGOURAUD1PRELIT"
 40: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  25.0),  #0x41040557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY25.0%"
 41: ('SOLIDFILL', 'SCALEDAMBIENT', 'GOURAUD1', 5, False, True,  False, False, True,  68.75), #0x410c0557 "TEXTURE5SCALEDAMBIENTGOURAUD1PRELITBLENDOPACITY75.0%"
 }
@@ -106,3 +106,16 @@ def sync_rendermethod_node(mat):
     group_node.inputs["Drawstyle"].default_value = drawstyle_map.get(
         props.drawstyle, 0.0
     )
+
+def apply_transparent(props):
+
+    props.drawstyle = "DRAW0"
+    props.lighting = "ZEROINTENSITY"
+    props.shading = "SHADE0"
+    props.texture_index = 0
+    props.masked = False
+    props.alphablend = False
+    props.additive = False
+    props.dynamic = False
+    props.prelit = False
+    props.opacity = 0.0

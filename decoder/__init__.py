@@ -5,6 +5,7 @@ import mathutils
 from ..wce.wce import wce
 from typing import Optional
 from .actordef import decode_actordef
+from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
@@ -26,6 +27,14 @@ def wce_decode(path:str):
     base_parent = None
 
     ctx = Context(parser, base_collection, base_parent)
+
+    for _, spritedef in parser.simplespritedefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_simplespritedef(ctx, spritedef)
+        if err:
+            error(err)
 
     for _, materialdef in parser.materialdefinitions.items():
         ctx.collection = base_collection

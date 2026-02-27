@@ -3,7 +3,7 @@
 import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
-from ...common.rendermethod import apply_userdefined, sync_rendermethod_node
+from ...common.rendermethod import apply_userdefined, sync_rendermethod_node, apply_transparent
 
 def update_userdefined(self, context):
     if not self.use_userdefined:
@@ -20,6 +20,14 @@ def update_rendermethod_node(self, context):
 
     sync_rendermethod_node(mat)
 
+def update_transparent(self, context):
+    if not self.transparent_override:
+        return
+    apply_transparent(self)
+    mat = context.material
+    if not mat:
+        return
+
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     # ---------------------------
@@ -29,7 +37,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
     transparent_override: bpy.props.BoolProperty(
         name="Transparent",
         description="Force material to behave as fully transparent",
-        default=False
+        default=False,
+        update=update_transparent
     )
 
     # ---------------------------
@@ -38,13 +47,14 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     use_userdefined: BoolProperty(
         name="Userdefined",
-        default=False
+        default=False,
+        update=update_userdefined
     )
 
     userdefined_index: IntProperty(
         name="Userdefined Index",
         min=1,
-        max=42,
+        max=41,
         default=2,
         update=update_userdefined
     )
@@ -126,8 +136,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
     opacity: FloatProperty(
         name="Opacity %",
         min=0.0,
-        max=100.0,
-        default=100.0,
+        max=93.75,
+        default=50.0,
         update=update_rendermethod_node
     )
 
