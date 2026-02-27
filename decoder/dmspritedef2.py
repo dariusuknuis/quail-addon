@@ -56,7 +56,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
-            uvlayer.data[triangle.loop_indices[j]].uv = (sprite.uvs[vertex].uv[0], sprite.uvs[vertex].uv[1]-1)
+            uvlayer.data[triangle.loop_indices[j]].uv = (sprite.uvs[vertex].uv[0], 1.0 - sprite.uvs[vertex].uv[1])
 
     if len(sprite.vertexnormals) == 0:
         return f"{sprite.tag} has no normals assigned"
