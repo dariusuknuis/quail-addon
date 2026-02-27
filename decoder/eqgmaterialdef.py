@@ -6,6 +6,7 @@ from ..wce.wce import wce
 from ..wce.materialdefinition import materialdefinition
 from .context import Context
 from ..ui.panel.eqgmaterialdef import eqg_apply
+from ..common.image_loader import load_texture
 
 def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
     matname = f"{modelname}_{materialname}"
@@ -166,12 +167,12 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
 
     return ""
 
-def load_texture(ctx:Context, name:str) -> str:
-    # Load the texture
-    texture_path = f"{ctx.parser.path}/assets/{name}"
-    try:
-        bpy.data.images.load(texture_path)
-        print(f"Loaded texture {texture_path}")
-    except Exception as e:
-        return f"Error loading texture {texture_path}: {e}"
-    return ""
+# def load_texture(ctx:Context, name:str) -> str:
+#     # Load the texture
+#     texture_path = f"{ctx.parser.path}/assets/{name}"
+#     try:
+#         bpy.data.images.load(texture_path)
+#         print(f"Loaded texture {texture_path}")
+#     except Exception as e:
+#         return f"Error loading texture {texture_path}: {e}"
+#     return ""

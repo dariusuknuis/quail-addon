@@ -1,5 +1,6 @@
 import bpy
 import struct
+import os
 
 DDS_MAGIC = b'DDS '
 BMP_MAGIC = b'BM'
@@ -16,7 +17,7 @@ def detect_texture_type(path):
         return "OTHER"
 
 
-def patch_dds_header(path):
+def fix_dds_mipmap_flag(path):
     DDS_HEADER_SIZE = 128
     DDS_OFFSET_MIPMAPCOUNT = 28
     DDS_OFFSET_FLAGS = 8
@@ -63,24 +64,35 @@ def flip_image_vertically(image):
     image.pixels[:] = flipped
     image.update()
 
+def load_texture(ctx, name: str) -> str:
+    texture_path = f"{ctx.parser.path}/assets/{name}"
 
-def load_image(path):
+    if not os.path.exists(texture_path):
+        return f"Texture not found: {texture_path}"
 
-    texture_type = detect_texture_type(path)
+    # Detect actual type from header
+    tex_type = detect_texture_type(texture_path)
 
-    if texture_type == "DDS":
-        patch_dds_header(path)
+    # Fix DDS mipmap header if needed
+    if tex_type == "DDS":
+        fix_dds_mipmap_flag(texture_path)
 
-    image = bpy.data.images.load(path)
+    try:
+        image = bpy.data.images.load(texture_path)
+        print(f"Loaded texture {texture_path}")
+    except Exception as e:
+        return f"Error loading texture {texture_path}: {e}"
 
-    # Prevent double flipping
-    if image.get("quail_normalized"):
-        return image, texture_type
+    # Store detected type
+    image["image_type"] = tex_type
 
-    if texture_type == "BMP":
-        image = image.copy()
-        flip_image_vertically(image)
+    # Flip BMP once only
+    if tex_type == "BMP":
+        if not image.get("quail_flipped", False):
+            try:
+                flip_image_vertically(image)
+                image["quail_flipped"] = True
+            except Exception as e:
+                return f"Error flipping BMP {texture_path}: {e}"
 
-    image["quail_normalized"] = True
-
-    return image, texture_type
+    return ""
