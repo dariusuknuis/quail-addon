@@ -64,16 +64,40 @@ def flip_image_vertically(image):
     image.pixels[:] = flipped
     image.update()
 
+def extract_bmp_index0_color(path):
+    with open(path, "rb") as f:
+        header = f.read(54)
+
+        if len(header) < 54 or header[:2] != BMP_MAGIC:
+            return None
+
+        # Bits per pixel at offset 28 (2 bytes, little endian)
+        bpp = struct.unpack_from("<H", header, 28)[0]
+
+        if bpp != 8:
+            return None  # Not indexed
+
+        # First palette entry immediately after 54-byte header
+        palette = f.read(4)
+        if len(palette) < 4:
+            return None
+
+        blue, green, red, _ = struct.unpack("BBBB", palette)
+
+        return (
+            red / 255.0,
+            green / 255.0,
+            blue / 255.0
+        )
+
 def load_texture(ctx, name: str) -> str:
     texture_path = f"{ctx.parser.path}/assets/{name}"
 
     if not os.path.exists(texture_path):
         return f"Texture not found: {texture_path}"
 
-    # Detect actual type from header
     tex_type = detect_texture_type(texture_path)
 
-    # Fix DDS mipmap header if needed
     if tex_type == "DDS":
         fix_dds_mipmap_flag(texture_path)
 
@@ -83,11 +107,14 @@ def load_texture(ctx, name: str) -> str:
     except Exception as e:
         return f"Error loading texture {texture_path}: {e}"
 
-    # Store detected type
     image["image_type"] = tex_type
 
-    # Flip BMP once only
     if tex_type == "BMP":
+
+        index0 = extract_bmp_index0_color(texture_path)
+        if index0:
+            image["bmp_index0_color"] = index0
+
         if not image.get("quail_flipped", False):
             try:
                 flip_image_vertically(image)
