@@ -524,6 +524,7 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     )
     props.brightness = material.brightness
     props.scaledambient = material.scaledambient
+    props.simplespritetag = material.simplespriteinst.simplespritetag
     props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
     props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
     props.uvshiftperms = material.uvshiftperms
@@ -589,5 +590,15 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
 
     # Backface culling
     mat.use_backface_culling = not props.twosided
+
+    if props.simplespritetag:
+        sprite_group = bpy.data.node_groups.get(props.simplespritetag)
+        if sprite_group:
+            sprite_node = nodes.new("ShaderNodeGroup")
+            sprite_node.node_tree = sprite_group
+            sprite_node.location = (-400, 0)
+
+            links.new(sprite_node.outputs["sRGB Texture"], group_node.inputs["sRGB Texture"])
+            links.new(sprite_node.outputs["Alpha"], group_node.inputs["Alpha"])
 
     return ""

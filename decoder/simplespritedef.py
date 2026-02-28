@@ -146,7 +146,7 @@ def create_bmp_wrapper_node(nodes, links, image, x_offset):
     return wrapper_node
 
 def create_frame_nodegroup(ctx, frame, sprite_tag):
-    frame_group_name = f"{sprite_tag}_{frame.frame}"
+    frame_group_name = f"{frame.frame}"
 
     if frame_group_name in bpy.data.node_groups:
         return bpy.data.node_groups[frame_group_name]
@@ -170,14 +170,14 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         filename = file_entry.file
 
         # Load image
-        err = load_texture(ctx, filename)
-        if err:
+        image, err = load_texture(ctx, filename)
+        if err or image is None:
             print(err)
             continue
 
-        image = bpy.data.images.get(filename)
-        if image is None:
-            continue
+        # image = bpy.data.images.get(filename)
+        # if image is None:
+        #     continue
 
         image_type = image.get("image_type", "OTHER")
 
@@ -222,6 +222,29 @@ def decode_simplespritedef(ctx:Context, simplesprite:simplespritedef) -> str:
 
     out = group_output.inputs
 
+    # ------------------------------------------------
+    # Create frame node groups and instance them
+    # ------------------------------------------------
+    frame_nodes = []
+    x_offset = 0
 
+    for i, frame in enumerate(simplesprite.frames):
+
+        frame_group = create_frame_nodegroup(ctx, frame, simplesprite.tag)
+
+        frame_node = nodes.new("ShaderNodeGroup")
+        frame_node.node_tree = frame_group
+        frame_node.location = (x_offset, 0)
+
+        frame_nodes.append(frame_node)
+        x_offset += 400
+
+    # ------------------------------------------------
+    # Temporary: connect first frame directly
+    # (Animation switching added later)
+    # ------------------------------------------------
+    if frame_nodes:
+        links.new(frame_nodes[0].outputs["Color"], group_output.inputs["sRGB Texture"])
+        links.new(frame_nodes[0].outputs["Alpha"], group_output.inputs["Alpha"])
 
     return ""

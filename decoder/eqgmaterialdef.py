@@ -24,7 +24,7 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             material.quail_eqgmaterialdef.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
             material.quail_eqgmaterialdef.e_TextureDiffuse0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            image, err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDiffuse0mapChannel":
@@ -41,7 +41,7 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             material.quail_eqgmaterialdef.e_TextureFallback0 = prop[2]
         elif prop[0] == "e_TextureNormal0":
             material.quail_eqgmaterialdef.e_TextureNormal0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            image, err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0mapChannel":

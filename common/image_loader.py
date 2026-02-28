@@ -90,11 +90,12 @@ def extract_bmp_index0_color(path):
             blue / 255.0
         )
 
-def load_texture(ctx, name: str) -> str:
+def load_texture(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
+
     texture_path = f"{ctx.parser.path}/assets/{name}"
 
     if not os.path.exists(texture_path):
-        return f"Texture not found: {texture_path}"
+        return None, f"Texture not found: {texture_path}"
 
     tex_type = detect_texture_type(texture_path)
 
@@ -105,7 +106,7 @@ def load_texture(ctx, name: str) -> str:
         image = bpy.data.images.load(texture_path)
         print(f"Loaded texture {texture_path}")
     except Exception as e:
-        return f"Error loading texture {texture_path}: {e}"
+        return None, f"Error loading texture {texture_path}: {e}"
 
     image["image_type"] = tex_type
 
@@ -117,9 +118,9 @@ def load_texture(ctx, name: str) -> str:
 
         if not image.get("quail_flipped", False):
             try:
-                flip_image_vertically(image)
+                flip_image_vertically(image)   # <-- do NOT assign
                 image["quail_flipped"] = True
             except Exception as e:
-                return f"Error flipping BMP {texture_path}: {e}"
+                return None, f"Error flipping BMP {texture_path}: {e}"
 
-    return ""
+    return image, None

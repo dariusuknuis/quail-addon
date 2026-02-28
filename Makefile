@@ -3,7 +3,7 @@ VERSION ?= 2.2.1
 comma := ,
 COMMA_VERSION := $(subst .,${comma} ,${VERSION})
 
-QUAIL_DIR ?= /c/Users/dariu/Documents/Git-Quail/quail
+QUAIL_DIR ?= /c/Users/dariu/Documents/GitHub_Repos/quail
 PYTHON ?= python
 
 # Match what actually exists in your repo (per your screenshot)

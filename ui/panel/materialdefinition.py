@@ -28,6 +28,76 @@ def update_transparent(self, context):
     if not mat:
         return
 
+def sprite_items(self, context):
+    items = []
+
+    for ng in bpy.data.node_groups:
+        if ng.name.endswith("_SPRITE"):
+            items.append((ng.name, ng.name, ""))
+
+    # Always allow empty selection
+    items.insert(0, ("", "<None>", ""))
+
+    return items
+
+def update_simplesprite(self, context):
+
+    mat = self.id_data
+    if not isinstance(mat, bpy.types.Material):
+        return
+
+    if not mat.use_nodes or not mat.node_tree:
+        return
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    # --------------------------------------------
+    # Find RENDERMETHOD node
+    # --------------------------------------------
+    rm_node = None
+    for n in nodes:
+        if n.type == "GROUP" and n.node_tree and n.node_tree.name == "RENDERMETHOD":
+            rm_node = n
+            break
+
+    if not rm_node:
+        return
+
+    # --------------------------------------------
+    # Remove existing sprite node
+    # --------------------------------------------
+    for n in list(nodes):
+        if n.get("quail_sprite_node"):
+            nodes.remove(n)
+
+    # If cleared in panel, stop here
+    if not self.simplespritetag:
+        return
+
+    sprite_group = bpy.data.node_groups.get(self.simplespritetag)
+    if not sprite_group:
+        return
+
+    # --------------------------------------------
+    # Create new sprite node
+    # --------------------------------------------
+    sprite_node = nodes.new("ShaderNodeGroup")
+    sprite_node.node_tree = sprite_group
+    sprite_node.location = (-400, 0)
+    sprite_node["quail_sprite_node"] = True
+
+    links.new(sprite_node.outputs["sRGB Texture"], rm_node.inputs["sRGB Texture"])
+    links.new(sprite_node.outputs["Alpha"], rm_node.inputs["Alpha"])
+
+def update_twosided(self, context):
+    mat = self.id_data
+    if not isinstance(mat, bpy.types.Material):
+        return
+
+    # Two-Sided ON  → disable culling
+    # Two-Sided OFF → enable culling
+    mat.use_backface_culling = not self.twosided
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     # ---------------------------
@@ -163,6 +233,13 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         default=1
     )
 
+    simplespritetag: EnumProperty(
+        name="SimpleSprite",
+        description="Select a SimpleSprite node group",
+        items=sprite_items,
+        update=update_simplesprite
+    )
+
     simplespritehaveskipframes: BoolProperty(
         name="Simplesprite Have Skip Frames",
         description="Simplesprite Have Skip Frames",
@@ -187,7 +264,8 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
     twosided: BoolProperty(
         name="Two-Sided",
         description="Two-Sided",
-        default=False
+        default=False,
+        update = update_twosided
     )
 
 
@@ -306,8 +384,32 @@ def draw_materialdefinition_in_transform(self, context):
 
     box.prop(props, "brightness")
     box.prop(props, "scaledambient")
+
+    # ----------------------------------------------------
+    # VISUAL SEPARATOR
+    # ----------------------------------------------------
+
+    line = box.row()
+    line.alignment = 'CENTER'
+    line.label(text="────────────────────────────")
+
+    # ----------------------------------------------------
+    # SIMPLESPRITEINST
+    # ----------------------------------------------------
+
+    box.label(text="SimpleSpriteInst")
+    box.prop(props, "simplespritetag")
     box.prop(props, "simplespritehaveskipframes")
     box.prop(props, "simplespriteskipframes")
+
+    # ----------------------------------------------------
+    # VISUAL SEPARATOR
+    # ----------------------------------------------------
+
+    line = box.row()
+    line.alignment = 'CENTER'
+    line.label(text="────────────────────────────")
+
     box.prop(props, "uvshiftperms")
     box.prop(props, "twosided")
 
