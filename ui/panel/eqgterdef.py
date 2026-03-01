@@ -12,6 +12,8 @@ class QuailEqgTerDefProperties(bpy.types.PropertyGroup):
             ('1', "1", "First version"),
             ('2', "2", "Second version"),
             ('3', "3", "Third version"),
+            ('4', "4", "Fourth version"),
+            ('5', "5", "Fifth version"),
         ],
         default='1'
     )

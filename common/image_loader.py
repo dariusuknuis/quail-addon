@@ -49,17 +49,22 @@ def fix_dds_mipmap_flag(path):
 
 def flip_image_vertically(image):
     width, height = image.size
-    _ = image.pixels[:]
-
-    pixels = list(image.pixels[:])
     channels = image.channels
     row_size = width * channels
 
-    flipped = []
-    for y in reversed(range(height)):
-        start = y * row_size
-        end = start + row_size
-        flipped.extend(pixels[start:end])
+    # Single copy only
+    pixels = image.pixels[:]
+
+    flipped = [0.0] * len(pixels)
+
+    for y in range(height):
+        src_start = y * row_size
+        src_end = src_start + row_size
+
+        dst_start = (height - 1 - y) * row_size
+        dst_end = dst_start + row_size
+
+        flipped[dst_start:dst_end] = pixels[src_start:src_end]
 
     image.pixels[:] = flipped
     image.update()
@@ -116,11 +121,12 @@ def load_texture(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
         if index0:
             image["bmp_index0_color"] = index0
 
+    else:
         if not image.get("quail_flipped", False):
             try:
-                flip_image_vertically(image)   # <-- do NOT assign
+                flip_image_vertically(image)
                 image["quail_flipped"] = True
             except Exception as e:
-                return None, f"Error flipping BMP {texture_path}: {e}"
+                return None, f"Error flipping {texture_path}: {e}"
 
     return image, None

@@ -16,9 +16,9 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     obj['quaildef'] = 'eqgterdef'
     obj.quail_eqgterdef.version = str(eqgterdef.version) # type: ignore
 
-    for _, mat in enumerate(eqgterdef.materialtags):
+    for _, mat in enumerate(eqgterdef.materials):
         properties = []
-        for _, prop in enumerate(mat.propertys):
+        for _, prop in enumerate(mat.properties):
             properties.append((prop.property[0], prop.property[1], prop.property[2]))
         textures = []
         for _, tex in enumerate(mat.textures):
@@ -32,7 +32,7 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
         faces_for_creation.append(face.triangle)
 
     vertices = []
-    for _, vertex in enumerate(eqgterdef.vertexs):
+    for _, vertex in enumerate(eqgterdef.vertices):
         vertices.append(mathutils.Vector(vertex.xyz))
     mesh.from_pydata(vertices, [], faces_for_creation)
     mesh.update()
@@ -41,8 +41,8 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
-            src_vert = eqgterdef.vertexs[vertex]
-            uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1]-1)
+            src_vert = eqgterdef.vertices[vertex]
+            uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1])
 
     return ""
 

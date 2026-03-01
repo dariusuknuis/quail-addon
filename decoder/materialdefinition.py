@@ -46,8 +46,6 @@ def create_rendermethod_nodegroup():
     # -----------------------------------------
     # Core Inputs
     # -----------------------------------------
-    add_input("Index 0 Color", "NodeSocketColor")
-    add_input("Non-Color Texture", "NodeSocketColor")
     add_input("sRGB Texture", "NodeSocketColor")
     add_input("Alpha", "NodeSocketFloat")
 
@@ -82,81 +80,6 @@ def create_rendermethod_nodegroup():
     principled.inputs["Sheen Weight"].default_value = 0.0
 
     # ------------------------------------------------
-    # Index-0 Bitmap Masked Transparency
-    # ------------------------------------------------
-
-    sep_color1 = nodes.new('ShaderNodeSeparateColor')
-    sep_color1.name = 'Separate Color 1'
-    sep_color1.location = (-988, 604)
-    links.new(inp["Index 0 Color"], sep_color1.inputs[0])
-
-    sep_color2 = nodes.new('ShaderNodeSeparateColor')
-    sep_color2.name = 'Separate Color 2'
-    sep_color2.location = (-988, 411)
-    links.new(inp["Non-Color Texture"], sep_color2.inputs[0])
-
-    subtract1 = nodes.new("ShaderNodeMath")
-    subtract1.name = 'Subtract Red'
-    subtract1.operation = 'SUBTRACT'
-    subtract1.location = (-774, 686)
-    links.new(sep_color2.outputs[0], subtract1.inputs[0])
-    links.new(sep_color1.outputs[0], subtract1.inputs[1])
-
-    subtract2 = nodes.new("ShaderNodeMath")
-    subtract2.name = 'Subtract Green'
-    subtract2.operation = 'SUBTRACT'
-    subtract2.location = (-774, 522)
-    links.new(sep_color2.outputs[1], subtract2.inputs[0])
-    links.new(sep_color1.outputs[1], subtract2.inputs[1])
-
-    subtract3 = nodes.new("ShaderNodeMath")
-    subtract3.name = 'Subtract Blue'
-    subtract3.operation = 'SUBTRACT'
-    subtract3.location = (-774, 355)
-    links.new(sep_color2.outputs[2], subtract3.inputs[0])
-    links.new(sep_color1.outputs[2], subtract3.inputs[1])
-
-    absolute1 = nodes.new("ShaderNodeMath")
-    absolute1.name = 'Absolute Red'
-    absolute1.operation = 'ABSOLUTE'
-    absolute1.location = (-584, 687)
-    links.new(subtract1.outputs[0], absolute1.inputs[0])
-
-    absolute2 = nodes.new("ShaderNodeMath")
-    absolute2.name = 'Absolute Green'
-    absolute2.operation = 'ABSOLUTE'
-    absolute2.location = (-584, 523)
-    links.new(subtract2.outputs[0], absolute2.inputs[0])
-
-    absolute3 = nodes.new("ShaderNodeMath")
-    absolute3.name = 'Absolute Blue'
-    absolute3.operation = 'ABSOLUTE'
-    absolute3.location = (-584, 354)
-    links.new(subtract3.outputs[0], absolute3.inputs[0])
-
-    add1 = nodes.new("ShaderNodeMath")
-    add1.name = 'Add Red & Green'
-    add1.operation = 'ADD'
-    add1.location = (-380, 661)
-    links.new(absolute1.outputs[0], add1.inputs[0])
-    links.new(absolute2.outputs[0], add1.inputs[1])
-
-    add2 = nodes.new("ShaderNodeMath")
-    add2.name = 'Add Red/Green & Blue'
-    add2.operation = 'ADD'
-    add2.location = (-189, 593)
-    links.new(add1.outputs[0], add2.inputs[0])
-    links.new(absolute3.outputs[0], add2.inputs[1])
-
-    bitmap_alpha = nodes.new("ShaderNodeMath")
-    bitmap_alpha.name = 'Bitmap Alpha'
-    bitmap_alpha.label = 'BitmapAlpha'
-    bitmap_alpha.operation = 'GREATER_THAN'
-    bitmap_alpha.location = (1, 599)
-    bitmap_alpha.inputs[1].default_value = 0.00001
-    links.new(add2.outputs[0], bitmap_alpha.inputs[0])
-
-    # ------------------------------------------------
     # NotAlphaBlend = 1 - AlphaBlend
     # ------------------------------------------------
     not_alpha = nodes.new("ShaderNodeMath")
@@ -185,20 +108,9 @@ def create_rendermethod_nodegroup():
     mask_enable.name = 'Mask Enable'
     mask_enable.label = 'MaskEnable'
     mask_enable.operation = 'MULTIPLY'
-    mask_enable.location = (7, 318)
+    mask_enable.location = (-1, 422)
     links.new(inp["Masked"], mask_enable.inputs[0])
     links.new(not_alpha.outputs[0], mask_enable.inputs[1])
-
-    # ------------------------------------------------
-    # Bitmap/Alpha Channel Gate
-    # ------------------------------------------------
-    alpha_gate = nodes.new("ShaderNodeMath")
-    alpha_gate.name = 'Alpha Gate'
-    alpha_gate.label = 'AlphaGate'
-    alpha_gate.operation = 'MAXIMUM'
-    alpha_gate.location = (186, 484)
-    links.new(inp["Alpha"], alpha_gate.inputs[1])
-    links.new(bitmap_alpha.outputs[0], alpha_gate.inputs[0])
 
     # ------------------------------------------------
     # MaskAllowed = max(Additive, MaskEnable)
@@ -207,7 +119,7 @@ def create_rendermethod_nodegroup():
     mask_allow.name = 'Mask Allowed'
     mask_allow.label = 'MaskAllowed'
     mask_allow.operation = 'MAXIMUM'
-    mask_allow.location = (210, 288)
+    mask_allow.location = (215, 356)
     links.new(inp["Additive"], mask_allow.inputs[1])
     links.new(mask_enable.outputs[0], mask_allow.inputs[0])
 
@@ -218,10 +130,10 @@ def create_rendermethod_nodegroup():
     mask_mix.name = 'Mask Alpha'
     mask_mix.label = 'MaskAlpha'
     mask_mix.data_type = 'FLOAT'
-    mask_mix.location = (444, 323)
+    mask_mix.location = (444, 332)
     mask_mix.inputs[2].default_value = 1
     links.new(mask_allow.outputs[0], mask_mix.inputs["Factor"])
-    links.new(alpha_gate.outputs[0], mask_mix.inputs[3])
+    links.new(inp["Alpha"], mask_mix.inputs[3])
 
     # ------------------------------------------------
     # BlendEffective = mix(AlphaBlend, BlendAlpha)
@@ -564,7 +476,6 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
             socket.hide = True
 
     # Apply values to group inputs
-    group_node.inputs["Non-Color Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
     group_node.inputs["sRGB Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
     group_node.inputs["Masked"].default_value = float(props.masked)
     group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)

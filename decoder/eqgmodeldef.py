@@ -43,7 +43,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
             src_vert = eqgmodeldef.vertices[vertex]
-            uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1]-1)
+            uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1])
 
     for i, face in enumerate(eqgmodeldef.faces):
         poly = mesh.polygons[i]

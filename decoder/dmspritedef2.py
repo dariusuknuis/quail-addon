@@ -40,14 +40,14 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
             if mat and obj.data.materials.find(mat_name) == -1:
                 obj.data.materials.append(mat)
 
-    faces_for_creation = []
+    faces = []
     for face in sprite.face2s:
-        faces_for_creation.append(face.triangle)
+        faces.append(face.triangle)
 
     vertices = []
     for _, vertex in enumerate(sprite.vertices):
         vertices.append(mathutils.Vector(vertex.vxyz))
-    mesh.from_pydata(vertices, [], faces_for_creation)
+    mesh.from_pydata(vertices, [], faces)
     mesh.update()
 
     if len(sprite.uvs) == 0:
@@ -56,7 +56,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
-            uvlayer.data[triangle.loop_indices[j]].uv = (sprite.uvs[vertex].uv[0], 1.0 - sprite.uvs[vertex].uv[1])
+            uvlayer.data[triangle.loop_indices[j]].uv = (sprite.uvs[vertex].uv[0], sprite.uvs[vertex].uv[1])
 
     if len(sprite.vertexnormals) == 0:
         return f"{sprite.tag} has no normals assigned"

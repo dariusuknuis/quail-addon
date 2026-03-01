@@ -6,6 +6,20 @@ from ..wce.simplespritedef import simplespritedef
 from .context import Context
 from ..common.image_loader import load_texture
 
+def get_noncolor_copy(image):
+    nc_name = f"{image.name}_nc"
+
+    # Reuse existing if already created
+    existing = bpy.data.images.get(nc_name)
+    if existing:
+        return existing
+
+    # Duplicate image datablock
+    new_img = image.copy()
+    new_img.name = nc_name
+
+    return new_img
+
 def create_bmp_wrapper_node(nodes, links, image, x_offset):
 
     group_name = f"{image.name}_BMP"
@@ -39,7 +53,10 @@ def create_bmp_wrapper_node(nodes, links, image, x_offset):
     # Non-color image
     # ------------------------------------------------
     img_nc = gnodes.new("ShaderNodeTexImage")
-    img_nc.image = image
+
+    nc_image = get_noncolor_copy(image)
+
+    img_nc.image = nc_image
     img_nc.interpolation = 'Closest'
     img_nc.image.colorspace_settings.name = 'Non-Color'
     img_nc.location = (-800, -300)

@@ -235,14 +235,14 @@ class wce:
 
             if line.startswith(eqgparticlepointdef.definition()):
                 try:
-                    self.eqgterdefs[tag] = self._instantiate_definition(eqgparticlepointdef, tag, r)
+                    self.eqgparticlepointdefs[tag] = self._instantiate_definition(eqgparticlepointdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlepointdef: {e}")
                 continue
 
             if line.startswith(eqgparticlerenderdef.definition()):
                 try:
-                    self.eqgterdefs[tag] = self._instantiate_definition(eqgparticlerenderdef, tag, r)
+                    self.eqgparticlerenderdefs[tag] = self._instantiate_definition(eqgparticlerenderdef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlerenderdef: {e}")
                 continue

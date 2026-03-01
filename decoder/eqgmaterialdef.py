@@ -3,10 +3,8 @@
 import bpy
 from bpy.types import Mesh
 from ..wce.wce import wce
-from ..wce.materialdefinition import materialdefinition
 from .context import Context
 from ..ui.panel.eqgmaterialdef import eqg_apply
-from ..common.image_loader import load_texture
 
 def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
     matname = f"{modelname}_{materialname}"
@@ -24,7 +22,7 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             material.quail_eqgmaterialdef.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
             material.quail_eqgmaterialdef.e_TextureDiffuse0 = prop[2]
-            image, err = load_texture(ctx, prop[2])
+            err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDiffuse0mapChannel":
@@ -41,7 +39,7 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             material.quail_eqgmaterialdef.e_TextureFallback0 = prop[2]
         elif prop[0] == "e_TextureNormal0":
             material.quail_eqgmaterialdef.e_TextureNormal0 = prop[2]
-            image, err = load_texture(ctx, prop[2])
+            err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0mapChannel":
@@ -167,12 +165,12 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
 
     return ""
 
-# def load_texture(ctx:Context, name:str) -> str:
-#     # Load the texture
-#     texture_path = f"{ctx.parser.path}/assets/{name}"
-#     try:
-#         bpy.data.images.load(texture_path)
-#         print(f"Loaded texture {texture_path}")
-#     except Exception as e:
-#         return f"Error loading texture {texture_path}: {e}"
-#     return ""
+def load_texture(ctx:Context, name:str) -> str:
+    # Load the texture
+    texture_path = f"{ctx.parser.path}/assets/{name}"
+    try:
+        bpy.data.images.load(texture_path)
+        print(f"Loaded texture {texture_path}")
+    except Exception as e:
+        return f"Error loading texture {texture_path}: {e}"
+    return ""
