@@ -98,13 +98,14 @@ def update_twosided(self, context):
     # Two-Sided ON  → disable culling
     # Two-Sided OFF → enable culling
     mat.use_backface_culling = not self.twosided
+
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     # ---------------------------
     # Transparent Override
     # ---------------------------
 
-    transparent_override: bpy.props.BoolProperty(
+    transparent_override: BoolProperty(
         name="Transparent",
         description="Force material to behave as fully transparent",
         default=False,

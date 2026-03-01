@@ -221,6 +221,40 @@ def decode_simplespritedef(ctx:Context, simplesprite:simplespritedef) -> str:
     simplesprite_node = bpy.data.node_groups.new(simplesprite.tag, 'ShaderNodeTree')
     simplesprite_node['quaildef'] = 'simplespritedef'
 
+    # ------------------------------------------------
+    # Populate PropertyGroup (panel data)
+    # ------------------------------------------------
+
+    props = simplesprite_node.quail_simplesprite
+
+    props.skipframes = bool(simplesprite.skipframes)
+
+    props.has_sleep = simplesprite.sleep is not None
+    props.sleep = simplesprite.sleep or 0
+
+    props.has_current_frame = simplesprite.currentframe is not None
+    props.current_frame = simplesprite.currentframe or 0
+
+    # Clear existing frames
+    props.frames.clear()
+
+    for frame_data in simplesprite.frames:
+
+        frame = props.frames.add()
+        frame.name = frame_data.frame
+
+        # Manually clear files first (safety)
+        frame.files.clear()
+
+        for f in frame_data.files:
+            file_entry = frame.files.add()
+            file_entry.filename = f.file
+
+        # Set numfiles AFTER adding files
+        frame.numfiles = len(frame.files)
+
+    props.numframes = len(props.frames)
+
     nodes = simplesprite_node.nodes
     links = simplesprite_node.links
 

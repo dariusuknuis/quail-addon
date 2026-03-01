@@ -1,3 +1,5 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
+
 import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
@@ -6,8 +8,8 @@ def update_simplesprite_node(self, context):
     print("Updated simplesprite:", self.name)
 
 def sync_numframes(self, context):
-    target = self.quail_ss_numframes
-    frames = self.quail_ss_frames
+    target = self.numframes
+    frames = self.frames
 
     # Add frames
     while len(frames) < target:
@@ -19,17 +21,99 @@ def sync_numframes(self, context):
         frames.remove(len(frames) - 1)
 
     # Clamp active index
-    if self.quail_ss_active_frame >= len(frames):
-        self.quail_ss_active_frame = max(0, len(frames) - 1)
+    if self.active_frame >= len(frames):
+        self.active_frame = max(0, len(frames) - 1)
 
-class QuailSpriteFrameFile(bpy.types.PropertyGroup):
-    filename: bpy.props.StringProperty(name="File")
+def sync_numfiles(self, context):
+    target = self.numfiles
+    files = self.files
+
+    while len(files) < target:
+        files.add()
+
+    while len(files) > target:
+        files.remove(len(files) - 1)
+
+    if self.active_file_index >= len(files):
+        self.active_file_index = max(0, len(files) - 1)
+
+class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
+
+    filename: bpy.props.StringProperty(
+        name="File"
+    )
 
 
-class QuailSpriteFrame(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty(name="Frame Name")
-    files: bpy.props.CollectionProperty(type=QuailSpriteFrameFile)
-    active_file_index: bpy.props.IntProperty(default=0)
+class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
+
+    name: StringProperty(
+        name="Frame Name"
+    )
+
+    numfiles: IntProperty(
+        name="Num Files",
+        default=0,
+        min=0,
+        update=sync_numfiles
+    )
+
+    files: CollectionProperty(
+        type=QuailSimpleSpriteFrameFile
+    )
+
+    active_file_index: IntProperty(
+        default=1
+    )
+
+class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
+
+    skipframes: BoolProperty(
+        name="Skip Frames",
+        description="Flag for Skip Frames",
+        default=False
+    )
+
+    has_sleep: BoolProperty(
+        name="Has Sleep",
+        description="If not set, Sleep is NULL",
+        default=False
+    )
+
+    sleep: IntProperty(
+        name="Sleep",
+        description="Time, in milliseconds, between frames",
+        default=0,
+        min=0
+    )
+
+    has_current_frame: BoolProperty(
+        name="Has Current Frame",
+        description="If not set, Current Frame is NULL",
+        default=False
+    )
+
+    current_frame: IntProperty(
+        name="Current Frame",
+        description="Sets Current Frame?",
+        default=0,
+        min=0
+    )
+
+    numframes: IntProperty(
+        name="Num Frames",
+        description="Number of frames for an animated texture",
+        default=0,
+        min=0,
+        update=sync_numframes
+    )
+
+    frames: CollectionProperty(
+        type=QuailSimpleSpriteFrame
+    )
+
+    active_frame: IntProperty(
+        default=1
+    )
 
 class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
     bl_label = "SIMPLESPRITEDEF"
@@ -43,34 +127,33 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
         return tree and tree.get("quaildef") == "simplespritedef"
 
     def draw(self, context):
-        layout = self.layout
         tree = context.space_data.edit_tree
+        layout = self.layout
+        props = tree.quail_simplesprite
 
-        layout.label(text=f"Tag: {tree.name}")
+        layout.prop(props, "skipframes")
 
-        layout.prop(tree, "quail_ss_skipframes")
-
-        self.draw_optional(layout, tree,
+        self.draw_optional(layout, props,
                            "Sleep",
-                           "quail_ss_sleep_enabled",
-                           "quail_ss_sleep")
+                           "has_sleep",
+                           "sleep")
 
-        self.draw_optional(layout, tree,
+        self.draw_optional(layout, props,
                            "Current Frame",
-                           "quail_ss_current_enabled",
-                           "quail_ss_current")
-        layout.prop(tree, "quail_ss_numframes")
+                           "has_current_frame",
+                           "current_frame")
+        layout.prop(props, "numframes")
 
         layout.separator()
         layout.label(text="Frames")
 
         layout.template_list(
             "UI_UL_list",
-            "quail_ss_frames",
-            tree,
-            "quail_ss_frames",
-            tree,
-            "quail_ss_active_frame"
+            "QUAIL_UL_frames",
+            props,
+            "frames",
+            props,
+            "active_frame"
         )
 
         row = layout.row()
@@ -78,76 +161,36 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
         row.operator("quail.remove_frame", icon="REMOVE")
 
         # Active frame detail
-        if tree.quail_ss_frames and tree.quail_ss_active_frame < len(tree.quail_ss_frames):
-            frame = tree.quail_ss_frames[tree.quail_ss_active_frame]
+        if props.frames and props.active_frame < len(props.frames):
+            frame = props.frames[props.active_frame]
 
             box = layout.box()
             box.prop(frame, "name")
 
+            # ---- NUMFILES FIELD ----
+            box.prop(frame, "numfiles")
+
+            box.separator()
             box.label(text="Files")
 
-            for file in frame.files:
-                box.prop(file, "filename")
+            # ---- FILE LIST ----
+            if frame.files:
+                for file in frame.files:
+                    box.prop(file, "filename")
 
-    def draw_optional(self, layout, tree, label, toggle, value):
+    def draw_optional(self, layout, props, label, toggle, value):
         row = layout.row(align=True)
-        row.prop(tree, toggle, text="")
+        row.prop(props, toggle, text="")
         sub = row.row()
-        sub.enabled = getattr(tree, toggle)
-        sub.prop(tree, value, text=label)
+        sub.enabled = getattr(props, toggle)
+        sub.prop(props, value, text=label)
 
 def register():
 
-    # Attach properties to NodeTree
-
-    bpy.types.NodeTree.quail_ss_skipframes = bpy.props.BoolProperty(
-        name="Skip Frames",
-        default=False
-    )
-
-    bpy.types.NodeTree.quail_ss_sleep_enabled = bpy.props.BoolProperty(
-        name="Use Sleep",
-        default=False
-    )
-
-    bpy.types.NodeTree.quail_ss_sleep = bpy.props.IntProperty(
-        name="Sleep",
-        default=0,
-        min=0
-    )
-
-    bpy.types.NodeTree.quail_ss_current_enabled = bpy.props.BoolProperty(
-        name="Use Current Frame",
-        default=False
-    )
-
-    bpy.types.NodeTree.quail_ss_current = bpy.props.IntProperty(
-        name="Current Frame",
-        default=0,
-        min=0
-    )
-
-    bpy.types.NodeTree.quail_ss_numframes = bpy.props.IntProperty(
-        name="Num Frames",
-        default=0,
-        min=0,
-        update=sync_numframes
-    )
-
-    bpy.types.NodeTree.quail_ss_frames = bpy.props.CollectionProperty(
-        type=QuailSpriteFrame
-    )
-
-    bpy.types.NodeTree.quail_ss_active_frame = bpy.props.IntProperty(default=0)
+    bpy.types.NodeTree.quail_simplesprite = PointerProperty(
+        type=QuailSimpleSpriteProperties)
 
 
 def unregister():
 
-    if hasattr(bpy.types.NodeTree, "quail_ss_skipframes"):
-        del bpy.types.NodeTree.quail_ss_skipframes
-        del bpy.types.NodeTree.quail_ss_sleep_enabled
-        del bpy.types.NodeTree.quail_ss_sleep
-        del bpy.types.NodeTree.quail_ss_current_enabled
-        del bpy.types.NodeTree.quail_ss_current
-        del bpy.types.NodeTree.quail_ss_frames
-        del bpy.types.NodeTree.quail_ss_active_frame
+    del bpy.types.NodeTree.quail_simplesprite

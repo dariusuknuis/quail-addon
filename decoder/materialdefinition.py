@@ -454,7 +454,7 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     for n in nodes:
         nodes.remove(n)
 
-    # Create RenderMethod group (lazy)
+    # Create RenderMethod group
     group_tree = create_rendermethod_nodegroup()
 
     group_node = nodes.new("ShaderNodeGroup")
