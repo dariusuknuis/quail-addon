@@ -42,7 +42,8 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     faces = []
     for face in sprite.face2s:
-        faces.append(face.triangle)
+        i0, i1, i2 = face.triangle
+        faces.append((i2, i1, i0))
 
     vertices = []
     for _, vertex in enumerate(sprite.vertices):
@@ -52,7 +53,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     if len(sprite.uvs) == 0:
         return f"{sprite.tag} has no uvs assigned"
-    uvlayer = mesh.uv_layers.new(name=sprite.tag+"_uv")
+    uvlayer = mesh.uv_layers.new()
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
@@ -61,18 +62,21 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     if len(sprite.vertexnormals) == 0:
         return f"{sprite.tag} has no normals assigned"
 
-    #mesh.use_auto_smooth = True # type: ignore
-    #mesh.auto_smooth_angle = 3.14159 # type: ignore
+    normal_attr = mesh.attributes.new(
+        name="vertex_normals",
+        type='FLOAT_VECTOR',
+        domain='POINT'
+    )
 
-    normals = list[list[float]]
-    normals = []
-    for _, normal in enumerate(sprite.vertexnormals):
-        normals.append(normal.nxyz)
-
-    mesh.normals_split_custom_set_from_vertices(normals)
+    for i in range(len(sprite.vertexnormals)):
+        normal_attr.data[i].vector = (
+            sprite.vertexnormals[i].nxyz[0],
+            sprite.vertexnormals[i].nxyz[1],
+            sprite.vertexnormals[i].nxyz[2]
+        )
 
     if len(sprite.vertexcolors) > 0:
-        color_attribute = mesh.color_attributes.new(name="RGBA", domain="POINT", type='FLOAT_COLOR')
+        color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
         v_index = 0
         for _, color in enumerate(sprite.vertexcolors):
             count = color.rgba[0]
