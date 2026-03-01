@@ -5,6 +5,23 @@ from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolPr
 def update_simplesprite_node(self, context):
     print("Updated simplesprite:", self.name)
 
+def sync_numframes(self, context):
+    target = self.quail_ss_numframes
+    frames = self.quail_ss_frames
+
+    # Add frames
+    while len(frames) < target:
+        frame = frames.add()
+        frame.name = f"Frame_{len(frames)}"
+
+    # Remove frames
+    while len(frames) > target:
+        frames.remove(len(frames) - 1)
+
+    # Clamp active index
+    if self.quail_ss_active_frame >= len(frames):
+        self.quail_ss_active_frame = max(0, len(frames) - 1)
+
 class QuailSpriteFrameFile(bpy.types.PropertyGroup):
     filename: bpy.props.StringProperty(name="File")
 
@@ -13,7 +30,6 @@ class QuailSpriteFrame(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Frame Name")
     files: bpy.props.CollectionProperty(type=QuailSpriteFrameFile)
     active_file_index: bpy.props.IntProperty(default=0)
-
 
 class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
     bl_label = "SIMPLESPRITEDEF"
@@ -43,6 +59,7 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
                            "Current Frame",
                            "quail_ss_current_enabled",
                            "quail_ss_current")
+        layout.prop(tree, "quail_ss_numframes")
 
         layout.separator()
         layout.label(text="Frames")
@@ -82,6 +99,7 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
 def register():
 
     # Attach properties to NodeTree
+
     bpy.types.NodeTree.quail_ss_skipframes = bpy.props.BoolProperty(
         name="Skip Frames",
         default=False
@@ -107,6 +125,13 @@ def register():
         name="Current Frame",
         default=0,
         min=0
+    )
+
+    bpy.types.NodeTree.quail_ss_numframes = bpy.props.IntProperty(
+        name="Num Frames",
+        default=0,
+        min=0,
+        update=sync_numframes
     )
 
     bpy.types.NodeTree.quail_ss_frames = bpy.props.CollectionProperty(
