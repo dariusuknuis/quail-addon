@@ -22,7 +22,7 @@ def get_noncolor_copy(image):
 
 def create_bmp_wrapper_node(nodes, links, image, x_offset):
 
-    group_name = f"{image.name}_BMP"
+    group_name = f"{image.name}"
 
     if group_name in bpy.data.node_groups:
         wrapper_node = nodes.new("ShaderNodeGroup")
@@ -163,7 +163,7 @@ def create_bmp_wrapper_node(nodes, links, image, x_offset):
     return wrapper_node
 
 def create_frame_nodegroup(ctx, frame, sprite_tag):
-    frame_group_name = f"{frame.frame}"
+    frame_group_name = f"{frame.name}"
 
     if frame_group_name in bpy.data.node_groups:
         return bpy.data.node_groups[frame_group_name]
@@ -178,52 +178,156 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     group.interface.new_socket("Color", in_out='OUTPUT', socket_type="NodeSocketColor")
     group.interface.new_socket("Alpha", in_out='OUTPUT', socket_type="NodeSocketFloat")
 
+    detail_input = group.interface.new_socket(
+        name="Detail Scale",
+        in_out='INPUT',
+        socket_type="NodeSocketFloat"
+    )
+    detail_input.default_value = 1.0
+
+    for i in range(10):
+        tiled_input = group.interface.new_socket(
+            name=f"Tiled {i+1} Scale",
+            in_out='INPUT',
+            socket_type="NodeSocketFloat"
+        )
+        tiled_input.default_value = 1.0
+
+    group_input = nodes.new("NodeGroupInput")
+    group_input.location = (-1200, 0)
+
     group_output = nodes.new("NodeGroupOutput")
     group_output.location = (800, 0)
 
     current_x = 0
 
-    for file_entry in frame.files:
-        filename = file_entry.file
+    if not frame.files:
+        return group
 
-        # Load image
-        image, err = load_texture(ctx, filename)
-        if err or image is None:
-            print(err)
-            continue
+    # ------------------------------------------------
+    # BASE (File 0)
+    # ------------------------------------------------
+    base_file = frame.files[0]
+    base_image = base_file.image
 
-        # image = bpy.data.images.get(filename)
-        # if image is None:
-        #     continue
+    if not base_image:
+        return group
 
-        image_type = image.get("image_type", "OTHER")
+    image_type = base_image.get("image_type", "OTHER")
 
-        if image_type == "BMP":
-            image_node = create_bmp_wrapper_node(nodes, links, image, current_x)
-        else:
-            image_node = nodes.new("ShaderNodeTexImage")
-            image_node.image = image
-            image_node.location = (current_x, 0)
+    if image_type == "BMP":
+        base_tex = create_bmp_wrapper_node(nodes, links, base_image, current_x)
+    else:
+        base_tex = nodes.new("ShaderNodeTexImage")
+        base_tex.image = base_image
+        base_tex.location = (current_x, 0)
 
-        # Connect outputs
-        links.new(image_node.outputs["Color"], group_output.inputs["Color"])
+    # ------------------------------------------------
+    # DETAIL case
+    # ------------------------------------------------
+    if len(frame.files) > 1 and frame.files[1].texture_mode == 'DETAIL':
 
-        if "Alpha" in image_node.outputs:
-            links.new(image_node.outputs["Alpha"], group_output.inputs["Alpha"])
+        detail_file = frame.files[1]
+        detail_image = detail_file.image
 
-        current_x += 300
+        if not detail_image:
+            return group
+
+        # Mapping node
+        mapping = nodes.new("ShaderNodeMapping")
+        mapping.location = (-800, -200)
+
+        # Use UV
+        texcoord = nodes.new("ShaderNodeTexCoord")
+        texcoord.location = (-1000, -200)
+
+        links.new(texcoord.outputs["UV"], mapping.inputs["Vector"])
+
+        # Connect group input Detail Scale to Mapping Scale
+        links.new(
+            group_input.outputs["Detail Scale"],
+            mapping.inputs["Scale"]
+        )
+
+        # Detail texture
+        detail_tex = nodes.new("ShaderNodeTexImage")
+        detail_tex.image = detail_image
+        detail_tex.location = (-600, -200)
+
+        links.new(mapping.outputs["Vector"], detail_tex.inputs["Vector"])
+
+        # Mix
+        mix = nodes.new("ShaderNodeMixRGB")
+        mix.blend_type = 'MIX'
+        mix.inputs["Fac"].default_value = 0.25
+        mix.location = (-200, 0)
+
+        # Base → Color1
+        links.new(base_tex.outputs["Color"], mix.inputs["Color1"])
+
+        # Detail → Color2
+        links.new(detail_tex.outputs["Color"], mix.inputs["Color2"])
+
+        # Output color
+        links.new(mix.outputs["Color"], group_output.inputs["Color"])
+
+        # Preserve alpha from base
+        if "Alpha" in base_tex.outputs:
+            links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])
+
+    # ------------------------------------------------
+    # LAYER case
+    # ------------------------------------------------
+    elif len(frame.files) > 1 and frame.files[1].texture_mode == 'LAYER':
+
+        layer_file = frame.files[1]
+        layer_image = layer_file.image
+
+        if not layer_image:
+            return group
+
+        layer_tex = nodes.new("ShaderNodeTexImage")
+        layer_tex.image = layer_image
+        layer_tex.location = (-600, -150)
+
+        mix = nodes.new("ShaderNodeMixRGB")
+        mix.blend_type = 'MIX'
+        mix.location = (-200, 0)
+
+        # Base → Color1
+        links.new(base_tex.outputs["Color"], mix.inputs["Color1"])
+
+        # Layer → Color2
+        links.new(layer_tex.outputs["Color"], mix.inputs["Color2"])
+
+        # Layer alpha drives mix
+        links.new(layer_tex.outputs["Alpha"], mix.inputs["Fac"])
+
+        # Output color only
+        links.new(mix.outputs["Color"], group_output.inputs["Color"])
+
+        # Do NOT connect Alpha output
+
+    else:
+        # No layer → just base
+        links.new(base_tex.outputs["Color"], group_output.inputs["Color"])
+        if "Alpha" in base_tex.outputs:
+            links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])
+
+    current_x += 300
 
     return group
 
-def decode_simplespritedef(ctx:Context, simplesprite:simplespritedef) -> str:
+def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
+
     if simplesprite.tag in bpy.data.node_groups:
         return ""
-    simplesprite_node = bpy.data.node_groups.new(simplesprite.tag, 'ShaderNodeTree')
-    simplesprite_node['quaildef'] = 'simplespritedef'
 
-    # ------------------------------------------------
-    # Populate PropertyGroup (panel data)
-    # ------------------------------------------------
+    simplesprite_node = bpy.data.node_groups.new(
+        simplesprite.tag,
+        'ShaderNodeTree'
+    )
+    simplesprite_node['quaildef'] = 'simplespritedef'
 
     props = simplesprite_node.quail_simplesprite
 
@@ -235,54 +339,92 @@ def decode_simplespritedef(ctx:Context, simplesprite:simplespritedef) -> str:
     props.has_current_frame = simplesprite.currentframe is not None
     props.current_frame = simplesprite.currentframe or 0
 
-    # Clear existing frames
     props.frames.clear()
-
-    for frame_data in simplesprite.frames:
-
-        frame = props.frames.add()
-        frame.name = frame_data.frame
-
-        # Manually clear files first (safety)
-        frame.files.clear()
-
-        for f in frame_data.files:
-            file_entry = frame.files.add()
-            file_entry.filename = f.file
-
-        # Set numfiles AFTER adding files
-        frame.numfiles = len(frame.files)
-
-    props.numframes = len(props.frames)
 
     nodes = simplesprite_node.nodes
     links = simplesprite_node.links
 
     group_output = nodes.new("NodeGroupOutput")
-    group_output.location = (1428, 12)
+    group_output.location = (1400, 0)
 
-    def add_output(name, socket_type):
-        simplesprite_node.interface.new_socket(
-            name=name,
-            in_out='OUTPUT',
-            socket_type=socket_type
-        )
+    simplesprite_node.interface.new_socket(
+        name="sRGB Texture",
+        in_out='OUTPUT',
+        socket_type="NodeSocketColor"
+    )
 
-    add_output("sRGB Texture", "NodeSocketColor")
-    add_output("Alpha", "NodeSocketFloat")
+    simplesprite_node.interface.new_socket(
+        name="Alpha",
+        in_out='OUTPUT',
+        socket_type="NodeSocketFloat"
+    )
 
-    out = group_output.inputs
-
-    # ------------------------------------------------
-    # Create frame node groups and instance them
-    # ------------------------------------------------
     frame_nodes = []
     x_offset = 0
 
-    for i, frame in enumerate(simplesprite.frames):
+    for frame_data in simplesprite.frames:
 
-        frame_group = create_frame_nodegroup(ctx, frame, simplesprite.tag)
+        # -----------------------------
+        # Create UI frame
+        # -----------------------------
+        frame = props.frames.add()
+        frame.name = frame_data.frame
+        frame.files.clear()
 
+        for f in frame_data.files:
+
+            raw = f.file
+            file_entry = frame.files.add()
+            file_entry.raw_string = raw
+
+            if "," in raw:
+                parts = raw.split(",", 3)
+
+                file_entry.palette_index = int(parts[0].strip())
+                file_entry.scale = float(parts[1].strip())
+                file_entry.blend = float(parts[2].strip())
+
+                filename = parts[3].strip()
+                file_entry.texture_mode = 'TILED'
+
+            elif raw.endswith("_LAYER"):
+                filename = raw.replace("_LAYER", "")
+                file_entry.texture_mode = 'LAYER'
+
+            elif "_DETAIL_" in raw:
+                base, detail = raw.split("_DETAIL_")
+                filename = base
+                file_entry.scale = float(detail)
+                file_entry.texture_mode = 'DETAIL'
+
+            elif raw.endswith("PAL.BMP"):
+                filename = raw
+                file_entry.texture_mode = 'PALETTE'
+
+            else:
+                filename = raw
+                file_entry.texture_mode = 'BASE'
+
+            image, err = load_texture(ctx, filename)
+            if image:
+                file_entry.image = image
+
+        frame.numfiles = len(frame.files)
+
+        # -----------------------------
+        # Create frame nodegroup
+        # -----------------------------
+        frame_group = create_frame_nodegroup(
+            ctx,
+            frame,
+            simplesprite.tag
+        )
+
+        frame.frame_node = frame_group
+
+        # -----------------------------
+        # Instance nodegroup
+        # -----------------------------
         frame_node = nodes.new("ShaderNodeGroup")
         frame_node.node_tree = frame_group
         frame_node.location = (x_offset, 0)
@@ -290,12 +432,16 @@ def decode_simplespritedef(ctx:Context, simplesprite:simplespritedef) -> str:
         frame_nodes.append(frame_node)
         x_offset += 400
 
-    # ------------------------------------------------
-    # Temporary: connect first frame directly
-    # (Animation switching added later)
-    # ------------------------------------------------
+    props.numframes = len(props.frames)
+
     if frame_nodes:
-        links.new(frame_nodes[0].outputs["Color"], group_output.inputs["sRGB Texture"])
-        links.new(frame_nodes[0].outputs["Alpha"], group_output.inputs["Alpha"])
+        links.new(
+            frame_nodes[0].outputs["Color"],
+            group_output.inputs["sRGB Texture"]
+        )
+        links.new(
+            frame_nodes[0].outputs["Alpha"],
+            group_output.inputs["Alpha"]
+        )
 
     return ""

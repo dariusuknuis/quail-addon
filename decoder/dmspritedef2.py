@@ -20,25 +20,36 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     obj.location = mathutils.Vector(sprite.centeroffset)
 
     if sprite.materialpalette != "":
-        materialpalette = ctx.parser.materialpalettes[sprite.materialpalette]
-        if materialpalette is None:
-            return f"materialpalette {sprite.materialpalette} not found"
+        materialpalette = ctx.parser.materialpalettes.get(sprite.materialpalette)
 
-        for src_mp_mat in materialpalette.materials:
-            mat_name = src_mp_mat.material
-            src_material = None # type: materialdefinition|None
-            for key, mat in ctx.parser.materialdefinitions.items():
-                if mat.tag == mat_name:
-                    src_material = mat
-                    break
-            if src_material is None:
-                return f"materialpalette refers to material {mat_name}, but not found in materials"
-            err = create_material(ctx, src_material)
-            if err != "":
-                return f"create material {mat_name}: {err}"
-            mat = bpy.data.materials.get(mat_name)
-            if mat and obj.data.materials.find(mat_name) == -1:
-                obj.data.materials.append(mat)
+        if materialpalette:
+            for src_mp_mat in materialpalette.materials:
+                mat_name = src_mp_mat.material
+
+                # Try to find existing material
+                mat = bpy.data.materials.get(mat_name)
+
+                # If not found, create simple default material
+                if mat is None:
+                    mat = bpy.data.materials.new(mat_name)
+                    mat.use_nodes = True
+
+                    nodes = mat.node_tree.nodes
+                    links = mat.node_tree.links
+
+                    nodes.clear()
+
+                    principled = nodes.new("ShaderNodeBsdfPrincipled")
+                    principled.location = (0, 0)
+
+                    output = nodes.new("ShaderNodeOutputMaterial")
+                    output.location = (300, 0)
+
+                    links.new(principled.outputs["BSDF"], output.inputs["Surface"])
+
+                # Add to object if not already
+                if obj.data.materials.find(mat_name) == -1:
+                    obj.data.materials.append(mat)
 
     faces = []
     for face in sprite.face2s:

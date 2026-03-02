@@ -39,15 +39,30 @@ def sync_numfiles(self, context):
 
 class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
 
-    filename: bpy.props.StringProperty(
-        name="File"
+    raw_string: StringProperty()
+
+    image: PointerProperty(type=bpy.types.Image)
+
+    texture_mode: EnumProperty(
+        items=[
+            ('BASE', 'Base', ''),
+            ('LAYER', 'Layer', ''),
+            ('DETAIL', 'Detail', ''),
+            ('PALETTE', 'Palette', ''),
+            ('TILED', 'Tiled', ''),
+        ],
+        default='BASE'
     )
 
-
+    palette_index: IntProperty(default=0)
+    scale: FloatProperty(default=1.0)
+    blend: FloatProperty(default=0.0)
 class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
 
-    name: StringProperty(
-        name="Frame Name"
+    frame_node: PointerProperty(
+        name="Frame Node",
+        type=bpy.types.NodeTree,
+        poll=lambda self, nt: nt.get("quaildef") == "simplesprite_frame"
     )
 
     numfiles: IntProperty(
@@ -62,7 +77,7 @@ class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
     )
 
     active_file_index: IntProperty(
-        default=1
+        default=0
     )
 
 class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
@@ -112,7 +127,7 @@ class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
     )
 
     active_frame: IntProperty(
-        default=1
+        default=0
     )
 
 class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
@@ -165,7 +180,7 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
             frame = props.frames[props.active_frame]
 
             box = layout.box()
-            box.prop(frame, "name")
+            box.prop(frame, "frame_node")
 
             # ---- NUMFILES FIELD ----
             box.prop(frame, "numfiles")
@@ -175,8 +190,30 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
 
             # ---- FILE LIST ----
             if frame.files:
-                for file in frame.files:
-                    box.prop(file, "filename")
+                for i, file in enumerate(frame.files):
+
+                    file_box = box.box()
+                    file_box.prop(file, "image")
+
+                    # FILE 0 — BASE
+                    if i == 0:
+                        file_box.label(text="Mode: BASE")
+
+                    # FILE 1 — LAYER / DETAIL / PALETTE
+                    elif i == 1:
+                        row = file_box.row(align=True)
+                        row.prop_enum(file, "texture_mode", "LAYER")
+                        row.prop_enum(file, "texture_mode", "DETAIL")
+                        row.prop_enum(file, "texture_mode", "PALETTE")
+
+                        if file.texture_mode == 'DETAIL':
+                            file_box.prop(file, "scale")
+
+                    # FILE 2+ — TILED
+                    else:
+                        file_box.label(text=f"Tiled Index: {i-1}")
+                        file_box.prop(file, "scale")
+                        file_box.prop(file, "blend")
 
     def draw_optional(self, layout, props, label, toggle, value):
         row = layout.row(align=True)
