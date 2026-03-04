@@ -429,6 +429,20 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         frame_node.node_tree = frame_group
         frame_node.location = (x_offset, 0)
 
+        # Hide ALL inputs
+        for socket in frame_node.inputs:
+            socket.hide = True
+
+        for i, file in enumerate(frame.files):
+            if file.texture_mode == 'DETAIL' and i == 1:
+                if "Detail Scale" in frame_node.inputs:
+                    frame_node.inputs["Detail Scale"].default_value = file.scale
+            if file.texture_mode == 'TILED':
+                tiled_index = i - 1  # File 2 = Tiled 1
+                socket_name = f"Tiled {tiled_index} Scale"
+                if socket_name in frame_node.inputs:
+                    frame_node.inputs[socket_name].default_value = file.scale
+
         frame_nodes.append(frame_node)
         x_offset += 400
 

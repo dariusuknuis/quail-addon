@@ -7,7 +7,6 @@ from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from ..wce.materialdefinition import materialdefinition
 from .context import Context
-from .material import create_material
 
 def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
