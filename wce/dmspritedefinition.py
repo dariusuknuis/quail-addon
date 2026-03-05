@@ -199,7 +199,7 @@ class dmspritedefinition:
 		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
 		for meshopi in self.meshops:
 			w.write(f"\t\tMESHOP \"{meshopi.meshop}\"\n")
-		w.write(f"SKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
+		w.write(f"\tSKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
 		w.write(f"\tDATA8 \"{self.data8}\"\n")
 		w.write(f"\tFACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
 		w.write(f"\tVERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")

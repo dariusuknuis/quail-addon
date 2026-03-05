@@ -56,6 +56,6 @@ class pointlight:
 		w.write(f"\tDYNAMICINFLUENCE \"{self.dynamicinfluence}\"\n")
 		w.write(f"\tXYZ \"{self.xyz}\"\n")
 		w.write(f"\tRADIUSOFINFLUENCE \"{self.radiusofinfluence}\"\n")
-		w.write(f"REGIONS? \"{self.regions}\"\n")
+		w.write(f"\tREGIONS? \"{self.regions}\"\n")
 		return ""
 

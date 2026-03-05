@@ -31,6 +31,6 @@ class ambientlight:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tLIGHT \"{self.light}\"\n")
-		w.write(f"REGIONLIST \"{self.regionlist}\"\n")
+		w.write(f"\tREGIONLIST \"{self.regionlist}\"\n")
 		return ""
 

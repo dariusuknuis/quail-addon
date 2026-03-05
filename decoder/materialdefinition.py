@@ -436,7 +436,9 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     )
     props.brightness = material.brightness
     props.scaledambient = material.scaledambient
-    props.simplespritetag = material.simplespriteinst.simplespritetag
+    tag = material.simplespriteinst.simplespritetag
+    if tag:
+        props.simplespritetag = tag
     props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
     props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
     props.uvshiftperms = material.uvshiftperms

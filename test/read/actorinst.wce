@@ -10,10 +10,10 @@ ACTORINST "tag"
  	 // Argument 1 (%0.8e): The x coordinate
  	 // Argument 2 (%0.8e): The y coordinate
  	 // Argument 3 (%0.8e): The z coordinate
- 	 // Argument 4 (%d): The x rotation
- 	 // Argument 5 (%d): The y rotation
- 	 // Argument 6 (%d): The z rotation
-	LOCATION? 1.12345678 2.12345678 3.12345678 4 5 6
+ 	 // Argument 4 (%0.8e): The x rotation
+ 	 // Argument 5 (%0.8e): The y rotation
+ 	 // Argument 6 (%0.8e): The z rotation
+	LOCATION? 1.12345678 2.12345678 3.12345678 4.12345678 5.12345678 6.12345678
 	// Radius around the actor instance for bounds
  	 // Argument 1 (%0.8e): Radius
 	BOUNDINGRADIUS? 1.12345678
@@ -42,5 +42,5 @@ ACTORINST "tag"
  	 // Argument 1 (%d): 0: false, 1: true
 	USEBOUNDINGBOX 1
 	// Unknown property 2
- 	 // Argument 1 (%d): Unknown property 2
-	USERDATA 1
+ 	 // Argument 1 (%s): Unknown property 2
+	USERDATA "1"

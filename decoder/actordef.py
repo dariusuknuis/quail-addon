@@ -29,19 +29,25 @@ def decode_actordef(ctx:Context, actordef:actordef) -> str:
 
             tag = lod.sprite
 
+            sprite_obj = bpy.data.objects.get(tag)
+
+            if sprite_obj:
+                sprite_obj.parent = obj
+                continue
+
             if tag in ctx.parser.hierarchicalspritedefs:
                 hsprite = ctx.parser.hierarchicalspritedefs[tag]
                 err = decode_hierarchicalspritedef(ctx, hsprite)
                 if err:
                     return f"actordef {actordef.tag}: {err}"
 
-            elif tag in ctx.parser.dmspritedef2s:
-                sprite = ctx.parser.dmspritedef2s[tag]
-                err = decode_dmspritedef2(ctx, sprite)
-                if err:
-                    return f"actordef {actordef.tag}: {err}"
+            # elif tag in ctx.parser.dmspritedef2s:
+            #     sprite = ctx.parser.dmspritedef2s[tag]
+            #     err = decode_dmspritedef2(ctx, sprite)
+            #     if err:
+            #         return f"actordef {actordef.tag}: {err}"
 
-            elif tag in ctx.parser.dmspritedefs:
+            elif tag in ctx.parser.dmspritedefinitions:
                 # TODO: implement decode_dmspritedef later
                 pass
 

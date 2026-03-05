@@ -10,7 +10,7 @@ class actorinst:
 	tag:str
 	sprite:str
 	currentaction:tuple[str, None]
-	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]]
+	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]]
 	boundingradius:tuple[float, None]
 	scalefactor:tuple[float, None]
 	sound:tuple[str, None]
@@ -20,13 +20,13 @@ class actorinst:
 	sphere:str
 	sphereradius:float
 	useboundingbox:int
-	userdata:int
+	userdata:str
 
 	def __init__(self):
 		self.tag = ""
 		self.sprite = "" #2
 		self.currentaction = tuple[str, None] #2
-		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]] #2
 		self.boundingradius = tuple[float, None] #2
 		self.scalefactor = tuple[float, None] #2
 		self.sound = tuple[str, None] #2
@@ -36,7 +36,7 @@ class actorinst:
 		self.sphere = "" #2
 		self.sphereradius = 0.0 #2
 		self.useboundingbox = 0 #2
-		self.userdata = 0 #2
+		self.userdata = "" #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -48,7 +48,7 @@ class actorinst:
 		records = property(r, "CURRENTACTION?", 1)
 		self.currentaction = (str(records[1]) if records[1] != "NULL" else None)
 		records = property(r, "LOCATION?", 6)
-		self.location = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (int(records[4]) if records[4] != "NULL" else None), (int(records[5]) if records[5] != "NULL" else None), (int(records[6]) if records[6] != "NULL" else None)
+		self.location = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (float(records[4]) if records[4] != "NULL" else None), (float(records[5]) if records[5] != "NULL" else None), (float(records[6]) if records[6] != "NULL" else None)
 		records = property(r, "BOUNDINGRADIUS?", 1)
 		self.boundingradius = (float(records[1]) if records[1] != "NULL" else None)
 		records = property(r, "SCALEFACTOR?", 1)
@@ -68,7 +68,7 @@ class actorinst:
 		records = property(r, "USEBOUNDINGBOX", 1)
 		self.useboundingbox = int(records[1])
 		records = property(r, "USERDATA", 1)
-		self.userdata = int(records[1])
+		self.userdata = str(records[1])
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:

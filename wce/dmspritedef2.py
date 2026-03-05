@@ -222,7 +222,7 @@ class dmspritedef2:
 		w.write(f"\tNUMVERTEXCOLORS \"{len(self.vertexcolors)}\"\n")
 		for rgbai in self.vertexcolors:
 			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")
-		w.write(f"SKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
+		w.write(f"\tSKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
 		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
 		w.write(f"\tDMTRACKINST \"{self.dmtrackinst}\"\n")
 		w.write(f"\tDMRGBTRACK \"{self.dmrgbtrack}\"\n")
@@ -236,8 +236,8 @@ class dmspritedef2:
 		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
 		for meshopi in self.meshops:
 			w.write(f"\t\tMESHOP \"{meshopi.meshop}\"\n")
-		w.write(f"FACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
-		w.write(f"VERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
+		w.write(f"\tFACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
+		w.write(f"\tVERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
 		w.write(f"\tPARAMS2 \"{self.params2}\"\n")
 		w.write(f"\tBOUNDINGBOXMIN \"{self.boundingboxmin}\"\n")
 		w.write(f"\tBOUNDINGBOXMAX \"{self.boundingboxmax}\"\n")

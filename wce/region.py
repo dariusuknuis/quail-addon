@@ -286,7 +286,7 @@ class region:
 		w.write(f"\tNUMVISIBLELISTS \"{len(self.visiblelists)}\"\n")
 		for vislisti in self.visiblelists:
 			w.write(f"\t\tVISLIST\n")
-			w.write(f"RANGE \"{vislisti.range}\"\n")
+			w.write(f"\t\tRANGE \"{vislisti.range}\"\n")
 		w.write(f"\tSPHERE \"{self.sphere}\"\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")

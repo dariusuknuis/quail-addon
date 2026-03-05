@@ -87,24 +87,33 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     if len(sprite.vertexcolors) > 0:
         color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
-        v_index = 0
-        for _, color in enumerate(sprite.vertexcolors):
-            count = color.rgba[0]
-            for i in range(count):
-                color_attribute.data[v_index].color = (color.rgba[1] / 255.0, color.rgba[2] / 255.0, color.rgba[3] / 255.0) # type: ignore
-                v_index += 1
+        for i, color in enumerate(sprite.vertexcolors):
+            if i >= len(color_attribute.data):
+                break
+
+            color_attribute.data[i].color = (
+                color.rgba[0] / 255.0,
+                color.rgba[1] / 255.0,
+                color.rgba[2] / 255.0,
+                color.rgba[3] / 255.0
+            )
 
     if len(sprite.vertexmaterialgroups) == 0:
         return f"{sprite.tag} has no vertex material groups"
 
     vertex_material_attribute = mesh.attributes.new(name="Vertex_Material_Index", type='INT', domain='POINT')
+    vertex_index = 0
     count = 0
     for i, vmg in enumerate(sprite.vertexmaterialgroups):
         if i % 2 == 0:
             count = int(vmg)
             continue
-        for j in range(count):
-            vertex_material_attribute.data[j].value = int(vmg) # type: ignore
+        mat_index = int(vmg)
+        for _ in range(count):
+            if vertex_index >= len(vertex_material_attribute.data):
+                break
+            vertex_material_attribute.data[vertex_index].value = mat_index  # type: ignore
+            vertex_index += 1
 
     if len(sprite.facematerialgroups) > 0:
 

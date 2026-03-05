@@ -73,7 +73,7 @@ class polyhedrondefinition:
 			w.write(f"\t\tXYZ \"{xyzi.xyz}\"\n")
 		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
 		for vertexlisti in self.faces:
-			w.write(f"VERTEXLIST \"{vertexlisti.vertexlist}\"\n")
+			w.write(f"\t\tVERTEXLIST \"{vertexlisti.vertexlist}\"\n")
 		w.write(f"\tHEXONEFLAG \"{self.hexoneflag}\"\n")
 		return ""
 

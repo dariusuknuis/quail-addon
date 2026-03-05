@@ -116,7 +116,7 @@ class hierarchicalspritedef:
 			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
 			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
 			w.write(f"\t\tTRACKINDEX \"{dagi.trackindex}\"\n")
-			w.write(f"SUBDAGLIST \"{dagi.subdaglist}\"\n")
+			w.write(f"\t\tSUBDAGLIST \"{dagi.subdaglist}\"\n")
 		w.write(f"\tNUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
 		for attachedskini in self.attachedskins:
 			w.write(f"\t\tATTACHEDSKIN\n")

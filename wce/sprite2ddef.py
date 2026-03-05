@@ -172,7 +172,7 @@ class sprite2ddef:
 
 		self.renderinfo.uvcount = []
 		for i in range(uvcount):
-			uvi = type(renderinfo).uv()
+			uvi = type(self.renderinfo).uv()
 			records = property(r, "UV", 2)
 			uvi.uv = float(records[1]), float(records[2])
 			self.renderinfo.uvcount.append(uvi)
@@ -208,17 +208,17 @@ class sprite2ddef:
 						w.write(f"\t\t\t\t\tFILE \"{filel.file}\"\n")
 		w.write(f"\tRENDERMETHOD \"{self.rendermethod}\"\n")
 		w.write(f"\tRENDERINFO\n")
-		w.write(f"\tPEN? \"{self.renderinfo.pen}\"\n")
-		w.write(f"\tBRIGHTNESS? \"{self.renderinfo.brightness}\"\n")
-		w.write(f"\tSCALEDAMBIENT? \"{self.renderinfo.scaledambient}\"\n")
-		w.write(f"\tSPRITE? \"{self.renderinfo.sprite}\"\n")
-		w.write(f"\tUVORIGIN? \"{self.renderinfo.uvorigin}\"\n")
-		w.write(f"\tUAXIS? \"{self.renderinfo.uaxis}\"\n")
-		w.write(f"\tVAXIS? \"{self.renderinfo.vaxis}\"\n")
-		w.write(f"\tUVCOUNT \"{len(self.renderinfo.uvcount)}\"\n")
+		w.write(f"\t\tPEN? \"{self.renderinfo.pen}\"\n")
+		w.write(f"\t\tBRIGHTNESS? \"{self.renderinfo.brightness}\"\n")
+		w.write(f"\t\tSCALEDAMBIENT? \"{self.renderinfo.scaledambient}\"\n")
+		w.write(f"\t\tSPRITE? \"{self.renderinfo.sprite}\"\n")
+		w.write(f"\t\tUVORIGIN? \"{self.renderinfo.uvorigin}\"\n")
+		w.write(f"\t\tUAXIS? \"{self.renderinfo.uaxis}\"\n")
+		w.write(f"\t\tVAXIS? \"{self.renderinfo.vaxis}\"\n")
+		w.write(f"\t\tUVCOUNT \"{len(self.renderinfo.uvcount)}\"\n")
 		for uvi in self.renderinfo.uvcount:
-			w.write(f"\t\tUV \"{uvi.uv}\"\n")
-		w.write(f"\tTWOSIDED \"{self.renderinfo.twosided}\"\n")
+			w.write(f"\t\t\tUV \"{uvi.uv}\"\n")
+		w.write(f"\t\tTWOSIDED \"{self.renderinfo.twosided}\"\n")
 		w.write(f"\tHEXTENFLAG \"{self.hextenflag}\"\n")
 		return ""
 
