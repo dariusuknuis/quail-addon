@@ -1,10 +1,233 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
 
 import bpy
+import struct
 from ..wce.wce import wce
 from ..wce.simplespritedef import simplespritedef
 from .context import Context
 from ..common.image_loader import load_texture
+from ..common import _add_group_socket, _get_group_io_sockets
+
+def read_bmp_palette_color(file_path, color_index):
+    """
+    Reads the color at the specified index from a BMP palette.
+
+    :param file_path: The path to the BMP file.
+    :param color_index: The index of the color in the BMP palette.
+    :return: The RGB color as a tuple (red, green, blue).
+    """
+    with open(file_path, 'rb') as f:
+        palette_offset = 54 + color_index * 4  # BMP header is 54 bytes + 4 bytes per color entry
+        f.seek(palette_offset)
+        palette_data = f.read(4)  # Read the color data (BGRX format)
+        blue, green, red, _ = struct.unpack('BBBB', palette_data)
+        return red / 255.0, green / 255.0, blue / 255.0
+
+def create_palette_mask_node_group(palette_mask_node_group):
+    """
+    Creates the PaletteMask node group used for tiled textures.
+
+    :param palette_mask_node_group: The node group to be populated.
+    """
+    nodes = palette_mask_node_group.nodes
+    links = palette_mask_node_group.links
+
+    nodes.clear()
+
+    # ---- Create Interface Sockets (Blender 4/5 way, 3.6 safe via helper) ----
+    _add_group_socket(palette_mask_node_group, "ClrPalette", "NodeSocketColor", True)
+    _add_group_socket(palette_mask_node_group, "NdxClr", "NodeSocketColor", True)
+    _add_group_socket(palette_mask_node_group, "Mix", "NodeSocketShader", True)
+    _add_group_socket(palette_mask_node_group, "Texture", "NodeSocketColor", True)
+
+    _add_group_socket(palette_mask_node_group, "Shader", "NodeSocketShader", False)
+
+    # ---- Get actual linkable IO sockets ----
+    gi, go = _get_group_io_sockets(palette_mask_node_group)
+
+    # ---- Create nodes ----
+    separate_clr_palette = nodes.new(type='ShaderNodeSeparateColor')
+    separate_clr_palette.location = (-400, 300)
+
+    separate_ndx_clr = nodes.new(type='ShaderNodeSeparateColor')
+    separate_ndx_clr.location = (-400, 100)
+
+    less_than_red = nodes.new(type='ShaderNodeMath')
+    less_than_red.operation = 'LESS_THAN'
+    less_than_red.location = (-200, 300)
+
+    greater_than_red = nodes.new(type='ShaderNodeMath')
+    greater_than_red.operation = 'GREATER_THAN'
+    greater_than_red.location = (-200, 250)
+
+    less_than_green = nodes.new(type='ShaderNodeMath')
+    less_than_green.operation = 'LESS_THAN'
+    less_than_green.location = (-200, 200)
+
+    greater_than_green = nodes.new(type='ShaderNodeMath')
+    greater_than_green.operation = 'GREATER_THAN'
+    greater_than_green.location = (-200, 150)
+
+    less_than_blue = nodes.new(type='ShaderNodeMath')
+    less_than_blue.operation = 'LESS_THAN'
+    less_than_blue.location = (-200, 100)
+
+    greater_than_blue = nodes.new(type='ShaderNodeMath')
+    greater_than_blue.operation = 'GREATER_THAN'
+    greater_than_blue.location = (-200, 50)
+
+    # --- math offset nodes ---
+    def _offset_math(op, y):
+        n = nodes.new(type='ShaderNodeMath')
+        n.operation = op
+        n.location = (-400, y)
+        n.inputs[1].default_value = 0.001
+        return n
+
+    add_red = _offset_math('ADD', -100)
+    sub_red = _offset_math('SUBTRACT', -150)
+    add_green = _offset_math('ADD', -200)
+    sub_green = _offset_math('SUBTRACT', -250)
+    add_blue = _offset_math('ADD', -300)
+    sub_blue = _offset_math('SUBTRACT', -350)
+
+    multiply_red = nodes.new(type='ShaderNodeMath')
+    multiply_red.operation = 'MULTIPLY'
+    multiply_red.location = (0, 300)
+
+    multiply_green = nodes.new(type='ShaderNodeMath')
+    multiply_green.operation = 'MULTIPLY'
+    multiply_green.location = (0, 200)
+
+    multiply_blue = nodes.new(type='ShaderNodeMath')
+    multiply_blue.operation = 'MULTIPLY'
+    multiply_blue.location = (0, 100)
+
+    final_multiply = nodes.new(type='ShaderNodeMath')
+    final_multiply.operation = 'MULTIPLY'
+    final_multiply.location = (200, 200)
+
+    final_multiply_2 = nodes.new(type='ShaderNodeMath')
+    final_multiply_2.operation = 'MULTIPLY'
+    final_multiply_2.location = (400, 100)
+
+    mix_shader = nodes.new(type='ShaderNodeMixShader')
+    mix_shader.location = (500, 0)
+
+    emission_shader = nodes.new(type='ShaderNodeEmission')
+    emission_shader.location = (200, -100)
+    emission_shader.inputs['Strength'].default_value = 5
+
+    # ---- Interface → nodes ----
+    links.new(gi["ClrPalette"], separate_clr_palette.inputs["Color"])
+    links.new(gi["NdxClr"], separate_ndx_clr.inputs["Color"])
+
+    # Palette comparisons
+    links.new(separate_clr_palette.outputs["Red"], less_than_red.inputs[0])
+    links.new(separate_clr_palette.outputs["Red"], greater_than_red.inputs[0])
+    links.new(separate_clr_palette.outputs["Green"], less_than_green.inputs[0])
+    links.new(separate_clr_palette.outputs["Green"], greater_than_green.inputs[0])
+    links.new(separate_clr_palette.outputs["Blue"], less_than_blue.inputs[0])
+    links.new(separate_clr_palette.outputs["Blue"], greater_than_blue.inputs[0])
+
+    # Index offsets
+    links.new(separate_ndx_clr.outputs["Red"], add_red.inputs[0])
+    links.new(separate_ndx_clr.outputs["Red"], sub_red.inputs[0])
+    links.new(separate_ndx_clr.outputs["Green"], add_green.inputs[0])
+    links.new(separate_ndx_clr.outputs["Green"], sub_green.inputs[0])
+    links.new(separate_ndx_clr.outputs["Blue"], add_blue.inputs[0])
+    links.new(separate_ndx_clr.outputs["Blue"], sub_blue.inputs[0])
+
+    links.new(add_red.outputs["Value"], less_than_red.inputs[1])
+    links.new(sub_red.outputs["Value"], greater_than_red.inputs[1])
+    links.new(add_green.outputs["Value"], less_than_green.inputs[1])
+    links.new(sub_green.outputs["Value"], greater_than_green.inputs[1])
+    links.new(add_blue.outputs["Value"], less_than_blue.inputs[1])
+    links.new(sub_blue.outputs["Value"], greater_than_blue.inputs[1])
+
+    links.new(less_than_red.outputs["Value"], multiply_red.inputs[0])
+    links.new(greater_than_red.outputs["Value"], multiply_red.inputs[1])
+    links.new(less_than_green.outputs["Value"], multiply_green.inputs[0])
+    links.new(greater_than_green.outputs["Value"], multiply_green.inputs[1])
+    links.new(less_than_blue.outputs["Value"], multiply_blue.inputs[0])
+    links.new(greater_than_blue.outputs["Value"], multiply_blue.inputs[1])
+
+    links.new(multiply_red.outputs["Value"], final_multiply.inputs[0])
+    links.new(multiply_green.outputs["Value"], final_multiply.inputs[1])
+    links.new(final_multiply.outputs["Value"], final_multiply_2.inputs[0])
+    links.new(multiply_blue.outputs["Value"], final_multiply_2.inputs[1])
+
+    links.new(final_multiply_2.outputs["Value"], mix_shader.inputs["Fac"])
+
+    links.new(gi["Mix"], mix_shader.inputs[1])
+    links.new(gi["Texture"], emission_shader.inputs["Color"])
+    links.new(emission_shader.outputs["Emission"], mix_shader.inputs[2])
+
+    # ---- Output ----
+    links.new(mix_shader.outputs["Shader"], go["Shader"])
+
+def create_blur_node_group(blur_node_group):
+
+    """
+    Creates the Blur node group used for palette mask textures.
+
+    :param blur_node_group: The node group to be populated.
+    """
+
+    nodes = blur_node_group.nodes
+    links = blur_node_group.links
+
+    # Clear existing nodes if recreating
+    nodes.clear()
+
+    # Add interface output socket (Vector)
+    _add_group_socket(blur_node_group, "Vector", "NodeSocketVector", is_input=False)
+
+    # Ensure Group Input / Output nodes exist and get real sockets
+    _, go = _get_group_io_sockets(blur_node_group)
+
+    # Create nodes
+    tex_coord_node = nodes.new(type='ShaderNodeTexCoord')
+    tex_coord_node.location = (-600, 0)
+
+    add_vector_node = nodes.new(type='ShaderNodeVectorMath')
+    add_vector_node.operation = 'ADD'
+    add_vector_node.location = (0, 0)
+
+    noise_texture_node = nodes.new(type='ShaderNodeTexWhiteNoise')
+    noise_texture_node.location = (-400, -100)
+
+    map_range_node = nodes.new(type='ShaderNodeMapRange')
+    map_range_node.data_type = 'FLOAT_VECTOR'
+    map_range_node.location = (-200, -100)
+
+    value_node = nodes.new(type='ShaderNodeValue')
+    value_node.location = (-800, -500)
+    value_node.outputs[0].default_value = 0.005
+
+    multiply_node = nodes.new(type='ShaderNodeMath')
+    multiply_node.operation = 'MULTIPLY'
+    multiply_node.location = (-600, -300)
+    multiply_node.inputs[1].default_value = -1
+
+    # --- Links ---
+
+    links.new(tex_coord_node.outputs['UV'], add_vector_node.inputs[0])
+    links.new(tex_coord_node.outputs['UV'], noise_texture_node.inputs['Vector'])
+    links.new(noise_texture_node.outputs['Color'], map_range_node.inputs['Vector'])
+
+    # Safe socket lookup
+    to_max_vector_input = next(s for s in map_range_node.inputs if s.name == 'To Max' and s.type == 'VECTOR')
+    to_min_vector_input = next(s for s in map_range_node.inputs if s.name == 'To Min' and s.type == 'VECTOR')
+
+    links.new(value_node.outputs[0], to_max_vector_input)
+    links.new(value_node.outputs[0], multiply_node.inputs[0])
+    links.new(multiply_node.outputs[0], to_min_vector_input)
+
+    links.new(map_range_node.outputs['Vector'], add_vector_node.inputs[1])
+
+    # Output to group
+    links.new(add_vector_node.outputs['Vector'], go["Vector"])
 
 def get_noncolor_copy(image):
     nc_name = f"{image.name}_nc"
@@ -308,8 +531,102 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
 
         # Do NOT connect Alpha output
 
+    # ------------------------------------------------
+    # Palette Mask/Tiled case
+    # ------------------------------------------------
+    elif len(frame.files) > 1 and frame.files[1].texture_mode == 'PALETTE':
+
+        palette_file = frame.files[1]
+        palette_image = palette_file.image
+
+        if not palette_image:
+            return group
+
+        palette_tex = nodes.new("ShaderNodeTexImage")
+        palette_tex.image = palette_image
+        palette_tex.location = (-600, -150)
+        palette_tex.location = (-1400, -1200)
+        palette_tex.interpolation = 'Closest'
+        palette_tex.image.colorspace_settings.name = 'Non-Color'
+
+        # Create or get the Blur node group
+        blur_node_group_name = "Blur"
+        if blur_node_group_name not in bpy.data.node_groups:
+            blur_node_group = bpy.data.node_groups.new(name=blur_node_group_name, type='ShaderNodeTree')
+            create_blur_node_group(blur_node_group)
+        else:
+            blur_node_group = bpy.data.node_groups[blur_node_group_name]
+
+        blur_node = nodes.new(type='ShaderNodeGroup')
+        blur_node.node_tree = blur_node_group
+        blur_node.location = (-1600, -1200)
+
+        # Connect the Blur node group to the palette mask texture
+        links.new(blur_node.outputs[0], palette_tex.inputs['Vector'])
+
+        palette_mask_group = bpy.data.node_groups.get("PaletteMask")
+        if not palette_mask_group:
+            palette_mask_group = bpy.data.node_groups.new("PaletteMask", 'ShaderNodeTree')
+            create_palette_mask_node_group(palette_mask_group)
+
+        accumulated_color = base_tex.outputs["Color"]
+
+        tiled_index = 0
+
+        for file in frame.files[2:]:
+
+            if file.texture_mode != 'TILED':
+                continue
+
+            tiled_tex = nodes.new("ShaderNodeTexImage")
+            tiled_tex.image = file.image
+            tiled_tex.location = (-1000, -400 - tiled_index * 300)
+
+            # Mapping
+            texcoord = nodes.new("ShaderNodeTexCoord")
+            mapping = nodes.new("ShaderNodeMapping")
+
+            texcoord.location = (-1300, -400 - tiled_index * 300)
+            mapping.location = (-1150, -400 - tiled_index * 300)
+
+            links.new(texcoord.outputs["UV"], mapping.inputs["Vector"])
+            links.new(group_input.outputs[f"Tiled {tiled_index+1} Scale"], mapping.inputs["Scale"])
+            links.new(mapping.outputs["Vector"], tiled_tex.inputs["Vector"])
+
+            # Index color node
+            index_color = nodes.new("ShaderNodeRGB")
+            index_color.location = (-800, -400 - tiled_index * 300)
+
+            # Set palette color (read from bmp like your old code)
+            palette_color = read_bmp_palette_color(
+                palette_image.filepath,
+                file.palette_index
+            )
+            index_color.outputs[0].default_value = (*palette_color, 1.0)
+
+            # PaletteMask group node
+            mask_node = nodes.new("ShaderNodeGroup")
+            mask_node.node_tree = palette_mask_group
+            mask_node.location = (-400, -400 - tiled_index * 300)
+
+            links.new(palette_tex.outputs["Color"], mask_node.inputs["ClrPalette"])
+            links.new(index_color.outputs["Color"], mask_node.inputs["NdxClr"])
+            links.new(tiled_tex.outputs["Color"], mask_node.inputs["Texture"])
+
+            links.new(accumulated_color, mask_node.inputs["Mix"])
+
+            # Update accumulated
+            accumulated_color = mask_node.outputs["Color"]
+
+            tiled_index += 1
+
+        links.new(accumulated_color, group_output.inputs["Color"])
+
+        if "Alpha" in base_tex.outputs:
+            links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])
+
     else:
-        # No layer → just base
+        # No extra images → just base
         links.new(base_tex.outputs["Color"], group_output.inputs["Color"])
         if "Alpha" in base_tex.outputs:
             links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])
