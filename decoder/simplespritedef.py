@@ -37,10 +37,10 @@ def create_palette_mask_node_group(palette_mask_node_group):
     # ---- Create Interface Sockets (Blender 4/5 way, 3.6 safe via helper) ----
     _add_group_socket(palette_mask_node_group, "ClrPalette", "NodeSocketColor", True)
     _add_group_socket(palette_mask_node_group, "NdxClr", "NodeSocketColor", True)
-    _add_group_socket(palette_mask_node_group, "Mix", "NodeSocketShader", True)
+    _add_group_socket(palette_mask_node_group, "Mix", "NodeSocketColor", True)
     _add_group_socket(palette_mask_node_group, "Texture", "NodeSocketColor", True)
 
-    _add_group_socket(palette_mask_node_group, "Shader", "NodeSocketShader", False)
+    _add_group_socket(palette_mask_node_group, "Color", "NodeSocketColor", False)
 
     # ---- Get actual linkable IO sockets ----
     gi, go = _get_group_io_sockets(palette_mask_node_group)
@@ -111,12 +111,9 @@ def create_palette_mask_node_group(palette_mask_node_group):
     final_multiply_2.operation = 'MULTIPLY'
     final_multiply_2.location = (400, 100)
 
-    mix_shader = nodes.new(type='ShaderNodeMixShader')
-    mix_shader.location = (500, 0)
-
-    emission_shader = nodes.new(type='ShaderNodeEmission')
-    emission_shader.location = (200, -100)
-    emission_shader.inputs['Strength'].default_value = 5
+    mix_color = nodes.new(type='ShaderNodeMix')
+    mix_color.data_type = 'RGBA'
+    mix_color.location = (500, 0)
 
     # ---- Interface → nodes ----
     links.new(gi["ClrPalette"], separate_clr_palette.inputs["Color"])
@@ -157,14 +154,13 @@ def create_palette_mask_node_group(palette_mask_node_group):
     links.new(final_multiply.outputs["Value"], final_multiply_2.inputs[0])
     links.new(multiply_blue.outputs["Value"], final_multiply_2.inputs[1])
 
-    links.new(final_multiply_2.outputs["Value"], mix_shader.inputs["Fac"])
+    links.new(final_multiply_2.outputs["Value"], mix_color.inputs[0])
 
-    links.new(gi["Mix"], mix_shader.inputs[1])
-    links.new(gi["Texture"], emission_shader.inputs["Color"])
-    links.new(emission_shader.outputs["Emission"], mix_shader.inputs[2])
+    links.new(gi["Mix"], mix_color.inputs[6])
+    links.new(gi["Texture"], mix_color.inputs[7])
 
     # ---- Output ----
-    links.new(mix_shader.outputs["Shader"], go["Shader"])
+    links.new(mix_color.outputs[2], go["Color"])
 
 def create_blur_node_group(blur_node_group):
 
@@ -569,7 +565,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             palette_mask_group = bpy.data.node_groups.new("PaletteMask", 'ShaderNodeTree')
             create_palette_mask_node_group(palette_mask_group)
 
-        accumulated_color = base_tex.outputs["Color"]
+        accumulated_color = None
 
         tiled_index = 0
 
@@ -583,14 +579,19 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
 
             # Mapping
+            multiply = nodes.new("ShaderNodeMath")
+            multiply.operation = 'MULTIPLY'
+            multiply.inputs[1].default_value = 10.0
             texcoord = nodes.new("ShaderNodeTexCoord")
             mapping = nodes.new("ShaderNodeMapping")
 
+            multiply.location = (-1000, -400 - tiled_index * 300)
             texcoord.location = (-1300, -400 - tiled_index * 300)
             mapping.location = (-1150, -400 - tiled_index * 300)
 
             links.new(texcoord.outputs["UV"], mapping.inputs["Vector"])
-            links.new(group_input.outputs[f"Tiled {tiled_index+1} Scale"], mapping.inputs["Scale"])
+            links.new(group_input.outputs[f"Tiled {tiled_index+1} Scale"], multiply.inputs[0])
+            links.new(multiply.outputs[0], mapping.inputs["Scale"])
             links.new(mapping.outputs["Vector"], tiled_tex.inputs["Vector"])
 
             # Index color node
@@ -600,7 +601,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             # Set palette color (read from bmp like your old code)
             palette_color = read_bmp_palette_color(
                 palette_image.filepath,
-                file.palette_index
+                (file.palette_index - 1)
             )
             index_color.outputs[0].default_value = (*palette_color, 1.0)
 
@@ -613,14 +614,22 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             links.new(index_color.outputs["Color"], mask_node.inputs["NdxClr"])
             links.new(tiled_tex.outputs["Color"], mask_node.inputs["Texture"])
 
-            links.new(accumulated_color, mask_node.inputs["Mix"])
+            if accumulated_color is not None:
+                links.new(accumulated_color, mask_node.inputs["Mix"])
 
             # Update accumulated
-            accumulated_color = mask_node.outputs["Color"]
+            accumulated_color = mask_node.outputs[0]
 
             tiled_index += 1
 
-        links.new(accumulated_color, group_output.inputs["Color"])
+        mix_node = nodes.new('ShaderNodeMix')
+        mix_node.location = (1200, 670)
+        mix_node.data_type = 'RGBA'
+        mix_node.inputs[0].default_value = 0.5
+
+        links.new(base_tex.outputs["Color"], mix_node.inputs[6])
+        links.new(accumulated_color, mix_node.inputs[7])
+        links.new(mix_node.outputs[2], group_output.inputs["Color"])
 
         if "Alpha" in base_tex.outputs:
             links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])

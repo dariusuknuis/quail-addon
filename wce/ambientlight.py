@@ -8,12 +8,12 @@ class ambientlight:
 		return "AMBIENTLIGHT"
 
 	tag:str
-	light:float
+	light:str
 	regionlist:list[str]
 
 	def __init__(self):
 		self.tag = ""
-		self.light = 0.0 #2
+		self.light = "" #2
 		self.regionlist = list[str] #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
@@ -22,7 +22,7 @@ class ambientlight:
 			return "no reader provided"
 
 		records = property(r, "LIGHT", 1)
-		self.light = float(records[1])
+		self.light = str(records[1])
 		records = property(r, "REGIONLIST", -1)
 		self.regionlist = records[1:]
 

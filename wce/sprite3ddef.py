@@ -28,57 +28,62 @@ class sprite3ddef:
 			self.xyz = tuple[float, float, float] #3
 
 	class bspnode:
-		normalabcd:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]]
-		vertexlist:list[str]
-		rendermethod:str
-		fronttree:int
-		backtree:int
 
 		def __init__(self):
-			self.normalabcd = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]] #3
-			self.vertexlist = list[str] #3
-			self.rendermethod = "" #3
-			self.fronttree = 0 #3
-			self.backtree = 0 #3
-			self.renderinfo = self.renderinfo()
+			self.bspnode = self.bspnode()
 
-		class renderinfo:
-			pen:tuple[int, None]
-			brightness:tuple[float, None]
-			scaledambient:tuple[float, None]
-			uvorigin:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-			uaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-			vaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-			twosided:int
+		class bspnode:
+			normalabcd:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]]
+			vertexlist:list[str]
+			rendermethod:str
+			fronttree:int
+			backtree:int
 
 			def __init__(self):
-				self.pen = tuple[int, None] #4
-				self.brightness = tuple[float, None] #4
-				self.scaledambient = tuple[float, None] #4
-				self.uvorigin = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #4
-				self.uaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #4
-				self.vaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #4
-				self.twosided = 0 #4
-				self.simplespriteinst = self.simplespriteinst()
-				self.uvs = []
+				self.normalabcd = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]] #4
+				self.vertexlist = list[str] #4
+				self.rendermethod = "" #4
+				self.fronttree = 0 #4
+				self.backtree = 0 #4
+				self.renderinfo = self.renderinfo()
 
-			class simplespriteinst:
-				simplespritetag:tuple[str, None]
-				simplespritetagindex:int
-				simplespritehaveskipframes:int
-				simplespriteskipframes:int
-
-				def __init__(self):
-					self.simplespritetag = tuple[str, None] #5
-					self.simplespritetagindex = 0 #5
-					self.simplespritehaveskipframes = 0 #5
-					self.simplespriteskipframes = 0 #5
-
-			class uv:
-				uv:tuple[float, float]
+			class renderinfo:
+				pen:tuple[int, None]
+				brightness:tuple[float, None]
+				scaledambient:tuple[float, None]
+				uvorigin:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+				uaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+				vaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+				twosided:int
 
 				def __init__(self):
-					self.uv = tuple[float, float] #5
+					self.pen = tuple[int, None] #5
+					self.brightness = tuple[float, None] #5
+					self.scaledambient = tuple[float, None] #5
+					self.uvorigin = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #5
+					self.uaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #5
+					self.vaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #5
+					self.twosided = 0 #5
+					self.simplespriteinst = self.simplespriteinst()
+					self.uvs = []
+
+				class simplespriteinst:
+					simplespritetag:tuple[str, None]
+					simplespritetagindex:int
+					simplespritehaveskipframes:int
+					simplespriteskipframes:int
+
+					def __init__(self):
+						self.simplespritetag = tuple[str, None] #6
+						self.simplespritetagindex = 0 #6
+						self.simplespritehaveskipframes = 0 #6
+						self.simplespriteskipframes = 0 #6
+
+				class uv:
+					uv:tuple[float, float]
+
+					def __init__(self):
+						self.uv = tuple[float, float] #6
 
 	class spherelist:
 		definition:str
@@ -115,12 +120,12 @@ class sprite3ddef:
 			property(r, "BSPNODE", 0)
 
 			records = property(r, "NORMALABCD?", 4)
-			bspnodei.normalabcd = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (float(records[4]) if records[4] != "NULL" else None)
+			self.bspnode.normalabcd = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (float(records[4]) if records[4] != "NULL" else None)
 			records = property(r, "VERTEXLIST", -1)
-			bspnodei.vertexlist = records[1:]
+			self.bspnode.vertexlist = records[1:]
 
 			records = property(r, "RENDERMETHOD", 1)
-			bspnodei.rendermethod = str(records[1])
+			self.bspnode.rendermethod = str(records[1])
 			property(r, "RENDERINFO", 0)
 
 			records = property(r, "PEN?", 1)
@@ -157,9 +162,9 @@ class sprite3ddef:
 			records = property(r, "TWOSIDED", 1)
 			self.renderinfo.twosided = int(records[1])
 			records = property(r, "FRONTTREE", 1)
-			bspnodei.fronttree = int(records[1])
+			self.bspnode.fronttree = int(records[1])
 			records = property(r, "BACKTREE", 1)
-			bspnodei.backtree = int(records[1])
+			self.bspnode.backtree = int(records[1])
 			self.bspnodes.append(bspnodei)
 		property(r, "SPHERELIST", 0)
 
@@ -181,9 +186,9 @@ class sprite3ddef:
 		w.write(f"\tNUMBSPNODES \"{len(self.bspnodes)}\"\n")
 		for bspnodei in self.bspnodes:
 			w.write(f"\t\tBSPNODE\n")
-			w.write(f"\t\tNORMALABCD? \"{bspnodei.normalabcd}\"\n")
-			w.write(f"VERTEXLIST \"{bspnodei.vertexlist}\"\n")
-			w.write(f"\t\tRENDERMETHOD \"{bspnodei.rendermethod}\"\n")
+			w.write(f"\t\tNORMALABCD? \"{self.bspnode.normalabcd}\"\n")
+			w.write(f"VERTEXLIST \"{self.bspnode.vertexlist}\"\n")
+			w.write(f"\t\tRENDERMETHOD \"{self.bspnode.rendermethod}\"\n")
 			w.write(f"\t\tRENDERINFO\n")
 			w.write(f"\t\tPEN? \"{self.renderinfo.pen}\"\n")
 			w.write(f"\t\tBRIGHTNESS? \"{self.renderinfo.brightness}\"\n")
@@ -200,8 +205,8 @@ class sprite3ddef:
 			for uvj in self.renderinfo.uvs:
 				w.write(f"\t\t\tUV \"{uvj.uv}\"\n")
 			w.write(f"\t\tTWOSIDED \"{self.renderinfo.twosided}\"\n")
-			w.write(f"\t\tFRONTTREE \"{bspnodei.fronttree}\"\n")
-			w.write(f"\t\tBACKTREE \"{bspnodei.backtree}\"\n")
+			w.write(f"\t\tFRONTTREE \"{self.bspnode.fronttree}\"\n")
+			w.write(f"\t\tBACKTREE \"{self.bspnode.backtree}\"\n")
 		w.write(f"\tSPHERELIST\n")
 		w.write(f"\tDEFINITION \"{self.spherelist.definition}\"\n")
 		w.write(f"\tSCALEFACTOR? \"{self.spherelist.scalefactor}\"\n")
