@@ -8,7 +8,7 @@ from .actordef import decode_actordef
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .dmspritedef2 import decode_dmspritedef2
-from .track import decode_trackdefinition, decode_trackinstance
+from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
@@ -78,6 +78,8 @@ def wce_decode(path:str):
         err = decode_hierarchicalspritedef(ctx, hierarchicalspritedef)
         if err:
             error(err)
+
+    build_wld_animations()
 
     for _, actordef in parser.actordefs.items():
         ctx.collection = base_collection

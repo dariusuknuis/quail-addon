@@ -73,9 +73,9 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
         T = mathutils.Matrix.Translation(loc)
         R = rot.to_matrix().to_4x4()
-        S = mathutils.Matrix.Scale(scale, 4)
+        # S = mathutils.Matrix.Scale(scale, 4)
 
-        local_matrix = T @ R @ S
+        local_matrix = T @ R #@ S
 
         parent_matrix = mathutils.Matrix.Identity(4)
 
@@ -102,6 +102,11 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
         bone.head = head
         bone.tail = head + (world_matrix.to_3x3() @ mathutils.Vector((0, tail_len, 0)))
+
+    # arm_obj["_wld_rest_matrices"] = {
+    #     name: [list(row) for row in matrix]
+    #     for name, matrix in bone_matrices.items()
+    # }
 
     # ------------------------------------------------
     # Build hierarchy from SUBDAGLIST
@@ -132,30 +137,30 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     # Set parent bone tails to first child head
     # ------------------------------------------------
 
-    for dag in sprite.dags:
+    # for dag in sprite.dags:
 
-        parent_bone = bones.get(dag.tag)
-        if not parent_bone:
-            continue
+    #     parent_bone = bones.get(dag.tag)
+    #     if not parent_bone:
+    #         continue
 
-        if not dag.subdaglist:
-            continue
+    #     if not dag.subdaglist:
+    #         continue
 
-        child_count = int(dag.subdaglist[0])
-        if child_count == 0:
-            continue
+    #     child_count = int(dag.subdaglist[0])
+    #     if child_count == 0:
+    #         continue
 
-        # first child
-        child_index = int(dag.subdaglist[1])
-        child_dag = sprite.dags[child_index]
+    #     # first child
+    #     child_index = int(dag.subdaglist[1])
+    #     child_dag = sprite.dags[child_index]
 
-        child_bone = bones.get(child_dag.tag)
-        if not child_bone:
-            continue
+    #     child_bone = bones.get(child_dag.tag)
+    #     if not child_bone:
+    #         continue
 
-        # prevent zero-length bones
-        if (child_bone.head - parent_bone.head).length > 0.00001:
-            parent_bone.tail = child_bone.head
+    #     # prevent zero-length bones
+    #     if (child_bone.head - parent_bone.head).length > 0.00001:
+    #         parent_bone.tail = child_bone.head
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
