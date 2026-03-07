@@ -5,16 +5,34 @@ import mathutils
 from bpy.types import Object, Collection
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
-from ..wce.materialdefinition import materialdefinition
 from .context import Context
+
+def find_hsprite_for_mesh(parser, mesh_name):
+
+    for hs in parser.hierarchicalspritedefs.values():
+
+        for skin in hs.attachedskins:
+
+            tag = skin.dmsprite
+
+            # exact match
+            if tag == mesh_name:
+                return hs, skin
+
+            # prefix match (BAM -> BAM01 etc)
+            if mesh_name.startswith(tag.replace("_DMSPRITEDEF","")):
+                return hs, skin
+
+    return None, None
 
 def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
     ctx.collection.objects.link(obj)
 
-
     obj.parent = ctx.parent
+
+    hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
 
     obj.location = mathutils.Vector(sprite.centeroffset)
 
@@ -148,5 +166,41 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
                 mesh.polygons[face_index].material_index = obj_mat_index
                 face_index += 1
+
+    if hsprite and skin:
+        for dag in hsprite.dags:
+            obj.vertex_groups.new(name=dag.tag)
+
+    groups = sprite.skinassignmentgroups
+
+    group_count = int(groups[0])
+    expected_len = 1 + group_count * 2
+
+    if len(groups) != expected_len:
+        return f"SKINASSIGNMENTGROUPS length mismatch: expected {expected_len}, got {len(groups)}"
+
+    vertex_index = 0
+
+    for g in range(group_count):
+
+        count = int(groups[1 + g*2])
+        dag_index = int(groups[1 + g*2 + 1])
+
+        if dag_index >= len(hsprite.dags):
+            vertex_index += count
+            continue
+
+        group_name = hsprite.dags[dag_index].tag
+        vg = obj.vertex_groups.get(group_name)
+
+        for _ in range(count):
+
+            if vertex_index >= len(mesh.vertices):
+                break
+
+            if vg:
+                vg.add([vertex_index], 1.0, 'REPLACE')
+
+            vertex_index += 1
 
     return ""
