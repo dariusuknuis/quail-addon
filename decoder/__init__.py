@@ -8,6 +8,7 @@ from .actordef import decode_actordef
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .dmspritedef2 import decode_dmspritedef2
+from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
 from ..logger.error import error
@@ -50,6 +51,14 @@ def wce_decode(path:str):
         ctx.parent = base_parent
 
         err = decode_dmspritedef2(ctx, dmspritedef2)
+        if err:
+            error(err)
+
+    for _, hierarchicalspritedef in parser.hierarchicalspritedefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_hierarchicalspritedef(ctx, hierarchicalspritedef)
         if err:
             error(err)
 

@@ -35,11 +35,11 @@ def decode_actordef(ctx:Context, actordef:actordef) -> str:
                 sprite_obj.parent = obj
                 continue
 
-            if tag in ctx.parser.hierarchicalspritedefs:
-                hsprite = ctx.parser.hierarchicalspritedefs[tag]
-                err = decode_hierarchicalspritedef(ctx, hsprite)
-                if err:
-                    return f"actordef {actordef.tag}: {err}"
+            # if tag in ctx.parser.hierarchicalspritedefs:
+            #     hsprite = ctx.parser.hierarchicalspritedefs[tag]
+            #     err = decode_hierarchicalspritedef(ctx, hsprite)
+            #     if err:
+            #         return f"actordef {actordef.tag}: {err}"
 
             # elif tag in ctx.parser.dmspritedef2s:
             #     sprite = ctx.parser.dmspritedef2s[tag]
