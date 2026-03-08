@@ -311,22 +311,16 @@ def build_wld_animations():
         armature_obj.animation_data_create()
         armature_obj.animation_data.action = action
 
-        # cache rest inverse matrices (faster)
-        # rest_inverse = {
-        #     bone.name: bone.matrix_local.inverted()
-        #     for bone in armature_obj.data.bones
-        # }
-
         print("\n=== ACTION:", action_name, "===")
-
-        anim_world = {}
 
         for track in action_tracks:
 
             track_name = track.tag
             base_name = track_name.replace("_TRACK", "")
+
             if ani_prefix and base_name.startswith(ani_prefix):
                 base_name = base_name[len(ani_prefix):]
+
             bone_name = f"{base_name}_DAG"
 
             if bone_name not in armature_obj.pose.bones:
@@ -337,8 +331,6 @@ def build_wld_animations():
 
             parent_name = pose_bone.parent.name if pose_bone.parent else None
             print(f"{track_name:25} -> {bone_name:25} parent: {parent_name}")
-
-            # anim_world = {}
 
             # -----------------------------------------
             # Compute frame step from SLEEP
@@ -355,7 +347,7 @@ def build_wld_animations():
             current_frame = 1
 
             # -----------------------------------------
-            # Frame loop
+            # Get rest transform
             # -----------------------------------------
 
             bone = armature_obj.data.bones[bone_name]
@@ -367,21 +359,26 @@ def build_wld_animations():
 
             rest_inv = rest_matrix.inverted()
 
+            # -----------------------------------------
+            # Frame loop
+            # -----------------------------------------
+
             for frame in track.frames:
 
                 loc = mathutils.Vector(frame["translation"])
                 rot = frame["rotation"]
+                scale = frame["scale"]
 
                 T = mathutils.Matrix.Translation(loc)
                 R = rot.to_matrix().to_4x4()
 
-                frame_matrix = T @ R
+                local_anim = T @ R
 
-                # Convert animation (identity-rest system)
-                # into Blender pose space
-                pose_matrix = rest_inv @ frame_matrix
+                pose_matrix = rest_inv @ local_anim
 
                 pose_bone.matrix_basis = pose_matrix
+
+                pose_bone.scale = (scale, scale, scale)
 
                 pose_bone.keyframe_insert("location", frame=current_frame)
                 pose_bone.keyframe_insert("rotation_quaternion", frame=current_frame)

@@ -26,7 +26,9 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     bones = {}
     bone_matrices = {}
 
-    tail_len = 0.1
+    bounding_radius = sprite.boundingradius or 1.0  # Default to 1.0 if bounding_radius is not provided
+    tail_len = round(bounding_radius / 10, 2)
+    # tail_len = 1.0
 
     # ------------------------------------------------
     # Remove Blender default bone
@@ -73,9 +75,8 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
         T = mathutils.Matrix.Translation(loc)
         R = rot.to_matrix().to_4x4()
-        # S = mathutils.Matrix.Scale(scale, 4)
 
-        local_matrix = T @ R #@ S
+        local_matrix = T @ R
 
         parent_matrix = mathutils.Matrix.Identity(4)
 
@@ -98,10 +99,9 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         world_matrix = parent_matrix @ local_matrix
         bone_matrices[dag.tag] = world_matrix
 
-        head = world_matrix.to_translation()
-
-        bone.head = head
-        bone.tail = head + (world_matrix.to_3x3() @ mathutils.Vector((0, tail_len, 0)))
+        # 🔹 Correct way to build the bone
+        bone.matrix = world_matrix
+        bone.length = tail_len
 
     # arm_obj["_wld_rest_matrices"] = {
     #     name: [list(row) for row in matrix]
