@@ -317,6 +317,10 @@ def build_wld_animations():
         #     for bone in armature_obj.data.bones
         # }
 
+        print("\n=== ACTION:", action_name, "===")
+
+        anim_world = {}
+
         for track in action_tracks:
 
             track_name = track.tag
@@ -331,7 +335,10 @@ def build_wld_animations():
             pose_bone = armature_obj.pose.bones[bone_name]
             pose_bone.rotation_mode = 'QUATERNION'
 
-            anim_world = {}
+            parent_name = pose_bone.parent.name if pose_bone.parent else None
+            print(f"{track_name:25} -> {bone_name:25} parent: {parent_name}")
+
+            # anim_world = {}
 
             # -----------------------------------------
             # Compute frame step from SLEEP
@@ -364,29 +371,17 @@ def build_wld_animations():
 
                 loc = mathutils.Vector(frame["translation"])
                 rot = frame["rotation"]
-                scale = frame["scale"]
 
                 T = mathutils.Matrix.Translation(loc)
                 R = rot.to_matrix().to_4x4()
-                #S = mathutils.Matrix.Scale(scale, 4)
 
-                frame_matrix = T @ R #@ S
+                frame_matrix = T @ R
 
-                parent_anim = mathutils.Matrix.Identity(4)
-
-                if pose_bone.parent:
-                    parent_anim = anim_world.get(
-                        pose_bone.parent.name,
-                        mathutils.Matrix.Identity(4)
-                    )
-
-                local_anim = parent_anim.inverted() @ frame_matrix
-
-                pose_matrix = rest_inv @ local_anim
+                # Convert animation (identity-rest system)
+                # into Blender pose space
+                pose_matrix = rest_inv @ frame_matrix
 
                 pose_bone.matrix_basis = pose_matrix
-
-                anim_world[pose_bone.name] = frame_matrix
 
                 pose_bone.keyframe_insert("location", frame=current_frame)
                 pose_bone.keyframe_insert("rotation_quaternion", frame=current_frame)

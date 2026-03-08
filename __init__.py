@@ -13,6 +13,12 @@
 
 from . import auto_load
 
+bl_info = {
+    "name": "Quail-Addon",
+    "blender": (5, 0, 0),
+    "category": "Object",
+}
+
 auto_load.init()
 
 
