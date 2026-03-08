@@ -1,3 +1,5 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
+
 import bpy
 import mathutils
 import re

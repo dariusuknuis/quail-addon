@@ -3,7 +3,7 @@ VERSION ?= 2.2.1
 comma := ,
 COMMA_VERSION := $(subst .,${comma} ,${VERSION})
 
-QUAIL_DIR ?= ../quail
+QUAIL_DIR ?= ../../quail
 PYTHON ?= python
 
 # Match what actually exists in your repo (per your screenshot)

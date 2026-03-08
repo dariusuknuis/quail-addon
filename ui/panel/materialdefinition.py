@@ -9,7 +9,8 @@ def update_userdefined(self, context):
     if not self.use_userdefined:
         return
     apply_userdefined(self, self.userdefined_index)
-    mat = context.material
+    mat = self.id_data
+    # mat = context.material
     if not mat:
         return
 

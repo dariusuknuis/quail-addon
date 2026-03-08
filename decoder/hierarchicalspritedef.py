@@ -207,5 +207,8 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         if mesh_obj:
 
             mesh_obj.parent = arm_obj
+            arm_mod = mesh_obj.modifiers.new(name="Armature", type='ARMATURE')
+            arm_mod.object = arm_obj
+
 
     return ""
