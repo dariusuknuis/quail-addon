@@ -28,7 +28,7 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     bounding_radius = sprite.boundingradius or 1.0  # Default to 1.0 if bounding_radius is not provided
     tail_len = round(bounding_radius / 10, 2)
-    # tail_len = 1.0
+    # tail_len = 0.0001
 
     # ------------------------------------------------
     # Remove Blender default bone
@@ -134,33 +134,34 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
                 child_bone.use_connect = False
 
     # ------------------------------------------------
-    # Set parent bone tails to first child head
+    # Set parent bone tails to central child head
     # ------------------------------------------------
 
-    # for dag in sprite.dags:
+    # origin = mathutils.Vector((0, 0, 0))
 
-    #     parent_bone = bones.get(dag.tag)
-    #     if not parent_bone:
+    # for parent_bone in bones.values():
+
+    #     children = list(parent_bone.children)
+
+    #     if not children:
     #         continue
 
-    #     if not dag.subdaglist:
-    #         continue
+    #     # choose central child however you want
+    #     chosen = children[0]
 
-    #     child_count = int(dag.subdaglist[0])
-    #     if child_count == 0:
-    #         continue
+    #     # save the original rest transform
+    #     orig_matrix = parent_bone.matrix.copy()
 
-    #     # first child
-    #     child_index = int(dag.subdaglist[1])
-    #     child_dag = sprite.dags[child_index]
+    #     # move tail toward child
+    #     parent_bone.tail = chosen.head
 
-    #     child_bone = bones.get(child_dag.tag)
-    #     if not child_bone:
-    #         continue
+    #     # restore the exact rest transform
+    #     parent_bone.matrix = orig_matrix
 
-    #     # prevent zero-length bones
-    #     if (child_bone.head - parent_bone.head).length > 0.00001:
-    #         parent_bone.tail = child_bone.head
+    #     # optionally extend length again if needed
+    #     length = (chosen.head - parent_bone.head).length
+    #     if length > 0.00001:
+    #         parent_bone.length = length
 
     bpy.ops.object.mode_set(mode='OBJECT')
 

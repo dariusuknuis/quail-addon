@@ -58,6 +58,116 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         set_face_property(mesh, i, "culled", face.culled)
         set_face_property(mesh, i, "degenerate", face.degenerate)
 
+    # ---------------------------------------------------------
+    # Create Armature if bones exist
+    # ---------------------------------------------------------
+    armature_obj = None
+
+    if len(eqgmodeldef.bones) > 0:
+
+        armature = bpy.data.armatures.new(eqgmodeldef.tag + "_armature")
+        armature_obj = bpy.data.objects.new(eqgmodeldef.tag + "_armature", armature)
+        ctx.collection.objects.link(armature_obj)
+
+        armature_obj.location = location
+        obj.parent = armature_obj
+
+        bpy.context.view_layer.objects.active = armature_obj
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        edit_bones = armature.edit_bones
+
+        bone_map = []
+
+        # -----------------------------------------------------
+        # Create bones
+        # -----------------------------------------------------
+        for bone in eqgmodeldef.bones:
+
+            b = edit_bones.new(bone.bone)
+
+            head = mathutils.Vector(bone.pivot)
+
+            # ----------------------------------------
+            # Convert EQ quaternion -> Blender
+            # ----------------------------------------
+            q = mathutils.Quaternion((
+                bone.quaternion[3],  # w
+                bone.quaternion[0],  # x
+                bone.quaternion[1],  # y
+                bone.quaternion[2]   # z
+            ))
+
+            rot_matrix = q.to_matrix().to_4x4()
+
+            # ----------------------------------------
+            # Default bone direction
+            # ----------------------------------------
+            direction = mathutils.Vector((0, 0.1, 0))
+
+            # rotate direction by quaternion
+            direction.rotate(q)
+
+            tail = head + direction
+
+            b.head = head
+            b.tail = tail
+
+            bone_map.append(b)
+
+        # -----------------------------------------------------
+        # Parent bones using CHILDINDEX + NEXT chain
+        # -----------------------------------------------------
+        for i, bone in enumerate(eqgmodeldef.bones):
+
+            if bone.children <= 0 or bone.childindex < 0:
+                continue
+
+            child_index = bone.childindex
+
+            for _ in range(bone.children):
+
+                if child_index < 0 or child_index >= len(bone_map):
+                    break
+
+                bone_map[child_index].parent = bone_map[i]
+
+                # follow sibling chain
+                child_index = eqgmodeldef.bones[child_index].next
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # -----------------------------------------------------
+        # Add armature modifier
+        # -----------------------------------------------------
+        mod = obj.modifiers.new("Armature", 'ARMATURE')
+        mod.object = armature_obj
+
+        obj.parent = armature_obj
+
+        # -----------------------------------------------------
+        # Create vertex groups
+        # -----------------------------------------------------
+        for bone in eqgmodeldef.bones:
+            obj.vertex_groups.new(name=bone.bone)
+
+        # -----------------------------------------------------
+        # Assign weights
+        # -----------------------------------------------------
+        for v_index, vertex in enumerate(eqgmodeldef.vertices):
+
+            for weight in vertex.weights:
+
+                bone_index, w = weight.weight
+
+                if bone_index < len(eqgmodeldef.bones):
+
+                    bone_name = eqgmodeldef.bones[bone_index].bone
+
+                    group = obj.vertex_groups.get(bone_name)
+
+                    if group:
+                        group.add([v_index], w, 'ADD')
 
     mesh.update()
     return ""
