@@ -82,38 +82,77 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         # -----------------------------------------------------
         # Create bones
         # -----------------------------------------------------
+        bones = {}
+        bone_matrices = {}
+
+        tail_len = 0.1
+
+        # -----------------------------------------------------
+        # Create bones (temporary positions)
+        # -----------------------------------------------------
         for bone in eqgmodeldef.bones:
 
             b = edit_bones.new(bone.bone)
 
-            head = mathutils.Vector(bone.pivot)
+            b.head = (0, 0, 0)
+            b.tail = (0, tail_len, 0)
+            b.use_connect = False
 
-            # ----------------------------------------
-            # Convert EQ quaternion -> Blender
-            # ----------------------------------------
-            q = mathutils.Quaternion((
-                bone.quaternion[3],  # w
-                bone.quaternion[0],  # x
-                bone.quaternion[1],  # y
-                bone.quaternion[2]   # z
+            bones[bone.bone] = b
+
+        # -----------------------------------------------------
+        # Build transform matrices
+        # -----------------------------------------------------
+        for i, bone in enumerate(eqgmodeldef.bones):
+
+            b = bones[bone.bone]
+
+            loc = mathutils.Vector(bone.pivot)
+
+            rot = mathutils.Quaternion((
+                bone.quaternion[3],
+                bone.quaternion[0],
+                bone.quaternion[1],
+                bone.quaternion[2]
             ))
 
-            rot_matrix = q.to_matrix().to_4x4()
+            scale_vec = mathutils.Vector(bone.scale)
 
-            # ----------------------------------------
-            # Default bone direction
-            # ----------------------------------------
-            direction = mathutils.Vector((0, 0.1, 0))
+            T = mathutils.Matrix.Translation(loc)
+            R = rot.to_matrix().to_4x4()
+            S = mathutils.Matrix.Diagonal(scale_vec).to_4x4()
 
-            # rotate direction by quaternion
-            direction.rotate(q)
+            local_matrix = T @ R @ S
 
-            tail = head + direction
+            parent_matrix = mathutils.Matrix.Identity(4)
 
-            b.head = head
-            b.tail = tail
+            # find parent
+            for parent_index, parent_bone in enumerate(eqgmodeldef.bones):
 
-            bone_map.append(b)
+                if parent_bone.children <= 0 or parent_bone.childindex < 0:
+                    continue
+
+                child_index = parent_bone.childindex
+
+                for _ in range(parent_bone.children):
+
+                    if child_index == i:
+
+                        parent_matrix = bone_matrices.get(
+                            parent_bone.bone,
+                            mathutils.Matrix.Identity(4)
+                        )
+                        break
+
+                    child_index = eqgmodeldef.bones[child_index].next
+
+            world_matrix = parent_matrix @ local_matrix
+
+            bone_matrices[bone.bone] = world_matrix
+
+            # apply transform
+            b.matrix = world_matrix
+            b.length = tail_len
 
         # -----------------------------------------------------
         # Parent bones using CHILDINDEX + NEXT chain
