@@ -2,10 +2,17 @@
 
 import bpy
 import mathutils
+import math
+from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..wce.eqgmodeldef import eqgmodeldef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 from ..ui.panel.eqgface import set_face_property
+
+EQ_TO_BLENDER = (
+    mathutils.Matrix.Rotation(math.radians(-90), 4, 'X') @
+    mathutils.Matrix.Rotation(math.radians(90), 4, 'Z')
+)
 
 def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
     mesh = bpy.data.meshes.new(eqgmodeldef.tag)
@@ -65,6 +72,8 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
     if len(eqgmodeldef.bones) > 0:
 
+        ensure_pivot()
+
         armature = bpy.data.armatures.new(eqgmodeldef.tag + "_armature")
         armature_obj = bpy.data.objects.new(eqgmodeldef.tag + "_armature", armature)
         ctx.collection.objects.link(armature_obj)
@@ -122,7 +131,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
             R = rot.to_matrix().to_4x4()
             S = mathutils.Matrix.Diagonal(scale_vec).to_4x4()
 
-            local_matrix = T @ R @ S
+            local_matrix = EQ_TO_BLENDER @ (T @ R @ S) @ EQ_TO_BLENDER.inverted()
 
             parent_matrix = mathutils.Matrix.Identity(4)
 
@@ -166,12 +175,14 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
             for _ in range(bone.children):
 
-                if child_index < 0 or child_index >= len(bone_map):
+                if child_index < 0 or child_index >= len(eqgmodeldef.bones):
                     break
 
-                bone_map[child_index].parent = bone_map[i]
+                child_name = eqgmodeldef.bones[child_index].bone
+                parent_name = bone.bone
 
-                # follow sibling chain
+                bones[child_name].parent = bones[parent_name]
+
                 child_index = eqgmodeldef.bones[child_index].next
 
         bpy.ops.object.mode_set(mode='OBJECT')
@@ -207,6 +218,8 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
                     if group:
                         group.add([v_index], w, 'ADD')
+
+        apply_pivot_shapes(armature_obj)
 
     mesh.update()
     return ""
