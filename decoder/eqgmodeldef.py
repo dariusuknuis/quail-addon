@@ -109,6 +109,25 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
             bones[bone.bone] = b
 
+        parent_map = {}
+
+        for parent_index, parent_bone in enumerate(eqgmodeldef.bones):
+
+            if parent_bone.children <= 0 or parent_bone.childindex < 0:
+                continue
+
+            child_index = parent_bone.childindex
+
+            for _ in range(parent_bone.children):
+
+                if child_index < 0 or child_index >= len(eqgmodeldef.bones):
+                    break
+
+                child_name = eqgmodeldef.bones[child_index].bone
+                parent_map[child_name] = parent_bone.bone
+
+                child_index = eqgmodeldef.bones[child_index].next
+
         # -----------------------------------------------------
         # Build transform matrices
         # -----------------------------------------------------
@@ -125,13 +144,10 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
                 bone.quaternion[2]
             ))
 
-            scale_vec = mathutils.Vector(bone.scale)
-
             T = mathutils.Matrix.Translation(loc)
             R = rot.to_matrix().to_4x4()
-            S = mathutils.Matrix.Diagonal(scale_vec).to_4x4()
 
-            local_matrix = EQ_TO_BLENDER @ (T @ R @ S) @ EQ_TO_BLENDER.inverted()
+            local_matrix = T @ R
 
             parent_matrix = mathutils.Matrix.Identity(4)
 
