@@ -3,12 +3,15 @@
 import bpy
 import mathutils
 from .context import Context
+from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..wce.hierarchicalspritedef import hierarchicalspritedef
 from .dmspritedef2 import decode_dmspritedef2
 from .track import get_track
 
 
 def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) -> str:
+
+    ensure_pivot()
 
     # ------------------------------------------------
     # Create armature object
@@ -66,12 +69,10 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
             loc = mathutils.Vector(frame["translation"])
             rot = frame["rotation"]
-            scale = frame["scale"]
 
         else:
             loc = mathutils.Vector((0, 0, 0))
             rot = mathutils.Quaternion((1, 0, 0, 0))
-            scale = 1.0
 
         T = mathutils.Matrix.Translation(loc)
         R = rot.to_matrix().to_4x4()
@@ -103,11 +104,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         bone.matrix = world_matrix
         bone.length = tail_len
 
-    # arm_obj["_wld_rest_matrices"] = {
-    #     name: [list(row) for row in matrix]
-    #     for name, matrix in bone_matrices.items()
-    # }
-
     # ------------------------------------------------
     # Build hierarchy from SUBDAGLIST
     # ------------------------------------------------
@@ -132,36 +128,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             if child_bone:
                 child_bone.parent = parent_bone
                 child_bone.use_connect = False
-
-    # ------------------------------------------------
-    # Set parent bone tails to central child head
-    # ------------------------------------------------
-
-    # origin = mathutils.Vector((0, 0, 0))
-
-    # for parent_bone in bones.values():
-
-    #     children = list(parent_bone.children)
-
-    #     if not children:
-    #         continue
-
-    #     # choose central child however you want
-    #     chosen = children[0]
-
-    #     # save the original rest transform
-    #     orig_matrix = parent_bone.matrix.copy()
-
-    #     # move tail toward child
-    #     parent_bone.tail = chosen.head
-
-    #     # restore the exact rest transform
-    #     parent_bone.matrix = orig_matrix
-
-    #     # optionally extend length again if needed
-    #     length = (chosen.head - parent_bone.head).length
-    #     if length > 0.00001:
-    #         parent_bone.length = length
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -211,5 +177,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             arm_mod = mesh_obj.modifiers.new(name="Armature", type='ARMATURE')
             arm_mod.object = arm_obj
 
+    apply_pivot_shapes(arm_obj)
 
     return ""
