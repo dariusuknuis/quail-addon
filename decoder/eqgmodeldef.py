@@ -94,7 +94,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         bones = {}
         bone_matrices = {}
 
-        tail_len = 0.1
+        tail_len = 1
 
         # -----------------------------------------------------
         # Create bones (temporary positions)
@@ -138,7 +138,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
             loc = mathutils.Vector(bone.pivot)
 
             rot = mathutils.Quaternion((
-                bone.quaternion[3],
+                -bone.quaternion[3],
                 bone.quaternion[0],
                 bone.quaternion[1],
                 bone.quaternion[2]

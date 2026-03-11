@@ -15,6 +15,7 @@ from .eqgskinnedmodeldef import eqgskinnedmodeldef
 from .eqgterdef import eqgterdef
 from .eqgparticlepointdef import eqgparticlepointdef
 from .eqgparticlerenderdef import eqgparticlerenderdef
+from .eqgzondef import eqgzondef
 from .globalambientlightdef import globalambientlightdef
 from .hierarchicalspritedef import hierarchicalspritedef
 from .lightdefinition import lightdefinition
@@ -51,6 +52,7 @@ class wce:
     eqgterdefs:dict[str, eqgterdef]
     eqgparticlepointdefs:dict[str, eqgparticlepointdef]
     eqgparticlerenderdefs:dict[str, eqgparticlerenderdef]
+    eqgzondefs:dict[str, eqgzondef]
     globalambientlightdefs:dict[str, globalambientlightdef]
     hierarchicalspritedefs:dict[str, hierarchicalspritedef]
     lightdefinitions:dict[str, lightdefinition]
@@ -97,6 +99,7 @@ class wce:
         self.eqgterdefs = {}
         self.eqgparticlepointdefs = {}
         self.eqgparticlerenderdefs = {}
+        self.eqgzondefs = {}
         self.globalambientlightdefs = {}
         self.hierarchicalspritedefs = {}
         self.lightdefinitions = {}
@@ -247,6 +250,13 @@ class wce:
                     raise Exception(f"{path_cursor} eqgparticlerenderdef: {e}")
                 continue
 
+            if line.startswith(eqgzondef.definition()):
+                try:
+                    self.eqgzondefs[tag] = self._instantiate_definition(eqgzondef, tag, r)
+                except Exception as e:
+                    raise Exception(f"{path_cursor} eqgzondef: {e}")
+                continue
+
             if line.startswith(globalambientlightdef.definition()):
                 try:
                     self.globalambientlightdefs[tag] = self._instantiate_definition(globalambientlightdef, tag, r)
@@ -390,6 +400,7 @@ class wce:
         for tag, eqgterdefs in self.eqgterdefs.items(): eqgterdefs.write(w)
         for tag, eqgparticlepointdefs in self.eqgparticlepointdefs.items(): eqgparticlepointdefs.write(w)
         for tag, eqgparticlerenderdefs in self.eqgparticlerenderdefs.items(): eqgparticlerenderdefs.write(w)
+        for tag, eqgzondefs in self.eqgzondefs.items(): eqgzondefs.write(w)
         for tag, globalambientlightdefs in self.globalambientlightdefs.items(): globalambientlightdefs.write(w)
         for tag, hierarchicalspritedefs in self.hierarchicalspritedefs.items(): hierarchicalspritedefs.write(w)
         for tag, lightdefinitions in self.lightdefinitions.items(): lightdefinitions.write(w)

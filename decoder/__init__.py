@@ -12,6 +12,7 @@ from .track import decode_trackdefinition, decode_trackinstance, build_wld_anima
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
+from .eqganidef import decode_eqganidef
 from ..logger.error import error
 from .context import Context
 import os
@@ -102,5 +103,13 @@ def wce_decode(path:str):
         ctx.parent = base_parent
 
         err = decode_eqgterdef(ctx, eqgter, mathutils.Vector())
+        if err:
+            error(err)
+
+    for _, eqgani in parser.eqganidefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_eqganidef(ctx, eqgani)
         if err:
             error(err)
