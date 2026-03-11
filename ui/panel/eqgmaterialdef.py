@@ -89,7 +89,7 @@ def eqg_apply(material:Material) -> str:
         bsdf_node.inputs["Roughness"].default_value = material.quail_eqgmaterialdef.e_fGloss0
 
     if is_shader_property(shadertag, "e_fReflectionColor") and material.quail_eqgmaterialdef.e_fReflectionColor:
-        bsdf_node.inputs["Metallic"].default_value = material.quail_eqgmaterialdef.e_fReflectionColor
+        bsdf_node.inputs["Metallic"].default_value = float(material.quail_eqgmaterialdef.e_fReflectionColor)
 
     # link bsdf to material output node
 

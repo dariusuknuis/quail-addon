@@ -16,7 +16,6 @@ class eqgterdef:
 		self.materials = []
 		self.vertices = []
 		self.faces = []
-		self.bones = []
 
 	class materialtag:
 		materialtag:str
@@ -75,24 +74,6 @@ class eqgterdef:
 			self.collisionrequired = 0 #3
 			self.culled = 0 #3
 			self.degenerate = 0 #3
-
-	class bone:
-		name:str
-		next:int
-		children:int
-		childindex:int
-		pivot:tuple[float, float, float]
-		quaternion:tuple[float, float, float, float]
-		scale:tuple[float, float, float]
-
-		def __init__(self):
-			self.name = "" #3
-			self.next = 0 #3
-			self.children = 0 #3
-			self.childindex = 0 #3
-			self.pivot = tuple[float, float, float] #3
-			self.quaternion = tuple[float, float, float, float] #3
-			self.scale = tuple[float, float, float] #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -176,29 +157,6 @@ class eqgterdef:
 			records = property(r, "DEGENERATE", 1)
 			facei.degenerate = int(records[1])
 			self.faces.append(facei)
-		records = property(r, "NUMBONES", 1)
-		numbones = int(records[1])
-
-		self.bones = []
-		for i in range(numbones):
-			bonei = type(self).bone()
-			property(r, "BONE", 0)
-
-			records = property(r, "NAME", 1)
-			bonei.name = str(records[1])
-			records = property(r, "NEXT", 1)
-			bonei.next = int(records[1])
-			records = property(r, "CHILDREN", 1)
-			bonei.children = int(records[1])
-			records = property(r, "CHILDINDEX", 1)
-			bonei.childindex = int(records[1])
-			records = property(r, "PIVOT", 3)
-			bonei.pivot = float(records[1]), float(records[2]), float(records[3])
-			records = property(r, "QUATERNION", 4)
-			bonei.quaternion = float(records[1]), float(records[2]), float(records[3]), float(records[4])
-			records = property(r, "SCALE", 3)
-			bonei.scale = float(records[1]), float(records[2]), float(records[3])
-			self.bones.append(bonei)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
@@ -234,15 +192,5 @@ class eqgterdef:
 			w.write(f"\t\tCOLLISIONREQUIRED \"{facei.collisionrequired}\"\n")
 			w.write(f"\t\tCULLED \"{facei.culled}\"\n")
 			w.write(f"\t\tDEGENERATE \"{facei.degenerate}\"\n")
-		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
-		for bonei in self.bones:
-			w.write(f"\t\tBONE\n")
-			w.write(f"\t\tNAME \"{bonei.name}\"\n")
-			w.write(f"\t\tNEXT \"{bonei.next}\"\n")
-			w.write(f"\t\tCHILDREN \"{bonei.children}\"\n")
-			w.write(f"\t\tCHILDINDEX \"{bonei.childindex}\"\n")
-			w.write(f"\t\tPIVOT \"{bonei.pivot}\"\n")
-			w.write(f"\t\tQUATERNION \"{bonei.quaternion}\"\n")
-			w.write(f"\t\tSCALE \"{bonei.scale}\"\n")
 		return ""
 

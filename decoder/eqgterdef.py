@@ -21,7 +21,7 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
         for _, prop in enumerate(mat.properties):
             properties.append((prop.property[0], prop.property[1], prop.property[2]))
         textures = []
-        for _, tex in enumerate(mat.textures):
+        for tex in mat.animtextures:
             textures.append(tex.texture)
         err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
         if err != "":

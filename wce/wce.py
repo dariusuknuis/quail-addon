@@ -11,6 +11,7 @@ from .dmtrackdef2 import dmtrackdef2
 from .eqganidef import eqganidef
 from .eqglayerdef import eqglayerdef
 from .eqgmodeldef import eqgmodeldef
+from .eqgloddef import eqgloddef
 from .eqgskinnedmodeldef import eqgskinnedmodeldef
 from .eqgterdef import eqgterdef
 from .eqgparticlepointdef import eqgparticlepointdef
@@ -48,6 +49,7 @@ class wce:
     eqganidefs:dict[str, eqganidef]
     eqglayerdefs:dict[str, eqglayerdef]
     eqgmodeldefs:dict[str, eqgmodeldef]
+    eqgloddefs:dict[str, eqgloddef]
     eqgskinnedmodeldefs:dict[str, eqgskinnedmodeldef]
     eqgterdefs:dict[str, eqgterdef]
     eqgparticlepointdefs:dict[str, eqgparticlepointdef]
@@ -95,6 +97,7 @@ class wce:
         self.eqganidefs = {}
         self.eqglayerdefs = {}
         self.eqgmodeldefs = {}
+        self.eqgloddefs = {}
         self.eqgskinnedmodeldefs = {}
         self.eqgterdefs = {}
         self.eqgparticlepointdefs = {}
@@ -220,6 +223,13 @@ class wce:
                     self.eqgmodeldefs[tag] = self._instantiate_definition(eqgmodeldef, tag, r)
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgmodeldef: {e}")
+                continue
+
+            if line.startswith(eqgloddef.definition()):
+                try:
+                    self.eqgloddefs[tag] = self._instantiate_definition(eqgloddef, tag, r)
+                except Exception as e:
+                    raise Exception(f"{path_cursor} eqgloddef: {e}")
                 continue
 
             if line.startswith(eqgskinnedmodeldef.definition()):
@@ -396,6 +406,7 @@ class wce:
         for tag, eqganidefs in self.eqganidefs.items(): eqganidefs.write(w)
         for tag, eqglayerdefs in self.eqglayerdefs.items(): eqglayerdefs.write(w)
         for tag, eqgmodeldefs in self.eqgmodeldefs.items(): eqgmodeldefs.write(w)
+        for tag, eqgloddefs in self.eqgloddefs.items(): eqgloddefs.write(w)
         for tag, eqgskinnedmodeldefs in self.eqgskinnedmodeldefs.items(): eqgskinnedmodeldefs.write(w)
         for tag, eqgterdefs in self.eqgterdefs.items(): eqgterdefs.write(w)
         for tag, eqgparticlepointdefs in self.eqgparticlepointdefs.items(): eqgparticlepointdefs.write(w)
