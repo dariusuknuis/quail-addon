@@ -29,7 +29,7 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     bones = {}
     bone_matrices = {}
 
-    bounding_radius = sprite.boundingradius or 1.0  # Default to 1.0 if bounding_radius is not provided
+    bounding_radius = sprite.boundingradius if sprite.boundingradius is not None else 1.0
     tail_len = round(bounding_radius / 10, 2)
     # tail_len = 0.0001
 

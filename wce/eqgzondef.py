@@ -30,7 +30,6 @@ class eqgzondef:
 		translation:tuple[float, float, float]
 		rotation:tuple[float, float, float]
 		scale:float
-		litgzip:tuple[int, str]
 
 		def __init__(self):
 			self.modeltag = "" #3
@@ -38,7 +37,13 @@ class eqgzondef:
 			self.translation = tuple[float, float, float] #3
 			self.rotation = tuple[float, float, float] #3
 			self.scale = 0.0 #3
-			self.litgzip = tuple[int, str] #3
+			self.lits = []
+
+		class lit:
+			lit:int
+
+			def __init__(self):
+				self.lit = 0 #4
 
 	class area:
 		area:str
@@ -96,8 +101,15 @@ class eqgzondef:
 			modeltagi.rotation = float(records[1]), float(records[2]), float(records[3])
 			records = property(r, "SCALE", 1)
 			modeltagi.scale = float(records[1])
-			records = property(r, "LITGZIP", 2)
-			modeltagi.litgzip = int(records[1]), str(records[2])
+			records = property(r, "NUMLITS", 1)
+			numlits = int(records[1])
+
+			modeltagi.lits = []
+			for j in range(numlits):
+				litj = type(modeltagi).lit()
+				records = property(r, "LIT", 1)
+				litj.lit = int(records[1])
+				modeltagi.lits.append(litj)
 			self.instances.append(modeltagi)
 		records = property(r, "NUMAREAS", 1)
 		numareas = int(records[1])
@@ -144,7 +156,9 @@ class eqgzondef:
 			w.write(f"\t\tTRANSLATION \"{modeltagi.translation}\"\n")
 			w.write(f"\t\tROTATION \"{modeltagi.rotation}\"\n")
 			w.write(f"\t\tSCALE \"{modeltagi.scale}\"\n")
-			w.write(f"\t\tLITGZIP \"{modeltagi.litgzip}\"\n")
+			w.write(f"\t\tNUMLITS \"{len(modeltagi.lits)}\"\n")
+			for litj in modeltagi.lits:
+				w.write(f"\t\t\tLIT \"{litj.lit}\"\n")
 		w.write(f"\tNUMAREAS \"{len(self.areas)}\"\n")
 		for areai in self.areas:
 			w.write(f"\t\tAREA \"{areai.area}\"\n")

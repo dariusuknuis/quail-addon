@@ -10,7 +10,7 @@ class hierarchicalspritedef:
 	tag:str
 	sprite:str
 	centeroffset:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-	boundingradius: float | None
+	boundingradius:tuple[float, None]
 	haveattachedskins:int
 	dagcollisions:int
 
@@ -18,7 +18,7 @@ class hierarchicalspritedef:
 		self.tag = ""
 		self.sprite = "" #2
 		self.centeroffset = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
-		self.boundingradius = None
+		self.boundingradius = tuple[float, None] #2
 		self.haveattachedskins = 0 #2
 		self.dagcollisions = 0 #2
 		self.dags = []
