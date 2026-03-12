@@ -9,9 +9,21 @@ from ..wce.eqganidef import eqganidef
 def decode_eqganidef(ctx: Context, ani: eqganidef) -> str:
 
     arm_obj = None
+    ani_tag = ani.tag.lower()
 
     for obj in ctx.collection.objects:
-        if obj.type == "ARMATURE":
+
+        if obj.type != "ARMATURE":
+            continue
+
+        name = obj.name.lower()
+
+        if name.endswith("_armature"):
+            model = name[:-9]  # remove "_armature"
+        else:
+            model = name
+
+        if ani_tag.startswith(model + "_") or ani_tag.endswith("_" + model):
             arm_obj = obj
             break
 

@@ -3,6 +3,7 @@
 import bpy
 import mathutils
 from bpy.types import Object, Collection
+from ..common.mesh import get_vertex_normal_nodegroup
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
@@ -104,6 +105,11 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
             sprite.vertexnormals[i].nxyz[1],
             sprite.vertexnormals[i].nxyz[2]
         )
+
+    nodegroup = get_vertex_normal_nodegroup()
+
+    mod = obj.modifiers.new("VertexNormals", 'NODES')
+    mod.node_group = nodegroup
 
     if len(sprite.vertexcolors) > 0:
         color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
