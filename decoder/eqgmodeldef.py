@@ -4,6 +4,7 @@ import bpy
 import mathutils
 import math
 from ..common.armature import ensure_pivot, apply_pivot_shapes
+from ..common.mesh import get_vertex_normal_nodegroup
 from ..wce.eqgmodeldef import eqgmodeldef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
@@ -44,6 +45,15 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         vertices.append(mathutils.Vector(vertex.xyz))
     mesh.from_pydata(vertices, [], faces_for_creation)
     mesh.update()
+
+    attr = mesh.attributes.new(
+        name="vertex_normals",
+        type='FLOAT_VECTOR',
+        domain='POINT'
+    )
+
+    for i, vertex in enumerate(eqgmodeldef.vertices):
+        attr.data[i].vector = vertex.normal
 
     uvlayer = mesh.uv_layers.new(name=eqgmodeldef.tag+"_uv")
     for _, triangle in enumerate(mesh.polygons):
@@ -126,10 +136,28 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
                 child_index = eqgmodeldef.bones[child_index].next
 
+        ordered_bones = []
+        added = set()
+
+        while len(ordered_bones) < len(eqgmodeldef.bones):
+
+            for bone in eqgmodeldef.bones:
+
+                name = bone.bone
+
+                if name in added:
+                    continue
+
+                parent = parent_map.get(name)
+
+                if parent is None or parent in added:
+                    ordered_bones.append(bone)
+                    added.add(name)
+
         # -----------------------------------------------------
         # Build transform matrices
         # -----------------------------------------------------
-        for bone in eqgmodeldef.bones:
+        for bone in ordered_bones:
 
             b = bones[bone.bone]
 
@@ -182,6 +210,15 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         mod.object = armature_obj
 
         obj.parent = armature_obj
+
+        # -----------------------------------------------------
+        # Add vertex normal modifier
+        # -----------------------------------------------------
+
+        nodegroup = get_vertex_normal_nodegroup()
+
+        mod = obj.modifiers.new("VertexNormals", 'NODES')
+        mod.node_group = nodegroup
 
         # -----------------------------------------------------
         # Create vertex groups
