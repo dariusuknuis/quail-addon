@@ -86,8 +86,6 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
         edit_bones = armature.edit_bones
 
-        bone_map = []
-
         # -----------------------------------------------------
         # Create bones
         # -----------------------------------------------------
@@ -111,7 +109,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
         parent_map = {}
 
-        for parent_index, parent_bone in enumerate(eqgmodeldef.bones):
+        for parent_bone in eqgmodeldef.bones:
 
             if parent_bone.children <= 0 or parent_bone.childindex < 0:
                 continue
@@ -131,7 +129,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         # -----------------------------------------------------
         # Build transform matrices
         # -----------------------------------------------------
-        for i, bone in enumerate(eqgmodeldef.bones):
+        for bone in eqgmodeldef.bones:
 
             b = bones[bone.bone]
 
@@ -149,27 +147,15 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
 
             local_matrix = T @ R
 
-            parent_matrix = mathutils.Matrix.Identity(4)
+            parent_name = parent_map.get(bone.bone)
 
-            # find parent
-            for parent_index, parent_bone in enumerate(eqgmodeldef.bones):
-
-                if parent_bone.children <= 0 or parent_bone.childindex < 0:
-                    continue
-
-                child_index = parent_bone.childindex
-
-                for _ in range(parent_bone.children):
-
-                    if child_index == i:
-
-                        parent_matrix = bone_matrices.get(
-                            parent_bone.bone,
-                            mathutils.Matrix.Identity(4)
-                        )
-                        break
-
-                    child_index = eqgmodeldef.bones[child_index].next
+            if parent_name:
+                parent_matrix = bone_matrices.get(
+                    parent_name,
+                    mathutils.Matrix.Identity(4)
+                )
+            else:
+                parent_matrix = mathutils.Matrix.Identity(4)
 
             world_matrix = parent_matrix @ local_matrix
 
@@ -182,24 +168,10 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         # -----------------------------------------------------
         # Parent bones using CHILDINDEX + NEXT chain
         # -----------------------------------------------------
-        for i, bone in enumerate(eqgmodeldef.bones):
+        for child_name, parent_name in parent_map.items():
 
-            if bone.children <= 0 or bone.childindex < 0:
-                continue
-
-            child_index = bone.childindex
-
-            for _ in range(bone.children):
-
-                if child_index < 0 or child_index >= len(eqgmodeldef.bones):
-                    break
-
-                child_name = eqgmodeldef.bones[child_index].bone
-                parent_name = bone.bone
-
+            if child_name in bones and parent_name in bones:
                 bones[child_name].parent = bones[parent_name]
-
-                child_index = eqgmodeldef.bones[child_index].next
 
         bpy.ops.object.mode_set(mode='OBJECT')
 
