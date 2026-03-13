@@ -2,6 +2,8 @@ import bpy
 import struct
 import os
 
+# S3D/WLD
+
 DDS_MAGIC = b'DDS '
 BMP_MAGIC = b'BM'
 
@@ -95,7 +97,7 @@ def extract_bmp_index0_color(path):
             blue / 255.0
         )
 
-def load_texture(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
+def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
     texture_path = f"{ctx.parser.path}/assets/{name}"
 

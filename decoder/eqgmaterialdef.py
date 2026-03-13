@@ -165,12 +165,28 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
 
     return ""
 
-def load_texture(ctx:Context, name:str) -> str:
+def load_texture(ctx: Context, name: str) -> str:
+
+    # EverQuest fallback: grid_standard.dds
+    if name.lower() == "grid_standard.dds":
+
+        img = bpy.data.images.get("grid_standard.dds")
+
+        if img is None:
+            img = bpy.data.images.new("grid_standard.dds", 1024, 1024)
+            img.generated_type = 'COLOR_GRID'
+            img.use_fake_user = True
+            print("Generated fallback grid_standard.dds")
+
+        return ""
+
     # Load the texture
     texture_path = f"{ctx.parser.path}/assets/{name}"
+
     try:
         bpy.data.images.load(texture_path)
         print(f"Loaded texture {texture_path}")
     except Exception as e:
         return f"Error loading texture {texture_path}: {e}"
+
     return ""

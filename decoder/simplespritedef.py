@@ -5,7 +5,7 @@ import struct
 from ..wce.wce import wce
 from ..wce.simplespritedef import simplespritedef
 from .context import Context
-from ..common.image_loader import load_texture
+from ..common.image_loader import load_s3d_image
 from ..common import _add_group_socket, _get_group_io_sockets
 
 def read_bmp_palette_color(file_path, color_index):
@@ -731,7 +731,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
                 filename = raw
                 file_entry.texture_mode = 'BASE'
 
-            image, err = load_texture(ctx, filename)
+            image, err = load_s3d_image(ctx, filename)
             if image:
                 file_entry.image = image
 
