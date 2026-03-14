@@ -10,11 +10,6 @@ from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 from ..ui.panel.eqgface import set_face_property
 
-EQ_TO_BLENDER = (
-    mathutils.Matrix.Rotation(math.radians(-90), 4, 'X') @
-    mathutils.Matrix.Rotation(math.radians(90), 4, 'Z')
-)
-
 def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
     mesh = bpy.data.meshes.new(eqgmodeldef.tag)
     obj = bpy.data.objects.new(eqgmodeldef.tag, mesh)
