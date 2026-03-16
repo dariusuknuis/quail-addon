@@ -311,7 +311,6 @@ def build_wld_animations():
         armature_obj.animation_data_create()
         armature_obj.animation_data.action = action
 
-        print("\n=== ACTION:", action_name, "===")
 
         for track in action_tracks:
 
@@ -330,7 +329,6 @@ def build_wld_animations():
             pose_bone.rotation_mode = 'QUATERNION'
 
             parent_name = pose_bone.parent.name if pose_bone.parent else None
-            print(f"{track_name:25} -> {bone_name:25} parent: {parent_name}")
 
             # -----------------------------------------
             # Compute frame step from SLEEP
