@@ -71,31 +71,79 @@ def flip_image_vertically(image):
     image.pixels[:] = flipped
     image.update()
 
-def extract_bmp_index0_color(path):
+def process_bmp_image(path, image):
     with open(path, "rb") as f:
         header = f.read(54)
 
         if len(header) < 54 or header[:2] != BMP_MAGIC:
-            return None
+            return
 
-        # Bits per pixel at offset 28 (2 bytes, little endian)
+        width = struct.unpack_from("<I", header, 18)[0]
+        height = struct.unpack_from("<I", header, 22)[0]
         bpp = struct.unpack_from("<H", header, 28)[0]
 
         if bpp != 8:
-            return None  # Not indexed
+            return  # not indexed BMP
 
-        # First palette entry immediately after 54-byte header
-        palette = f.read(4)
-        if len(palette) < 4:
-            return None
+        # ----------------------------------------
+        # Read palette (256 entries)
+        # ----------------------------------------
+        # Read palette size from header
+        clr_used = struct.unpack_from("<I", header, 46)[0]
 
-        blue, green, red, _ = struct.unpack("BBBB", palette)
+        if clr_used == 0:
+            clr_used = 256  # default for 8-bit
 
-        return (
-            red / 255.0,
-            green / 255.0,
-            blue / 255.0
-        )
+        palette = []
+
+        for i in range(clr_used):
+            entry = f.read(4)
+            if len(entry) < 4:
+                break  # safety
+
+            b, g, r, _ = struct.unpack("BBBB", entry)
+            palette.append((r, g, b))
+
+        # Pad to 256 if needed (important for indexing)
+        while len(palette) < 256:
+            palette.append((0, 0, 0))
+
+        # ----------------------------------------
+        # Store palette
+        # ----------------------------------------
+        image["bmp_palette"] = palette
+
+        # ----------------------------------------
+        # Index 0 color
+        # ----------------------------------------
+        r0, g0, b0 = palette[0]
+        index0 = (r0 / 255.0, g0 / 255.0, b0 / 255.0)
+        image["bmp_index0_color"] = index0
+
+    # ----------------------------------------
+    # Bake alpha into image
+    # ----------------------------------------
+    pixels = list(image.pixels)
+
+    r0, g0, b0 = index0
+
+    for i in range(0, len(pixels), 4):
+        r, g, b = pixels[i], pixels[i+1], pixels[i+2]
+
+        if (
+            abs(r - r0) < 1e-5 and
+            abs(g - g0) < 1e-5 and
+            abs(b - b0) < 1e-5
+        ):
+            pixels[i+3] = 0.0
+        else:
+            pixels[i+3] = 1.0
+
+    image.pixels[:] = pixels
+    image.update()
+
+    # Optional: mark as processed
+    image["bmp_processed"] = True
 
 def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
@@ -118,10 +166,8 @@ def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
     image["image_type"] = tex_type
 
     if tex_type == "BMP":
-
-        index0 = extract_bmp_index0_color(texture_path)
-        if index0:
-            image["bmp_index0_color"] = index0
+        if not name.upper().endswith("PAL.BMP"):
+            process_bmp_image(texture_path, image)
 
     else:
         if not image.get("quail_flipped", False):
