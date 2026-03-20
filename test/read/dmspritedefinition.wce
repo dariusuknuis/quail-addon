@@ -18,10 +18,10 @@ DMSPRITEDEFINITION "tag"
  	 // Argument 3 (%0.8e): The z coordinate
 	CENTER? 1.12345678 2.12345678 3.12345678
 	// params1
- 	 // Argument 1 (%d): params1
- 	 // Argument 2 (%d): params1
- 	 // Argument 3 (%d): params1
-	PARAMS1? 1 2 3
+ 	 // Argument 1 (%0.8e): params1
+ 	 // Argument 2 (%0.8e): params1
+ 	 // Argument 3 (%0.8e): params1
+	PARAMS1? 1.12345678 2.12345678 3.12345678
 	// The number of vertices in the sprite
  	 // Argument 1 (%d): The number of vertices
 	NUMVERTICES 1
@@ -91,17 +91,13 @@ DMSPRITEDEFINITION "tag"
  	 // Argument 1 (%d): 8 info
 	DATA8 1
 	// The face material groups
- 	 // Argument 1 (%d): The size of the group
- 	 // Argument 2 (%d): The data of the group
- 	 // Argument 3 (%d): The data of the group
-	FACEMATERIALGROUPS 1 2 3
+ 	 // Argument 1 (%d...): The size of the group
+	FACEMATERIALGROUPS 1 1 1
 	// The vertex material groups
- 	 // Argument 1 (%d): The size of the group
- 	 // Argument 2 (%d): The data of the group
- 	 // Argument 3 (%d): The data of the group
-	VERTEXMATERIALGROUPS 1 2 3
+ 	 // Argument 1 (%d...): The size of the group
+	VERTEXMATERIALGROUPS 1 1 1
 	// params2
- 	 // Argument 1 (%d): params2
- 	 // Argument 2 (%d): params2
- 	 // Argument 3 (%d): params2
-	PARAMS2? 1 2 3
+ 	 // Argument 1 (%0.8e): params2
+ 	 // Argument 2 (%0.8e): params2
+ 	 // Argument 3 (%0.8e): params2
+	PARAMS2? 1.12345678 2.12345678 3.12345678

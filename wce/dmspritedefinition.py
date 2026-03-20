@@ -13,12 +13,12 @@ class dmspritedefinition:
 	materialpalette:str
 	fragment3:int
 	center:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-	params1:tuple[tuple[int, None], tuple[int, None], tuple[int, None]]
+	params1:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
 	skinassignmentgroups:list[str]
 	data8:int
-	facematerialgroups:tuple[int, int, int]
-	vertexmaterialgroups:tuple[int, int, int]
-	params2:tuple[tuple[int, None], tuple[int, None], tuple[int, None]]
+	facematerialgroups:list[str]
+	vertexmaterialgroups:list[str]
+	params2:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
 
 	def __init__(self):
 		self.tag = ""
@@ -27,12 +27,12 @@ class dmspritedefinition:
 		self.materialpalette = "" #2
 		self.fragment3 = 0 #2
 		self.center = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
-		self.params1 = tuple[tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.params1 = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
 		self.skinassignmentgroups = list[str] #2
 		self.data8 = 0 #2
-		self.facematerialgroups = tuple[int, int, int] #2
-		self.vertexmaterialgroups = tuple[int, int, int] #2
-		self.params2 = tuple[tuple[int, None], tuple[int, None], tuple[int, None]] #2
+		self.facematerialgroups = list[str] #2
+		self.vertexmaterialgroups = list[str] #2
+		self.params2 = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
 		self.vertices = []
 		self.texcoords = []
 		self.normals = []
@@ -96,7 +96,7 @@ class dmspritedefinition:
 		records = property(r, "CENTER?", 3)
 		self.center = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
 		records = property(r, "PARAMS1?", 3)
-		self.params1 = (int(records[1]) if records[1] != "NULL" else None), (int(records[2]) if records[2] != "NULL" else None), (int(records[3]) if records[3] != "NULL" else None)
+		self.params1 = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
 		records = property(r, "NUMVERTICES", 1)
 		numvertices = int(records[1])
 
@@ -162,12 +162,14 @@ class dmspritedefinition:
 
 		records = property(r, "DATA8", 1)
 		self.data8 = int(records[1])
-		records = property(r, "FACEMATERIALGROUPS", 3)
-		self.facematerialgroups = int(records[1]), int(records[2]), int(records[3])
-		records = property(r, "VERTEXMATERIALGROUPS", 3)
-		self.vertexmaterialgroups = int(records[1]), int(records[2]), int(records[3])
+		records = property(r, "FACEMATERIALGROUPS", -1)
+		self.facematerialgroups = records[1:]
+
+		records = property(r, "VERTEXMATERIALGROUPS", -1)
+		self.vertexmaterialgroups = records[1:]
+
 		records = property(r, "PARAMS2?", 3)
-		self.params2 = (int(records[1]) if records[1] != "NULL" else None), (int(records[2]) if records[2] != "NULL" else None), (int(records[3]) if records[3] != "NULL" else None)
+		self.params2 = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
