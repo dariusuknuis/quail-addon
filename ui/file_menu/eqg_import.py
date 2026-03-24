@@ -30,7 +30,7 @@ class ImportEQG(bpy.types.Operator):
     filename_ext = ".eqg"
 
     filter_glob: bpy.props.StringProperty(
-        default="*.eqg;*.s3d",
+        default="*.eqg;*.s3d;*.wce",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     ) # type: ignore
@@ -84,25 +84,51 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
 
     with ProgressReport() as progress:
         progress.enter_substeps(2, "Generating quail...")
-        # check if file exists
+
+        # ---------------------------------------------------------
+        # Validate file exists
+        # ---------------------------------------------------------
         if not os.path.exists(filepath):
-            filepath = filepath.replace(".eqg", ".s3d")
+            dialog.message_box(f"File not found: {filepath}", "Quail Error", 'ERROR')
+            return {'CANCELLED'}
 
-        base_name = os.path.basename(filepath)
+        # ---------------------------------------------------------
+        # Extract base name and extension safely
+        # ---------------------------------------------------------
+        base_name = os.path.splitext(os.path.basename(filepath))[0]
+        ext = os.path.splitext(filepath)[1].lower()
 
-        # get base of filepath
-        pfs_tmp = tempfile.gettempdir() + "/quail/" + base_name + ".quail"
+        # ---------------------------------------------------------
+        # Build temp path (for converted archives)
+        # ---------------------------------------------------------
+        pfs_tmp = os.path.join(tempfile.gettempdir(), "quail", base_name + ".quail")
         start_time = time.time()
 
-        result = convert(filepath, pfs_tmp)
-        if result != "":
-            msg = "Quail Failed: " + result
-            print(msg)
-            dialog.message_box(msg,
-                               "Quail Error", 'ERROR')
+        # ---------------------------------------------------------
+        # Handle input types
+        # ---------------------------------------------------------
+        if ext in (".eqg", ".s3d"):
+            result = convert(filepath, pfs_tmp)
+            if result != "":
+                msg = "Quail Failed: " + result
+                print(msg)
+                dialog.message_box(msg, "Quail Error", 'ERROR')
+                return {'CANCELLED'}
+
+            decode_path = pfs_tmp
+
+        elif ext == ".wce":
+            decode_path = filepath
+
+        else:
+            dialog.message_box(f"Unsupported file type: {ext}", "Quail Error", 'ERROR')
             return {'CANCELLED'}
+
         progress.step()
 
+        # ---------------------------------------------------------
+        # Clear scene if requested
+        # ---------------------------------------------------------
         if is_scene_cleared:
             for collection in bpy.data.collections:
                 bpy.data.collections.remove(collection)
@@ -110,12 +136,11 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
             for mesh in bpy.data.meshes:
                 bpy.data.meshes.remove(mesh)
 
-            # remove orphed objects
             for obj in bpy.data.objects:
                 bpy.data.objects.remove(obj)
 
-            for bone in bpy.data.armatures:
-                bpy.data.armatures.remove(bone)
+            for arm in bpy.data.armatures:
+                bpy.data.armatures.remove(arm)
 
             for mat in bpy.data.materials:
                 bpy.data.materials.remove(mat)
@@ -123,39 +148,49 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
             for img in bpy.data.images:
                 bpy.data.images.remove(img)
 
-            for bone in bpy.data.armatures:
-                bpy.data.armatures.remove(bone)
-
             for action in bpy.data.actions:
                 bpy.data.actions.remove(action)
 
+        # ---------------------------------------------------------
+        # Scene tweaks (optional)
+        # ---------------------------------------------------------
         if is_scene_modified:
             # bpy.context.space_data.clip_end = 15000
             pass
 
-        base_name = os.path.basename(filepath)
-        path = pfs_tmp
+        # ---------------------------------------------------------
+        # Decode
+        # ---------------------------------------------------------
+        print("Checking for", decode_path)
 
-        print("Checking for", path)
-        # check if path exists
-        if not os.path.exists(path):
-            dialog.message_box("File does not exist",
-                               "Quail Error", 'ERROR')
+        if not os.path.exists(decode_path):
+            dialog.message_box("File does not exist", "Quail Error", 'ERROR')
+            return {'CANCELLED'}
 
-        wce_decode(path)
+        wce_decode(decode_path)
 
+        # ---------------------------------------------------------
+        # Pack images
+        # ---------------------------------------------------------
         for img in bpy.data.images:
             if img.users > 0 and os.path.exists(img.filepath):
                 img.pack()
 
-        if os.path.exists(pfs_tmp) and not is_dev():
+        # ---------------------------------------------------------
+        # Cleanup temp data
+        # ---------------------------------------------------------
+        if ext in (".eqg", ".s3d") and os.path.exists(pfs_tmp) and not is_dev():
             print("Removing cache")
             shutil.rmtree(pfs_tmp)
 
+        # ---------------------------------------------------------
+        # Ensure object mode
+        # ---------------------------------------------------------
         if bpy.context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
-        print("Full path: %s" % pfs_tmp)
-        print("Importing %s took %s seconds" %
-              (base_name, time.time() - start_time))
+
+        print("Full path: %s" % decode_path)
+        print("Importing %s took %s seconds" % (base_name, time.time() - start_time))
+
         progress.leave_substeps("Finished!")
         return {'FINISHED'}

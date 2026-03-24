@@ -18,17 +18,25 @@ from ..logger.error import error
 from .context import Context
 import os
 
-def wce_decode(path:str):
-    parser = wce(path)
-    root_path = os.path.join(path, "_root.wce")
+def wce_decode(path: str):
 
+    if os.path.isfile(path) and path.lower().endswith(".wce"):
+        # Single WCE file
+        root_path = path
+        base_dir = os.path.dirname(path)
+        base_file_name = os.path.splitext(os.path.basename(path))[0]
+    else:
+        # Quail output directory
+        base_dir = path
+        root_path = os.path.join(path, "_root.wce")
+        base_file_name = os.path.splitext(os.path.basename(path))[0]
+
+    parser = wce(base_dir)
     with open(root_path, "r") as r:
-        parser.parse_definitions(path, r)
+        parser.parse_definitions(base_dir, r)
 
-    base_file_name = os.path.basename(path)
     base_collection = bpy.data.collections.new(base_file_name)
     bpy.context.scene.collection.children.link(base_collection)
-    # base_file_name_no_ext = os.path.splitext(base_file_name)[0]
     base_parent = None
 
     ctx = Context(parser, base_collection, base_parent)
