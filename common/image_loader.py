@@ -72,6 +72,7 @@ def flip_image_vertically(image):
     image.update()
 
 def process_bmp_image(path, image):
+    image.alpha_mode = 'CHANNEL_PACKED'
     with open(path, "rb") as f:
         header = f.read(54)
 
