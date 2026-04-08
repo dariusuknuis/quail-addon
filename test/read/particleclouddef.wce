@@ -1,7 +1,5 @@
 // Wld Particle Cloud Definition
 PARTICLECLOUDDEF "tag"
-	// Index of tag variation
-	TAGINDEX 1
 	// Referenced blit sprite definition tag
 	BLITTAG "1"
 	// Particle rendering type (1=Single pixel, 2=Tails, 3=Blit)

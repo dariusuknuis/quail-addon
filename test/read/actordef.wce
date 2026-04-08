@@ -36,9 +36,6 @@ ACTORDEF "tag"
 			// Sprite entry tag
  			 // Argument 1 (%s): sprite tag
 			SPRITE "1"
-			// Sprite index
- 			 // Argument 1 (%d): Sprite index
-			SPRITEINDEX 1
 			// Minimum distance to render LOD
  			 // Argument 1 (%0.8e): Minimum distance
 			MINDISTANCE 1.12345678

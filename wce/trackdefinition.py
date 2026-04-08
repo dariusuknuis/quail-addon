@@ -8,11 +8,9 @@ class trackdefinition:
 		return "TRACKDEFINITION"
 
 	tag:str
-	tagindex:int
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.frames = []
 		self.legacyframes = []
 
@@ -33,8 +31,6 @@ class trackdefinition:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "NUMFRAMES", 1)
 		numframes = int(records[1])
 
@@ -57,7 +53,6 @@ class trackdefinition:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for framei in self.frames:
 			w.write(f"\t\tFRAME \"{framei.frame}\"\n")

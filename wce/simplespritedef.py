@@ -8,7 +8,6 @@ class simplespritedef:
 		return "SIMPLESPRITEDEF"
 
 	tag:str
-	tagindex:int
 	variation:int
 	skipframes:int
 	sleep:tuple[int, None]
@@ -16,7 +15,6 @@ class simplespritedef:
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.variation = 0 #2
 		self.skipframes = 0 #2
 		self.sleep = tuple[int, None] #2
@@ -41,8 +39,6 @@ class simplespritedef:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "VARIATION", 1)
 		self.variation = int(records[1])
 		records = property(r, "SKIPFRAMES", 1)
@@ -73,7 +69,6 @@ class simplespritedef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tVARIATION \"{self.variation}\"\n")
 		w.write(f"\tSKIPFRAMES \"{self.skipframes}\"\n")
 		w.write(f"\tSLEEP? \"{self.sleep}\"\n")

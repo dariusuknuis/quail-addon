@@ -8,7 +8,6 @@ class dmspritedef2:
 		return "DMSPRITEDEF2"
 
 	tag:str
-	tagindex:int
 	centeroffset:tuple[float, float, float]
 	skinassignmentgroups:list[str]
 	materialpalette:str
@@ -31,7 +30,6 @@ class dmspritedef2:
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.centeroffset = tuple[float, float, float] #2
 		self.skinassignmentgroups = list[str] #2
 		self.materialpalette = "" #2
@@ -101,8 +99,6 @@ class dmspritedef2:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "CENTEROFFSET", 3)
 		self.centeroffset = float(records[1]), float(records[2]), float(records[3])
 		records = property(r, "NUMVERTICES", 1)
@@ -208,7 +204,6 @@ class dmspritedef2:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tCENTEROFFSET \"{self.centeroffset}\"\n")
 		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
 		for vxyzi in self.vertices:

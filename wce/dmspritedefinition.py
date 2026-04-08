@@ -8,7 +8,6 @@ class dmspritedefinition:
 		return "DMSPRITEDEFINITION"
 
 	tag:str
-	tagindex:int
 	fragment1:int
 	materialpalette:str
 	fragment3:int
@@ -22,7 +21,6 @@ class dmspritedefinition:
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.fragment1 = 0 #2
 		self.materialpalette = "" #2
 		self.fragment3 = 0 #2
@@ -85,8 +83,6 @@ class dmspritedefinition:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "FRAGMENT1", 1)
 		self.fragment1 = int(records[1])
 		records = property(r, "MATERIALPALETTE", 1)
@@ -174,7 +170,6 @@ class dmspritedefinition:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tFRAGMENT1 \"{self.fragment1}\"\n")
 		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
 		w.write(f"\tFRAGMENT3 \"{self.fragment3}\"\n")

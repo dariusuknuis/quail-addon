@@ -1,8 +1,5 @@
 // Wld DM sprite definition
 DMSPRITEDEFINITION "tag"
-	// The index of the tag
- 	 // Argument 1 (%d): The index of the tag
-	TAGINDEX 1
 	// Fragment 1
  	 // Argument 1 (%d): fragment index
 	FRAGMENT1 1

@@ -1,8 +1,5 @@
 // Wld Material
 MATERIALDEFINITION "tag"
-	// For tag variations, starts at 0, increases by 1
- 	 // Argument 1 (%d): Index of tag
-	TAGINDEX 1
 	// For variations
  	 // Argument 1 (%d): Variation of tag
 	VARIATION 1
@@ -26,9 +23,6 @@ MATERIALDEFINITION "tag"
 		// Simple sprite instance tag
  		 // Argument 1 (%s): Simple sprite instance tag
 		SIMPLESPRITETAG "1"
-		// Index of simple sprite tag
- 		 // Argument 1 (%d): Simple sprite tag index
-		SIMPLESPRITETAGINDEX 1
 		// 0x10 flag; enables SIMPLESPRITESKIPFRAMES flag to be evaluated
  		 // Argument 1 (%d): 0 or 1
 		SIMPLESPRITEHAVESKIPFRAMES 1

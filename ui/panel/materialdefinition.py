@@ -33,7 +33,7 @@ def sprite_items(self, context):
     items = []
 
     for ng in bpy.data.node_groups:
-        if ng.name.endswith("_SPRITE"):
+        if "_SPRITE" in ng.name:
             items.append((ng.name, ng.name, ""))
 
     # Always allow empty selection

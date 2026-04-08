@@ -27,27 +27,21 @@ class hierarchicalspritedef:
 	class dag:
 		tag:str
 		spritetag:str
-		spriteindex:int
 		track:str
-		trackindex:int
 		subdaglist:list[str]
 
 		def __init__(self):
 			self.tag = "" #3
 			self.spritetag = "" #3
-			self.spriteindex = 0 #3
 			self.track = "" #3
-			self.trackindex = 0 #3
 			self.subdaglist = list[str] #3
 
 	class attachedskin:
 		dmsprite:str
-		dmspriteindex:int
 		linkskinupdatestodagindex:int
 
 		def __init__(self):
 			self.dmsprite = "" #3
-			self.dmspriteindex = 0 #3
 			self.linkskinupdatestodagindex = 0 #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
@@ -67,12 +61,8 @@ class hierarchicalspritedef:
 			dagi.tag = str(records[1])
 			records = property(r, "SPRITETAG", 1)
 			dagi.spritetag = str(records[1])
-			records = property(r, "SPRITEINDEX", 1)
-			dagi.spriteindex = int(records[1])
 			records = property(r, "TRACK", 1)
 			dagi.track = str(records[1])
-			records = property(r, "TRACKINDEX", 1)
-			dagi.trackindex = int(records[1])
 			records = property(r, "SUBDAGLIST", -1)
 			dagi.subdaglist = records[1:]
 
@@ -87,8 +77,6 @@ class hierarchicalspritedef:
 
 			records = property(r, "DMSPRITE", 1)
 			attachedskini.dmsprite = str(records[1])
-			records = property(r, "DMSPRITEINDEX", 1)
-			attachedskini.dmspriteindex = int(records[1])
 			records = property(r, "LINKSKINUPDATESTODAGINDEX", 1)
 			attachedskini.linkskinupdatestodagindex = int(records[1])
 			self.attachedskins.append(attachedskini)
@@ -113,15 +101,12 @@ class hierarchicalspritedef:
 			w.write(f"\t\tDAG\n")
 			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
 			w.write(f"\t\tSPRITETAG \"{dagi.spritetag}\"\n")
-			w.write(f"\t\tSPRITEINDEX \"{dagi.spriteindex}\"\n")
 			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
-			w.write(f"\t\tTRACKINDEX \"{dagi.trackindex}\"\n")
 			w.write(f"\t\tSUBDAGLIST \"{dagi.subdaglist}\"\n")
 		w.write(f"\tNUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
 		for attachedskini in self.attachedskins:
 			w.write(f"\t\tATTACHEDSKIN\n")
 			w.write(f"\t\tDMSPRITE \"{attachedskini.dmsprite}\"\n")
-			w.write(f"\t\tDMSPRITEINDEX \"{attachedskini.dmspriteindex}\"\n")
 			w.write(f"\t\tLINKSKINUPDATESTODAGINDEX \"{attachedskini.linkskinupdatestodagindex}\"\n")
 		w.write(f"\tPOLYHEDRON\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")

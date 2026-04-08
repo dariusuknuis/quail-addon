@@ -90,7 +90,7 @@ def _try_build_track(name):
     if not inst:
         return
 
-    definition = _trackdefs.get(inst.sprite)
+    definition = _trackdefs.get(inst.trackdef)
 
     if not definition:
         return
@@ -104,7 +104,7 @@ def decode_trackdefinition(ctx, trackdef):
 
     # some instances might already exist
     for inst_name, inst in _trackinsts.items():
-        if inst.sprite == trackdef.tag:
+        if inst.trackdef == trackdef.tag:
             _try_build_track(inst_name)
 
     return ""

@@ -8,7 +8,6 @@ class particleclouddef:
 		return "PARTICLECLOUDDEF"
 
 	tag:str
-	tagindex:int
 	blittag:str
 	particletype:int
 	movement:str
@@ -50,7 +49,6 @@ class particleclouddef:
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.blittag = "" #2
 		self.particletype = 0 #2
 		self.movement = "" #2
@@ -95,8 +93,6 @@ class particleclouddef:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "BLITTAG", 1)
 		self.blittag = str(records[1])
 		records = property(r, "PARTICLETYPE", 1)
@@ -177,7 +173,6 @@ class particleclouddef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tBLITTAG \"{self.blittag}\"\n")
 		w.write(f"\tPARTICLETYPE \"{self.particletype}\"\n")
 		w.write(f"\tMOVEMENT \"{self.movement}\"\n")

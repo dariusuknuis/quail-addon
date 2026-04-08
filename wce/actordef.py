@@ -36,12 +36,10 @@ class actordef:
 
 		class levelofdetail:
 			sprite:str
-			spriteindex:int
 			mindistance:float
 
 			def __init__(self):
 				self.sprite = "" #4
-				self.spriteindex = 0 #4
 				self.mindistance = 0.0 #4
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
@@ -79,8 +77,6 @@ class actordef:
 
 				records = property(r, "SPRITE", 1)
 				levelofdetailj.sprite = str(records[1])
-				records = property(r, "SPRITEINDEX", 1)
-				levelofdetailj.spriteindex = int(records[1])
 				records = property(r, "MINDISTANCE", 1)
 				levelofdetailj.mindistance = float(records[1])
 				actioni.levelsofdetails.append(levelofdetailj)
@@ -106,7 +102,6 @@ class actordef:
 			for levelofdetailj in actioni.levelsofdetails:
 				w.write(f"\t\t\tLEVELOFDETAIL\n")
 				w.write(f"\t\t\tSPRITE \"{levelofdetailj.sprite}\"\n")
-				w.write(f"\t\t\tSPRITEINDEX \"{levelofdetailj.spriteindex}\"\n")
 				w.write(f"\t\t\tMINDISTANCE \"{levelofdetailj.mindistance}\"\n")
 		w.write(f"\tSPRITEVOLUMEONLY \"{self.spritevolumeonly}\"\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")

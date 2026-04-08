@@ -8,7 +8,6 @@ class materialdefinition:
 		return "MATERIALDEFINITION"
 
 	tag:str
-	tagindex:int
 	variation:int
 	rendermethod:str
 	rgbpen:tuple[int, int, int, int]
@@ -19,7 +18,6 @@ class materialdefinition:
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
 		self.variation = 0 #2
 		self.rendermethod = "" #2
 		self.rgbpen = tuple[int, int, int, int] #2
@@ -31,13 +29,11 @@ class materialdefinition:
 
 	class simplespriteinst:
 		simplespritetag:str
-		simplespritetagindex:int
 		simplespritehaveskipframes:int
 		simplespriteskipframes:int
 
 		def __init__(self):
 			self.simplespritetag = "" #3
-			self.simplespritetagindex = 0 #3
 			self.simplespritehaveskipframes = 0 #3
 			self.simplespriteskipframes = 0 #3
 
@@ -46,8 +42,6 @@ class materialdefinition:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
 		records = property(r, "VARIATION", 1)
 		self.variation = int(records[1])
 		records = property(r, "RENDERMETHOD", 1)
@@ -62,8 +56,6 @@ class materialdefinition:
 
 		records = property(r, "SIMPLESPRITETAG", 1)
 		self.simplespriteinst.simplespritetag = str(records[1])
-		records = property(r, "SIMPLESPRITETAGINDEX", 1)
-		self.simplespriteinst.simplespritetagindex = int(records[1])
 		records = property(r, "SIMPLESPRITEHAVESKIPFRAMES", 1)
 		self.simplespriteinst.simplespritehaveskipframes = int(records[1])
 		records = property(r, "SIMPLESPRITESKIPFRAMES", 1)
@@ -76,7 +68,6 @@ class materialdefinition:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
 		w.write(f"\tVARIATION \"{self.variation}\"\n")
 		w.write(f"\tRENDERMETHOD \"{self.rendermethod}\"\n")
 		w.write(f"\tRGBPEN \"{self.rgbpen}\"\n")
@@ -84,7 +75,6 @@ class materialdefinition:
 		w.write(f"\tSCALEDAMBIENT \"{self.scaledambient}\"\n")
 		w.write(f"\tSIMPLESPRITEINST\n")
 		w.write(f"\t\tSIMPLESPRITETAG \"{self.simplespriteinst.simplespritetag}\"\n")
-		w.write(f"\t\tSIMPLESPRITETAGINDEX \"{self.simplespriteinst.simplespritetagindex}\"\n")
 		w.write(f"\t\tSIMPLESPRITEHAVESKIPFRAMES \"{self.simplespriteinst.simplespritehaveskipframes}\"\n")
 		w.write(f"\t\tSIMPLESPRITESKIPFRAMES \"{self.simplespriteinst.simplespriteskipframes}\"\n")
 		w.write(f"\tUVSHIFTPERMS? \"{self.uvshiftperms}\"\n")

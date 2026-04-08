@@ -1,8 +1,6 @@
 // Wld Track
 TRACKINSTANCE "tag"
-	TAGINDEX 1
-	SPRITE "1"
-	SPRITEINDEX 1
+	TRACKDEF "1"
 	// deprecated, ignored in RoF2
  	 // Argument 1 (%d): deprecated, ignored in RoF2
 	INTERPOLATE 1

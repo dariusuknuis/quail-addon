@@ -8,18 +8,14 @@ class trackinstance:
 		return "TRACKINSTANCE"
 
 	tag:str
-	tagindex:int
-	sprite:str
-	spriteindex:int
+	trackdef:str
 	interpolate:int
 	reverse:int
 	sleep:tuple[int, None]
 
 	def __init__(self):
 		self.tag = ""
-		self.tagindex = 0 #2
-		self.sprite = "" #2
-		self.spriteindex = 0 #2
+		self.trackdef = "" #2
 		self.interpolate = 0 #2
 		self.reverse = 0 #2
 		self.sleep = tuple[int, None] #2
@@ -29,12 +25,8 @@ class trackinstance:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "TAGINDEX", 1)
-		self.tagindex = int(records[1])
-		records = property(r, "SPRITE", 1)
-		self.sprite = str(records[1])
-		records = property(r, "SPRITEINDEX", 1)
-		self.spriteindex = int(records[1])
+		records = property(r, "TRACKDEF", 1)
+		self.trackdef = str(records[1])
 		records = property(r, "INTERPOLATE", 1)
 		self.interpolate = int(records[1])
 		records = property(r, "REVERSE", 1)
@@ -45,9 +37,7 @@ class trackinstance:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tTAGINDEX \"{self.tagindex}\"\n")
-		w.write(f"\tSPRITE \"{self.sprite}\"\n")
-		w.write(f"\tSPRITEINDEX \"{self.spriteindex}\"\n")
+		w.write(f"\tTRACKDEF \"{self.trackdef}\"\n")
 		w.write(f"\tINTERPOLATE \"{self.interpolate}\"\n")
 		w.write(f"\tREVERSE \"{self.reverse}\"\n")
 		w.write(f"\tSLEEP? \"{self.sleep}\"\n")

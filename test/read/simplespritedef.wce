@@ -1,8 +1,5 @@
 // Wld Simple Sprite Definition
 SIMPLESPRITEDEF "tag"
-	// Index of tag
- 	 // Argument 1 (%d): Index of tag
-	TAGINDEX 1
 	// Variation of tag
  	 // Argument 1 (%d): Variation of tag
 	VARIATION 1

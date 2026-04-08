@@ -69,13 +69,11 @@ class sprite3ddef:
 
 				class simplespriteinst:
 					simplespritetag:tuple[str, None]
-					simplespritetagindex:int
 					simplespritehaveskipframes:int
 					simplespriteskipframes:int
 
 					def __init__(self):
 						self.simplespritetag = tuple[str, None] #6
-						self.simplespritetagindex = 0 #6
 						self.simplespritehaveskipframes = 0 #6
 						self.simplespriteskipframes = 0 #6
 
@@ -138,8 +136,6 @@ class sprite3ddef:
 
 			records = property(r, "SIMPLESPRITETAG?", 1)
 			bspnodei.bspnode.renderinfo.simplespriteinst.simplespritetag = (str(records[1]) if records[1] != "NULL" else None)
-			records = property(r, "SIMPLESPRITETAGINDEX", 1)
-			bspnodei.bspnode.renderinfo.simplespriteinst.simplespritetagindex = int(records[1])
 			records = property(r, "SIMPLESPRITEHAVESKIPFRAMES", 1)
 			bspnodei.bspnode.renderinfo.simplespriteinst.simplespritehaveskipframes = int(records[1])
 			records = property(r, "SIMPLESPRITESKIPFRAMES", 1)
@@ -195,7 +191,6 @@ class sprite3ddef:
 			w.write(f"\t\t\t\tSCALEDAMBIENT? \"{bspnodei.bspnode.renderinfo.scaledambient}\"\n")
 			w.write(f"\t\t\t\tSIMPLESPRITEINST\n")
 			w.write(f"\t\t\t\t\tSIMPLESPRITETAG? \"{bspnodei.bspnode.renderinfo.simplespriteinst.simplespritetag}\"\n")
-			w.write(f"\t\t\t\t\tSIMPLESPRITETAGINDEX \"{bspnodei.bspnode.renderinfo.simplespriteinst.simplespritetagindex}\"\n")
 			w.write(f"\t\t\t\t\tSIMPLESPRITEHAVESKIPFRAMES \"{bspnodei.bspnode.renderinfo.simplespriteinst.simplespritehaveskipframes}\"\n")
 			w.write(f"\t\t\t\t\tSIMPLESPRITESKIPFRAMES \"{bspnodei.bspnode.renderinfo.simplespriteinst.simplespriteskipframes}\"\n")
 			w.write(f"\t\t\t\tUVORIGIN? \"{bspnodei.bspnode.renderinfo.uvorigin}\"\n")
