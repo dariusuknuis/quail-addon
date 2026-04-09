@@ -38,6 +38,7 @@ from .zone import zone
 
 class wce:
     path:str
+    assets_path: str | None
 
     actordefs:dict[str, actordef]
     actorinsts:dict[str, actorinst]
@@ -86,6 +87,7 @@ class wce:
 
     def __init__(self, path:str):
         self.path = path
+        self.assets_path: str | None = None
 
         self.actordefs = {}
         self.actorinsts = {}

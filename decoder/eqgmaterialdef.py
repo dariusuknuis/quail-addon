@@ -1,6 +1,6 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
 
-import bpy
+import bpy, os
 from bpy.types import Mesh
 from ..wce.wce import wce
 from .context import Context
@@ -181,7 +181,8 @@ def load_texture(ctx: Context, name: str) -> str:
         return ""
 
     # Load the texture
-    texture_path = f"{ctx.parser.path}/assets/{name}"
+    assert ctx.parser.assets_path is not None
+    texture_path = os.path.join(ctx.parser.assets_path, name)
 
     try:
         bpy.data.images.load(texture_path)

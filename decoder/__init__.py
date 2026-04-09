@@ -18,6 +18,26 @@ from ..logger.error import error
 from .context import Context
 import os
 
+def find_assets_root(start_path: str) -> str | None:
+    """Walk upward to find a directory containing 'assets'"""
+    current = os.path.abspath(start_path)
+
+    # If a file was passed, start from its directory
+    if os.path.isfile(current):
+        current = os.path.dirname(current)
+
+    while True:
+        assets_path = os.path.join(current, "assets")
+        if os.path.isdir(assets_path):
+            return assets_path
+
+        parent = os.path.dirname(current)
+        if parent == current:
+            # Reached filesystem root
+            return None
+
+        current = parent
+
 def wce_decode(path: str):
 
     if os.path.isfile(path) and path.lower().endswith(".wce"):
@@ -34,6 +54,15 @@ def wce_decode(path: str):
     parser = wce(base_dir)
     with open(root_path, "r") as r:
         parser.parse_definitions(base_dir, r)
+
+    assets = find_assets_root(root_path)
+
+    if assets is None:
+        raise RuntimeError(f"Could not locate 'assets' folder from {root_path}")
+
+    parser.assets_path = assets
+
+    print(f"Resolved assets path: {parser.assets_path}")
 
     base_collection = bpy.data.collections.new(base_file_name)
     bpy.context.scene.collection.children.link(base_collection)

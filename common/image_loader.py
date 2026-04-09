@@ -148,7 +148,7 @@ def process_bmp_image(path, image):
 
 def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
-    texture_path = f"{ctx.parser.path}/assets/{name}"
+    texture_path = os.path.join(ctx.parser.assets_path, name)
 
     if not os.path.exists(texture_path):
         return None, f"Texture not found: {texture_path}"
