@@ -35,7 +35,8 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
 
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
 
-    obj.location = mathutils.Vector(sprite.center)
+    center = tuple(c if c is not None else 0.0 for c in sprite.center)
+    obj.location = mathutils.Vector(center)
 
     if sprite.materialpalette != "":
         materialpalette = ctx.parser.materialpalettes.get(sprite.materialpalette)
