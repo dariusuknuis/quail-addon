@@ -510,6 +510,8 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
             sprite_node = nodes.new("ShaderNodeGroup")
             sprite_node.node_tree = sprite_group
             sprite_node.location = (-400, 0)
+            # if "Frame Index" in sprite_node.inputs:
+            #     sprite_node.inputs["Frame Index"].hide = True
 
             links.new(sprite_node.outputs["sRGB Texture"], group_node.inputs["sRGB Texture"])
             links.new(sprite_node.outputs["Alpha"], group_node.inputs["Alpha"])

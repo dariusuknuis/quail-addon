@@ -483,6 +483,225 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
 
     return group
 
+def get_or_create_frame_switch():
+    name = "FRAME_SWITCH"
+
+    if name in bpy.data.node_groups:
+        return bpy.data.node_groups[name]
+
+    group = bpy.data.node_groups.new(name, 'ShaderNodeTree')
+    nodes = group.nodes
+    links = group.links
+
+    # -----------------------------
+    # Nodes
+    # -----------------------------
+    gi = nodes.new("NodeGroupInput")
+    gi.location = (-600, 0)
+
+    go = nodes.new("NodeGroupOutput")
+    go.location = (600, 0)
+
+    sub = nodes.new("ShaderNodeMath")
+    sub.operation = 'SUBTRACT'
+    sub.inputs[1].default_value = 1.0
+    sub.location = (-300, 100)
+
+    mix_color = nodes.new("ShaderNodeMixRGB")
+    mix_color.use_clamp = True
+    mix_color.location = (200, 100)
+
+    mix_alpha = nodes.new("ShaderNodeMix")
+    mix_alpha.data_type = 'FLOAT'
+    mix_alpha.clamp_factor = True
+    mix_alpha.location = (200, -100)
+
+    # -----------------------------
+    # Interface
+    # -----------------------------
+    group.interface.new_socket(name="Frame In", in_out='INPUT', socket_type="NodeSocketFloat")
+    group.interface.new_socket(name="Color A", in_out='INPUT', socket_type="NodeSocketColor")
+    group.interface.new_socket(name="Alpha A", in_out='INPUT', socket_type="NodeSocketFloat")
+    group.interface.new_socket(name="Color B", in_out='INPUT', socket_type="NodeSocketColor")
+    group.interface.new_socket(name="Alpha B", in_out='INPUT', socket_type="NodeSocketFloat")
+
+    group.interface.new_socket(name="Frame Out", in_out='OUTPUT', socket_type="NodeSocketFloat")
+    group.interface.new_socket(name="Color Out", in_out='OUTPUT', socket_type="NodeSocketColor")
+    group.interface.new_socket(name="Alpha Out", in_out='OUTPUT', socket_type="NodeSocketFloat")
+
+    # -----------------------------
+    # Wiring
+    # -----------------------------
+    links.new(gi.outputs["Frame In"], sub.inputs[0])
+
+    links.new(sub.outputs[0], mix_color.inputs["Fac"])
+    links.new(sub.outputs[0], mix_alpha.inputs["Factor"])
+
+    links.new(gi.outputs["Color A"], mix_color.inputs["Color1"])
+    links.new(gi.outputs["Color B"], mix_color.inputs["Color2"])
+
+    links.new(gi.outputs["Alpha A"], mix_alpha.inputs["A"])
+    links.new(gi.outputs["Alpha B"], mix_alpha.inputs["B"])
+
+    links.new(mix_color.outputs["Color"], go.inputs["Color Out"])
+    links.new(mix_alpha.outputs["Result"], go.inputs["Alpha Out"])
+
+    links.new(sub.outputs[0], go.inputs["Frame Out"])
+
+    return group
+
+def get_or_create_anim_group(simplesprite_node):
+    props = simplesprite_node.quail_simplesprite
+    group_name = f"{simplesprite_node.name}_ANIM"
+
+    if group_name in bpy.data.node_groups:
+        return bpy.data.node_groups[group_name]
+
+    anim = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
+    nodes = anim.nodes
+    links = anim.links
+
+    gi = nodes.new("NodeGroupInput")
+    gi.location = (-600, 0)
+
+    go = nodes.new("NodeGroupOutput")
+    go.location = (800, 0)
+
+    # Interface
+    anim.interface.new_socket(
+        name="Frame In",
+        in_out='INPUT',
+        socket_type="NodeSocketFloat"
+    )
+
+    for i in range(props.numframes):
+        anim.interface.new_socket(
+            name=f"Color {i}",
+            in_out='INPUT',
+            socket_type="NodeSocketColor"
+        )
+
+        anim.interface.new_socket(
+            name=f"Alpha {i}",
+            in_out='INPUT',
+            socket_type="NodeSocketFloat"
+        )
+
+    anim.interface.new_socket(
+        name="Color Out",
+        in_out='OUTPUT',
+        socket_type="NodeSocketColor"
+    )
+
+    anim.interface.new_socket(
+        name="Alpha Out",
+        in_out='OUTPUT',
+        socket_type="NodeSocketFloat"
+    )
+
+    # Build chain
+    x = 0
+
+    # First frame is the base (A of first switch)
+    frame_colors = [gi.outputs[f"Color {i}"] for i in range(props.numframes)]
+    frame_alphas = [gi.outputs[f"Alpha {i}"] for i in range(props.numframes)]
+
+    # Start with frame 0
+    prev_color = frame_colors[0]
+    prev_alpha = frame_alphas[0]
+    prev_frame = gi.outputs["Frame In"]
+
+    for i in range(1, props.numframes):
+        switch = nodes.new("ShaderNodeGroup")
+        switch.node_tree = get_or_create_frame_switch()
+        switch.location = (x, 0)
+
+        # Hide inputs
+        for s in switch.inputs:
+            s.hide = True
+
+        # Frame chaining
+        links.new(prev_frame, switch.inputs["Frame In"])
+
+        # A = previous result
+        links.new(prev_color, switch.inputs["Color A"])
+        links.new(prev_alpha, switch.inputs["Alpha A"])
+
+        # B = current frame
+        links.new(frame_colors[i], switch.inputs["Color B"])
+        links.new(frame_alphas[i], switch.inputs["Alpha B"])
+
+        # Update chain
+        prev_color = switch.outputs["Color Out"]
+        prev_alpha = switch.outputs["Alpha Out"]
+        prev_frame = switch.outputs["Frame Out"]
+
+        x += 250
+
+    # Final output
+    links.new(prev_color, go.inputs["Color Out"])
+    links.new(prev_alpha, go.inputs["Alpha Out"])
+
+    return anim
+
+def add_simplesprite_driver(simplesprite_node):
+    nodes = simplesprite_node.nodes
+    links = simplesprite_node.links
+    props = simplesprite_node.quail_simplesprite
+
+    # ---------------- VALUE NODE (DRIVER SOURCE) ----------------
+    frame_value = nodes.new("ShaderNodeValue")
+    frame_value.name = "Frame_Index"
+    frame_value.label = "Frame Index"
+    frame_value.location = (-600, 0)
+
+    driver = frame_value.outputs[0].driver_add("default_value")
+    drv = driver.driver
+
+    drv.expression = "((frame - 1) // max(1, int((sleep * fps) / 1000))) % max(1, total)"
+
+    for name, path, id_type, id_val in [
+        ("frame", "frame_current", 'SCENE', bpy.context.scene),
+        ("sleep", "quail_simplesprite.sleep", 'NODETREE', simplesprite_node),
+        ("fps", "render.fps", 'SCENE', bpy.context.scene),
+        ("total", "quail_simplesprite.numframes", 'NODETREE', simplesprite_node),
+    ]:
+        var = drv.variables.new()
+        var.name = name
+        var.targets[0].id_type = id_type
+        var.targets[0].id = id_val
+        var.targets[0].data_path = path
+
+    # ---------------- ANIM GROUP ----------------
+    anim_group = get_or_create_anim_group(simplesprite_node)
+
+    anim_node = nodes.new("ShaderNodeGroup")
+    anim_node.node_tree = anim_group
+    anim_node.location = (500, 0)
+
+    # ---------------- CONNECT FRAME INDEX ----------------
+    links.new(frame_value.outputs[0], anim_node.inputs["Frame In"])
+
+    # ---------------- FRAME NODES ----------------
+    frame_nodes = [
+        n for n in nodes
+        if n.type == 'GROUP'
+        and n.node_tree
+        and n.node_tree.get("quaildef") == "simplesprite_frame"
+    ]
+
+    frame_nodes.sort(key=lambda n: n.location.y, reverse=True)
+
+    for i, fn in enumerate(frame_nodes):
+        links.new(fn.outputs["Color"], anim_node.inputs[f"Color {i}"])
+        links.new(fn.outputs["Alpha"], anim_node.inputs[f"Alpha {i}"])
+
+    # ---------------- OUTPUT ----------------
+    group_output = next(n for n in nodes if n.type == "GROUP_OUTPUT")
+
+    links.new(anim_node.outputs["Color Out"], group_output.inputs["sRGB Texture"])
+    links.new(anim_node.outputs["Alpha Out"], group_output.inputs["Alpha"])
+
 def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
     if simplesprite.tag in bpy.data.node_groups:
@@ -509,17 +728,8 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
     nodes = simplesprite_node.nodes
     links = simplesprite_node.links
 
-    group_input = nodes.new("NodeGroupInput")
-    group_input.location = (-600, 0)
-
     group_output = nodes.new("NodeGroupOutput")
     group_output.location = (1400, 0)
-
-    simplesprite_node.interface.new_socket(
-        name="Frame Index",
-        in_out='INPUT',
-        socket_type="NodeSocketFloat"
-    )
 
     simplesprite_node.interface.new_socket(
         name="sRGB Texture",
@@ -533,37 +743,8 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         socket_type="NodeSocketFloat"
     )
 
-    driver = group_input.outputs["Frame Index"].driver_add("default_value")
-    drv = driver.driver
-
-    drv.expression = "((frame - 1) // max(1, int((sleep * fps) / 1000))) % max(1, total)"
-
-    var = drv.variables.new()
-    var.name = "frame"
-    var.targets[0].id_type = 'SCENE'
-    var.targets[0].id = bpy.context.scene
-    var.targets[0].data_path = "frame_current"
-
-    var = drv.variables.new()
-    var.name = "sleep"
-    var.targets[0].id_type = 'NODETREE'
-    var.targets[0].id = simplesprite_node
-    var.targets[0].data_path = "quail_simplesprite.sleep"
-
-    var = drv.variables.new()
-    var.name = "fps"
-    var.targets[0].id_type = 'SCENE'
-    var.targets[0].id = bpy.context.scene
-    var.targets[0].data_path = "render.fps"
-
-    var = drv.variables.new()
-    var.name = "total"
-    var.targets[0].id_type = 'NODETREE'
-    var.targets[0].id = simplesprite_node
-    var.targets[0].data_path = "quail_simplesprite.numframes"
-
     frame_nodes = []
-    x_offset = 0
+    y_offset = 0
 
     for frame_data in simplesprite.frames:
 
@@ -630,7 +811,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         # -----------------------------
         frame_node = nodes.new("ShaderNodeGroup")
         frame_node.node_tree = frame_group
-        frame_node.location = (x_offset, 0)
+        frame_node.location = (0, y_offset)
 
         # Hide ALL inputs
         for socket in frame_node.inputs:
@@ -647,7 +828,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
                     frame_node.inputs[socket_name].default_value = file.scale
 
         frame_nodes.append(frame_node)
-        x_offset += 400
+        y_offset += -200
 
     props.numframes = len(props.frames)
 
@@ -660,5 +841,8 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
             frame_nodes[0].outputs["Alpha"],
             group_output.inputs["Alpha"]
         )
+
+    if props.has_sleep:
+        add_simplesprite_driver(simplesprite_node)
 
     return ""
