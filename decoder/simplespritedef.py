@@ -509,8 +509,17 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
     nodes = simplesprite_node.nodes
     links = simplesprite_node.links
 
+    group_input = nodes.new("NodeGroupInput")
+    group_input.location = (-600, 0)
+
     group_output = nodes.new("NodeGroupOutput")
     group_output.location = (1400, 0)
+
+    simplesprite_node.interface.new_socket(
+        name="Frame Index",
+        in_out='INPUT',
+        socket_type="NodeSocketFloat"
+    )
 
     simplesprite_node.interface.new_socket(
         name="sRGB Texture",
@@ -523,6 +532,35 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         in_out='OUTPUT',
         socket_type="NodeSocketFloat"
     )
+
+    driver = group_input.outputs["Frame Index"].driver_add("default_value")
+    drv = driver.driver
+
+    drv.expression = "((frame - 1) // max(1, int((sleep * fps) / 1000))) % max(1, total)"
+
+    var = drv.variables.new()
+    var.name = "frame"
+    var.targets[0].id_type = 'SCENE'
+    var.targets[0].id = bpy.context.scene
+    var.targets[0].data_path = "frame_current"
+
+    var = drv.variables.new()
+    var.name = "sleep"
+    var.targets[0].id_type = 'NODETREE'
+    var.targets[0].id = simplesprite_node
+    var.targets[0].data_path = "quail_simplesprite.sleep"
+
+    var = drv.variables.new()
+    var.name = "fps"
+    var.targets[0].id_type = 'SCENE'
+    var.targets[0].id = bpy.context.scene
+    var.targets[0].data_path = "render.fps"
+
+    var = drv.variables.new()
+    var.name = "total"
+    var.targets[0].id_type = 'NODETREE'
+    var.targets[0].id = simplesprite_node
+    var.targets[0].data_path = "quail_simplesprite.numframes"
 
     frame_nodes = []
     x_offset = 0
