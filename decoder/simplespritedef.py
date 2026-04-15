@@ -284,6 +284,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     # DETAIL case
     # ------------------------------------------------
     if len(frame.files) > 1 and frame.files[1].texture_mode == 'DETAIL':
+        group["mode"] = "DETAIL"
 
         detail_file = frame.files[1]
         detail_image = detail_file.image
@@ -337,6 +338,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     # LAYER case
     # ------------------------------------------------
     elif len(frame.files) > 1 and frame.files[1].texture_mode == 'LAYER':
+        group["mode"] = "LAYER"
 
         layer_file = frame.files[1]
         layer_image = layer_file.image
@@ -370,6 +372,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     # Palette Mask/Tiled case
     # ------------------------------------------------
     elif len(frame.files) > 1 and frame.files[1].texture_mode == 'PALETTE':
+        group["mode"] = "PALETTE"
 
         palette_file = frame.files[1]
         palette_image = palette_file.image
@@ -475,78 +478,12 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
 
     else:
         # No extra images → just base
+        group["mode"] = "BASE"
         links.new(base_tex.outputs["Color"], group_output.inputs["Color"])
         if "Alpha" in base_tex.outputs:
             links.new(base_tex.outputs["Alpha"], group_output.inputs["Alpha"])
 
     current_x += 300
-
-    return group
-
-def get_or_create_frame_switch():
-    name = "FRAME_SWITCH"
-
-    if name in bpy.data.node_groups:
-        return bpy.data.node_groups[name]
-
-    group = bpy.data.node_groups.new(name, 'ShaderNodeTree')
-    nodes = group.nodes
-    links = group.links
-
-    # -----------------------------
-    # Nodes
-    # -----------------------------
-    gi = nodes.new("NodeGroupInput")
-    gi.location = (-600, 0)
-
-    go = nodes.new("NodeGroupOutput")
-    go.location = (600, 0)
-
-    sub = nodes.new("ShaderNodeMath")
-    sub.operation = 'SUBTRACT'
-    sub.inputs[1].default_value = 1.0
-    sub.location = (-300, 100)
-
-    mix_color = nodes.new("ShaderNodeMixRGB")
-    mix_color.use_clamp = True
-    mix_color.location = (200, 100)
-
-    mix_alpha = nodes.new("ShaderNodeMix")
-    mix_alpha.data_type = 'FLOAT'
-    mix_alpha.clamp_factor = True
-    mix_alpha.location = (200, -100)
-
-    # -----------------------------
-    # Interface
-    # -----------------------------
-    group.interface.new_socket(name="Frame In", in_out='INPUT', socket_type="NodeSocketFloat")
-    group.interface.new_socket(name="Color A", in_out='INPUT', socket_type="NodeSocketColor")
-    group.interface.new_socket(name="Alpha A", in_out='INPUT', socket_type="NodeSocketFloat")
-    group.interface.new_socket(name="Color B", in_out='INPUT', socket_type="NodeSocketColor")
-    group.interface.new_socket(name="Alpha B", in_out='INPUT', socket_type="NodeSocketFloat")
-
-    group.interface.new_socket(name="Frame Out", in_out='OUTPUT', socket_type="NodeSocketFloat")
-    group.interface.new_socket(name="Color Out", in_out='OUTPUT', socket_type="NodeSocketColor")
-    group.interface.new_socket(name="Alpha Out", in_out='OUTPUT', socket_type="NodeSocketFloat")
-
-    # -----------------------------
-    # Wiring
-    # -----------------------------
-    links.new(gi.outputs["Frame In"], sub.inputs[0])
-
-    links.new(sub.outputs[0], mix_color.inputs["Fac"])
-    links.new(sub.outputs[0], mix_alpha.inputs["Factor"])
-
-    links.new(gi.outputs["Color A"], mix_color.inputs["Color1"])
-    links.new(gi.outputs["Color B"], mix_color.inputs["Color2"])
-
-    links.new(gi.outputs["Alpha A"], mix_alpha.inputs["A"])
-    links.new(gi.outputs["Alpha B"], mix_alpha.inputs["B"])
-
-    links.new(mix_color.outputs["Color"], go.inputs["Color Out"])
-    links.new(mix_alpha.outputs["Result"], go.inputs["Alpha Out"])
-
-    links.new(sub.outputs[0], go.inputs["Frame Out"])
 
     return group
 
@@ -617,10 +554,64 @@ def add_texture_animation(simplesprite_node):
     links = simplesprite_node.links
     props = simplesprite_node.quail_simplesprite
 
+    group_name = f"{simplesprite_node.name}_TEXANIM"
+
     # --------------------------------------------------
-    # 1. FRAME INDEX DRIVER (Value node)
+    # 1. COLLECT FRAME IMAGES
     # --------------------------------------------------
-    frame_value = nodes.new("ShaderNodeValue")
+    frame_nodes = [
+        n for n in nodes
+        if n.type == 'GROUP'
+        and n.node_tree
+        and n.node_tree.get("quaildef") == "simplesprite_frame"
+    ]
+
+    frame_nodes.sort(key=lambda n: n.location.y, reverse=True)
+
+    images = []
+    for fn in frame_nodes:
+        for n in fn.node_tree.nodes:
+            if n.type == 'TEX_IMAGE' and n.image:
+                images.append(n.image)
+                break
+
+    if not images:
+        return
+
+    # --------------------------------------------------
+    # 2. BUILD ATLAS
+    # --------------------------------------------------
+    atlas = build_texture_atlas(images, name=f"{simplesprite_node.name}_atlas")
+
+    # --------------------------------------------------
+    # 3. CREATE / RESET TEXANIM GROUP
+    # --------------------------------------------------
+    if group_name in bpy.data.node_groups:
+        group = bpy.data.node_groups[group_name]
+        group.nodes.clear()
+        group.links.clear()
+        group.interface.clear()
+    else:
+        group = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
+
+    group['quaildef'] = 'simplesprite_texanim'
+
+    gnodes = group.nodes
+    glinks = group.links
+
+    # --------------------------------------------------
+    # 4. INTERFACE
+    # --------------------------------------------------
+    group.interface.new_socket("Color", in_out='OUTPUT', socket_type="NodeSocketColor")
+    group.interface.new_socket("Alpha", in_out='OUTPUT', socket_type="NodeSocketFloat")
+
+    g_output = gnodes.new("NodeGroupOutput")
+    g_output.location = (800, 0)
+
+    # --------------------------------------------------
+    # 5. FRAME INDEX DRIVER (INSIDE GROUP)
+    # --------------------------------------------------
+    frame_value = gnodes.new("ShaderNodeValue")
     frame_value.name = "Frame_Index"
     frame_value.label = "Frame Index"
     frame_value.location = (-600, 200)
@@ -644,110 +635,98 @@ def add_texture_animation(simplesprite_node):
         var.targets[0].data_path = path
 
     # --------------------------------------------------
-    # 2. COLLECT FRAME IMAGES
+    # 6. IMAGE TEXTURE
     # --------------------------------------------------
-    frame_nodes = [
-        n for n in nodes
-        if n.type == 'GROUP'
-        and n.node_tree
-        and n.node_tree.get("quaildef") == "simplesprite_frame"
-    ]
-
-    frame_nodes.sort(key=lambda n: n.location.y, reverse=True)
-
-    images = []
-    for fn in frame_nodes:
-        for n in fn.node_tree.nodes:
-            if n.type == 'TEX_IMAGE' and n.image:
-                images.append(n.image)
-                break
-
-    if not images:
-        return
-
-    # --------------------------------------------------
-    # 3. BUILD ATLAS
-    # --------------------------------------------------
-    atlas = build_texture_atlas(images, name=f"{simplesprite_node.name}_atlas")
-
-    # --------------------------------------------------
-    # 4. IMAGE TEXTURE NODE
-    # --------------------------------------------------
-    tex = nodes.new("ShaderNodeTexImage")
+    tex = gnodes.new("ShaderNodeTexImage")
     tex.image = atlas
     tex.interpolation = 'Closest'
     tex.extension = 'REPEAT'
     tex.location = (600, 0)
 
     # --------------------------------------------------
-    # 5. UV PIPELINE
+    # 7. UV PIPELINE
     # --------------------------------------------------
-    coord = nodes.new("ShaderNodeTexCoord")
+    coord = gnodes.new("ShaderNodeTexCoord")
     coord.location = (-1200, 0)
 
-    mapping = nodes.new("ShaderNodeMapping")
+    mapping = gnodes.new("ShaderNodeMapping")
     mapping.location = (-1000, 0)
 
-    links.new(coord.outputs["UV"], mapping.inputs["Vector"])
+    glinks.new(coord.outputs["UV"], mapping.inputs["Vector"])
 
-    # Separate UV
-    sep = nodes.new("ShaderNodeSeparateXYZ")
+    sep = gnodes.new("ShaderNodeSeparateXYZ")
     sep.location = (-800, 0)
-    links.new(mapping.outputs["Vector"], sep.inputs["Vector"])
+    glinks.new(mapping.outputs["Vector"], sep.inputs["Vector"])
 
-    # FRACTION (wrap UVs like EQ)
-    fract_x = nodes.new("ShaderNodeMath")
+    fract_x = gnodes.new("ShaderNodeMath")
     fract_x.operation = 'FRACT'
     fract_x.location = (-600, 150)
 
-    fract_y = nodes.new("ShaderNodeMath")
+    fract_y = gnodes.new("ShaderNodeMath")
     fract_y.operation = 'FRACT'
     fract_y.location = (-600, -50)
 
-    links.new(sep.outputs["X"], fract_x.inputs[0])
-    links.new(sep.outputs["Y"], fract_y.inputs[0])
+    glinks.new(sep.outputs["X"], fract_x.inputs[0])
+    glinks.new(sep.outputs["Y"], fract_y.inputs[0])
 
-    # Scale into atlas cell
-    scale = nodes.new("ShaderNodeMath")
+    scale = gnodes.new("ShaderNodeMath")
     scale.operation = 'DIVIDE'
     scale.inputs[1].default_value = props.numframes
     scale.location = (-400, 150)
 
-    links.new(fract_x.outputs[0], scale.inputs[0])
+    glinks.new(fract_x.outputs[0], scale.inputs[0])
 
-    # Frame offset
-    offset = nodes.new("ShaderNodeMath")
+    offset = gnodes.new("ShaderNodeMath")
     offset.operation = 'DIVIDE'
     offset.inputs[1].default_value = props.numframes
     offset.location = (-400, 0)
 
-    links.new(frame_value.outputs[0], offset.inputs[0])
+    glinks.new(frame_value.outputs[0], offset.inputs[0])
 
-    # Add offset
-    add = nodes.new("ShaderNodeMath")
+    add = gnodes.new("ShaderNodeMath")
     add.operation = 'ADD'
     add.location = (-200, 150)
 
-    links.new(scale.outputs[0], add.inputs[0])
-    links.new(offset.outputs[0], add.inputs[1])
+    glinks.new(scale.outputs[0], add.inputs[0])
+    glinks.new(offset.outputs[0], add.inputs[1])
 
-    # Recombine UV
-    comb = nodes.new("ShaderNodeCombineXYZ")
+    comb = gnodes.new("ShaderNodeCombineXYZ")
     comb.location = (0, 0)
 
-    links.new(add.outputs[0], comb.inputs["X"])
-    links.new(fract_y.outputs[0], comb.inputs["Y"])
+    glinks.new(add.outputs[0], comb.inputs["X"])
+    glinks.new(fract_y.outputs[0], comb.inputs["Y"])
 
-    # Final UV → texture
-    links.new(comb.outputs["Vector"], tex.inputs["Vector"])
+    glinks.new(comb.outputs["Vector"], tex.inputs["Vector"])
 
     # --------------------------------------------------
-    # 6. OUTPUT
+    # 8. GROUP OUTPUT
+    # --------------------------------------------------
+    glinks.new(tex.outputs["Color"], g_output.inputs["Color"])
+    glinks.new(tex.outputs["Alpha"], g_output.inputs["Alpha"])
+
+    # --------------------------------------------------
+    # 9. INSTANCE GROUP IN MAIN TREE
+    # --------------------------------------------------
+    for n in list(nodes):
+        if n.get("texanim_node"):
+            nodes.remove(n)
+
+    texanim_node = nodes.new("ShaderNodeGroup")
+    texanim_node.node_tree = group
+    texanim_node.location = (600, 0)
+    texanim_node["texanim_node"] = True
+
+    # --------------------------------------------------
+    # 10. CONNECT TO OUTPUT
     # --------------------------------------------------
     group_output = next(n for n in nodes if n.type == "GROUP_OUTPUT")
 
-    links.new(tex.outputs["Color"], group_output.inputs["sRGB Texture"])
-    links.new(tex.outputs["Alpha"], group_output.inputs["Alpha"])
+    for l in list(links):
+        if l.to_node == group_output:
+            links.remove(l)
+
+    links.new(texanim_node.outputs["Color"], group_output.inputs["sRGB Texture"])
+    links.new(texanim_node.outputs["Alpha"], group_output.inputs["Alpha"])
 
 def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
@@ -759,6 +738,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         'ShaderNodeTree'
     )
     simplesprite_node['quaildef'] = 'simplespritedef'
+    simplesprite_node["_updating"] = True
 
     props = simplesprite_node.quail_simplesprite
 
@@ -800,6 +780,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         # -----------------------------
         frame = props.frames.add()
         frame.name = frame_data.frame
+        frame.frame_id = len(props.frames) - 1
         frame.files.clear()
 
         for f in frame_data.files:
@@ -859,6 +840,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         frame_node = nodes.new("ShaderNodeGroup")
         frame_node.node_tree = frame_group
         frame_node.location = (0, y_offset)
+        frame_node["frame_id"] = frame.frame_id
 
         # Hide ALL inputs
         for socket in frame_node.inputs:
@@ -891,5 +873,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
     if props.has_sleep:
         add_texture_animation(simplesprite_node)
+
+    simplesprite_node["_updating"] = False
 
     return ""

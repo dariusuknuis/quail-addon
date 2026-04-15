@@ -4,7 +4,7 @@ import bpy
 from ..wce.wce import wce
 from ..wce.materialdefinition import materialdefinition
 from .context import Context
-from ..common.rendermethod import apply_userdefined
+from ..common.rendermethod import apply_userdefined, apply_transparent
 
 def create_rendermethod_nodegroup():
 
@@ -272,6 +272,7 @@ def create_rendermethod_nodegroup():
 def parse_rendermethod_string(rm: str) -> dict:
 
     result = {
+        "transparent": False,
         "use_userdefined": False,
         "userdefined_index": 0,
 
@@ -292,6 +293,13 @@ def parse_rendermethod_string(rm: str) -> dict:
         return result
 
     # ----------------------------------------
+    # TRANSPARENT (SPECIAL CASE)
+    # ----------------------------------------
+    if rm.strip().upper() == "TRANSPARENT":
+        result["transparent"] = True
+        return result
+
+    # ----------------------------------------
     # USERDEFINED
     # ----------------------------------------
     if rm.startswith("USERDEFINED_"):
@@ -306,7 +314,7 @@ def parse_rendermethod_string(rm: str) -> dict:
     # ----------------------------------------
     # Masked
     # ----------------------------------------
-    if "TRANS" in rm:
+    if "TRANS" in rm and rm.strip().upper() != "TRANSPARENT":
         result["masked"] = True
 
     # ----------------------------------------
@@ -413,6 +421,12 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.userdefined_index = parsed["userdefined_index"]
 
         apply_userdefined(props, props.userdefined_index)
+
+    elif parsed.get("transparent"):
+        props.use_userdefined = False
+        props.transparent_override = True
+
+        apply_transparent(props)
 
     else:
         props.use_userdefined = False

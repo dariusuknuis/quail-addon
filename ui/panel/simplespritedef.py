@@ -4,6 +4,91 @@ import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 
+def update_frame_node(self, context):
+
+    tree = self.id_data
+
+    if tree.get("_updating"):
+        return
+
+    # --- your existing logic below ---
+    if self.frame_node:
+        self.name = self.frame_node.name
+    else:
+        self.name = "Frame"
+
+    nodes = tree.nodes
+    links = tree.links
+
+    node = None
+    for n in nodes:
+        if n.get("frame_id") == self.frame_id:
+            node = n
+            break
+
+    if not node:
+        node = nodes.new("ShaderNodeGroup")
+        node["frame_id"] = self.frame_id
+
+    node.node_tree = self.frame_node
+
+    # -----------------------------------
+    # Sync panel data FROM frame nodegroup
+    # -----------------------------------
+    if self.frame_node:
+
+        # Collect image nodes inside the group
+        image_nodes = [
+            n for n in self.frame_node.nodes
+            if n.type == 'TEX_IMAGE' and n.image
+        ]
+
+        # Update numfiles (this will resize collection)
+        self.numfiles = len(image_nodes)
+
+        # Now populate files
+        for i, img_node in enumerate(image_nodes):
+            file = self.files[i]
+
+            file.image = img_node.image
+
+            # Infer mode (basic version)
+            if i == 0:
+                file.texture_mode = 'BASE'
+            else:
+                mode = self.frame_node.get("mode")
+
+                if mode == "DETAIL" and i == 1:
+                    file.texture_mode = 'DETAIL'
+                elif mode == "LAYER" and i == 1:
+                    file.texture_mode = 'LAYER'
+                elif mode == "PALETTE":
+                    if i == 1:
+                        file.texture_mode = 'PALETTE'
+                    else:
+                        file.texture_mode = 'TILED'
+                else:
+                    file.texture_mode = 'TILED'
+
+    index = list(tree.quail_simplesprite.frames).index(self)
+    node.location = (0, -200 * index)
+
+    for socket in node.inputs:
+        socket.hide = True
+
+    if index != 0:
+        return
+
+    # Connect to output (simple version)
+    output = next((n for n in nodes if n.type == "GROUP_OUTPUT"), None)
+    if output and self.frame_node:
+        for l in list(links):
+            if l.to_node == output:
+                links.remove(l)
+
+        links.new(node.outputs["Color"], output.inputs["sRGB Texture"])
+        links.new(node.outputs["Alpha"], output.inputs["Alpha"])
+
 def update_simplesprite_node(self, context):
     print("Updated simplesprite:", self.name)
 
@@ -11,18 +96,38 @@ def sync_numframes(self, context):
     target = self.numframes
     frames = self.frames
 
+    # -----------------------------
     # Add frames
+    # -----------------------------
     while len(frames) < target:
         frame = frames.add()
         frame.name = f"Frame_{len(frames)}"
+        frame.frame_id = len(frames) - 1
 
+    # -----------------------------
     # Remove frames
+    # -----------------------------
     while len(frames) > target:
         frames.remove(len(frames) - 1)
 
+    # -----------------------------
     # Clamp active index
+    # -----------------------------
     if self.active_frame >= len(frames):
         self.active_frame = max(0, len(frames) - 1)
+
+    # ==================================================
+    # Remove norphaned nodes
+    # ==================================================
+    tree = self.id_data
+    nodes = tree.nodes
+
+    valid_ids = {i for i in range(len(frames))}
+
+    for n in list(nodes):
+        if "frame_id" in n:
+            if n["frame_id"] not in valid_ids:
+                nodes.remove(n)
 
 def sync_numfiles(self, context):
     target = self.numfiles
@@ -59,10 +164,13 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
     blend: FloatProperty(default=0.0)
 class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
 
+    frame_id: IntProperty(default=-1)
+
     frame_node: PointerProperty(
         name="Frame Node",
         type=bpy.types.NodeTree,
-        poll=lambda self, nt: nt.get("quaildef") == "simplesprite_frame"
+        poll=lambda self, nt: nt.get("quaildef") == "simplesprite_frame",
+        update=update_frame_node
     )
 
     numfiles: IntProperty(
@@ -129,6 +237,19 @@ class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
     active_frame: IntProperty(
         default=0
     )
+
+class QUAIL_UL_frames(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
+        frame = item
+
+        row = layout.row(align=True)
+
+        row.label(text=frame.name)
+
+        if frame.frame_node:
+            row.label(text=frame.frame_node.name, icon='NODETREE')
+        else:
+            row.label(text="(None)", icon='QUESTION')
 
 class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
     bl_label = "SIMPLESPRITEDEF"
