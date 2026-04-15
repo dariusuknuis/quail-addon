@@ -550,110 +550,81 @@ def get_or_create_frame_switch():
 
     return group
 
-def get_or_create_anim_group(simplesprite_node):
-    props = simplesprite_node.quail_simplesprite
-    group_name = f"{simplesprite_node.name}_ANIM"
+def build_texture_atlas(images, name="atlas", padding=2):
+    if not images:
+        return None
 
-    if group_name in bpy.data.node_groups:
-        return bpy.data.node_groups[group_name]
+    # Ensure all images are same size
+    width, height = images[0].size
+    for img in images:
+        if img.size[0] != width or img.size[1] != height:
+            raise ValueError("All images must have the same dimensions for atlas")
 
-    anim = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
-    nodes = anim.nodes
-    links = anim.links
+    count = len(images)
 
-    gi = nodes.new("NodeGroupInput")
-    gi.location = (-600, 0)
+    # Atlas dimensions (horizontal strip)
+    atlas_width = count * (width + padding * 2)
+    atlas_height = height + padding * 2
 
-    go = nodes.new("NodeGroupOutput")
-    go.location = (800, 0)
+    atlas = bpy.data.images.new(name, width=atlas_width, height=atlas_height, alpha=True)
 
-    # Interface
-    anim.interface.new_socket(
-        name="Frame In",
-        in_out='INPUT',
-        socket_type="NodeSocketFloat"
-    )
+    atlas_pixels = [0.0] * (atlas_width * atlas_height * 4)
 
-    for i in range(props.numframes):
-        anim.interface.new_socket(
-            name=f"Color {i}",
-            in_out='INPUT',
-            socket_type="NodeSocketColor"
-        )
+    def copy_pixel(src_pixels, sx, sy, sw, dx, dy, dw):
+        src_index = (sy * sw + sx) * 4
+        dst_index = (dy * dw + dx) * 4
+        atlas_pixels[dst_index:dst_index+4] = src_pixels[src_index:src_index+4]
 
-        anim.interface.new_socket(
-            name=f"Alpha {i}",
-            in_out='INPUT',
-            socket_type="NodeSocketFloat"
-        )
+    for i, img in enumerate(images):
+        img_pixels = list(img.pixels)
 
-    anim.interface.new_socket(
-        name="Color Out",
-        in_out='OUTPUT',
-        socket_type="NodeSocketColor"
-    )
+        x_offset = i * (width + padding * 2) + padding
+        y_offset = padding
 
-    anim.interface.new_socket(
-        name="Alpha Out",
-        in_out='OUTPUT',
-        socket_type="NodeSocketFloat"
-    )
+        for y in range(height):
+            for x in range(width):
+                copy_pixel(
+                    img_pixels,
+                    x, y, width,
+                    x + x_offset,
+                    y + y_offset,
+                    atlas_width
+                )
 
-    # Build chain
-    x = 0
+        # 🔥 padding (edge bleed)
+        for p in range(padding):
+            # left/right padding
+            for y in range(height):
+                copy_pixel(img_pixels, 0, y, width,
+                           x_offset - p - 1, y + y_offset, atlas_width)
+                copy_pixel(img_pixels, width - 1, y, width,
+                           x_offset + width + p, y + y_offset, atlas_width)
 
-    # First frame is the base (A of first switch)
-    frame_colors = [gi.outputs[f"Color {i}"] for i in range(props.numframes)]
-    frame_alphas = [gi.outputs[f"Alpha {i}"] for i in range(props.numframes)]
+            # top/bottom padding
+            for x in range(width):
+                copy_pixel(img_pixels, x, 0, width,
+                           x + x_offset, y_offset - p - 1, atlas_width)
+                copy_pixel(img_pixels, x, height - 1, width,
+                           x + x_offset, y_offset + height + p, atlas_width)
 
-    # Start with frame 0
-    prev_color = frame_colors[0]
-    prev_alpha = frame_alphas[0]
-    prev_frame = gi.outputs["Frame In"]
+    atlas.pixels = atlas_pixels
+    atlas.pack()
 
-    for i in range(1, props.numframes):
-        switch = nodes.new("ShaderNodeGroup")
-        switch.node_tree = get_or_create_frame_switch()
-        switch.location = (x, 0)
+    return atlas
 
-        # Hide inputs
-        for s in switch.inputs:
-            s.hide = True
-
-        # Frame chaining
-        links.new(prev_frame, switch.inputs["Frame In"])
-
-        # A = previous result
-        links.new(prev_color, switch.inputs["Color A"])
-        links.new(prev_alpha, switch.inputs["Alpha A"])
-
-        # B = current frame
-        links.new(frame_colors[i], switch.inputs["Color B"])
-        links.new(frame_alphas[i], switch.inputs["Alpha B"])
-
-        # Update chain
-        prev_color = switch.outputs["Color Out"]
-        prev_alpha = switch.outputs["Alpha Out"]
-        prev_frame = switch.outputs["Frame Out"]
-
-        x += 250
-
-    # Final output
-    links.new(prev_color, go.inputs["Color Out"])
-    links.new(prev_alpha, go.inputs["Alpha Out"])
-
-    return anim
-
-def add_simplesprite_driver(simplesprite_node):
+def add_texture_animation(simplesprite_node):
     nodes = simplesprite_node.nodes
     links = simplesprite_node.links
     props = simplesprite_node.quail_simplesprite
 
-    # ---------------- VALUE NODE (DRIVER SOURCE) ----------------
+    # --------------------------------------------------
+    # 1. FRAME INDEX DRIVER (Value node)
+    # --------------------------------------------------
     frame_value = nodes.new("ShaderNodeValue")
     frame_value.name = "Frame_Index"
     frame_value.label = "Frame Index"
-    frame_value.location = (-600, 0)
+    frame_value.location = (-600, 200)
+    frame_value.hide = True
 
     driver = frame_value.outputs[0].driver_add("default_value")
     drv = driver.driver
@@ -672,17 +643,9 @@ def add_simplesprite_driver(simplesprite_node):
         var.targets[0].id = id_val
         var.targets[0].data_path = path
 
-    # ---------------- ANIM GROUP ----------------
-    anim_group = get_or_create_anim_group(simplesprite_node)
-
-    anim_node = nodes.new("ShaderNodeGroup")
-    anim_node.node_tree = anim_group
-    anim_node.location = (500, 0)
-
-    # ---------------- CONNECT FRAME INDEX ----------------
-    links.new(frame_value.outputs[0], anim_node.inputs["Frame In"])
-
-    # ---------------- FRAME NODES ----------------
+    # --------------------------------------------------
+    # 2. COLLECT FRAME IMAGES
+    # --------------------------------------------------
     frame_nodes = [
         n for n in nodes
         if n.type == 'GROUP'
@@ -692,15 +655,99 @@ def add_simplesprite_driver(simplesprite_node):
 
     frame_nodes.sort(key=lambda n: n.location.y, reverse=True)
 
-    for i, fn in enumerate(frame_nodes):
-        links.new(fn.outputs["Color"], anim_node.inputs[f"Color {i}"])
-        links.new(fn.outputs["Alpha"], anim_node.inputs[f"Alpha {i}"])
+    images = []
+    for fn in frame_nodes:
+        for n in fn.node_tree.nodes:
+            if n.type == 'TEX_IMAGE' and n.image:
+                images.append(n.image)
+                break
 
-    # ---------------- OUTPUT ----------------
+    if not images:
+        return
+
+    # --------------------------------------------------
+    # 3. BUILD ATLAS
+    # --------------------------------------------------
+    atlas = build_texture_atlas(images, name=f"{simplesprite_node.name}_atlas")
+
+    # --------------------------------------------------
+    # 4. IMAGE TEXTURE NODE
+    # --------------------------------------------------
+    tex = nodes.new("ShaderNodeTexImage")
+    tex.image = atlas
+    tex.interpolation = 'Closest'
+    tex.extension = 'REPEAT'
+    tex.location = (600, 0)
+
+    # --------------------------------------------------
+    # 5. UV PIPELINE
+    # --------------------------------------------------
+    coord = nodes.new("ShaderNodeTexCoord")
+    coord.location = (-1200, 0)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-1000, 0)
+
+    links.new(coord.outputs["UV"], mapping.inputs["Vector"])
+
+    # Separate UV
+    sep = nodes.new("ShaderNodeSeparateXYZ")
+    sep.location = (-800, 0)
+    links.new(mapping.outputs["Vector"], sep.inputs["Vector"])
+
+    # FRACTION (wrap UVs like EQ)
+    fract_x = nodes.new("ShaderNodeMath")
+    fract_x.operation = 'FRACT'
+    fract_x.location = (-600, 150)
+
+    fract_y = nodes.new("ShaderNodeMath")
+    fract_y.operation = 'FRACT'
+    fract_y.location = (-600, -50)
+
+    links.new(sep.outputs["X"], fract_x.inputs[0])
+    links.new(sep.outputs["Y"], fract_y.inputs[0])
+
+    # Scale into atlas cell
+    scale = nodes.new("ShaderNodeMath")
+    scale.operation = 'DIVIDE'
+    scale.inputs[1].default_value = props.numframes
+    scale.location = (-400, 150)
+
+    links.new(fract_x.outputs[0], scale.inputs[0])
+
+    # Frame offset
+    offset = nodes.new("ShaderNodeMath")
+    offset.operation = 'DIVIDE'
+    offset.inputs[1].default_value = props.numframes
+    offset.location = (-400, 0)
+
+    links.new(frame_value.outputs[0], offset.inputs[0])
+
+    # Add offset
+    add = nodes.new("ShaderNodeMath")
+    add.operation = 'ADD'
+    add.location = (-200, 150)
+
+    links.new(scale.outputs[0], add.inputs[0])
+    links.new(offset.outputs[0], add.inputs[1])
+
+    # Recombine UV
+    comb = nodes.new("ShaderNodeCombineXYZ")
+    comb.location = (0, 0)
+
+    links.new(add.outputs[0], comb.inputs["X"])
+    links.new(fract_y.outputs[0], comb.inputs["Y"])
+
+    # Final UV → texture
+    links.new(comb.outputs["Vector"], tex.inputs["Vector"])
+
+    # --------------------------------------------------
+    # 6. OUTPUT
+    # --------------------------------------------------
     group_output = next(n for n in nodes if n.type == "GROUP_OUTPUT")
 
-    links.new(anim_node.outputs["Color Out"], group_output.inputs["sRGB Texture"])
-    links.new(anim_node.outputs["Alpha Out"], group_output.inputs["Alpha"])
+    links.new(tex.outputs["Color"], group_output.inputs["sRGB Texture"])
+    links.new(tex.outputs["Alpha"], group_output.inputs["Alpha"])
 
 def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
@@ -843,6 +890,6 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         )
 
     if props.has_sleep:
-        add_simplesprite_driver(simplesprite_node)
+        add_texture_animation(simplesprite_node)
 
     return ""
