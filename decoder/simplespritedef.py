@@ -227,7 +227,7 @@ def create_blur_node_group(blur_node_group):
     links.new(add_vector_node.outputs['Vector'], go["Vector"])
 
 def create_frame_nodegroup(ctx, frame, sprite_tag):
-    frame_group_name = f"{frame.name}"
+    frame_group_name = f"{frame.frame_name}"
 
     if frame_group_name in bpy.data.node_groups:
         return bpy.data.node_groups[frame_group_name]
@@ -820,7 +820,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         # Create UI frame
         # -----------------------------
         frame = props.frames.add()
-        frame.name = frame_data.frame
+        frame.frame_name = frame_data.frame
         frame.frame_id = len(props.frames) - 1
         frame.files.clear()
 

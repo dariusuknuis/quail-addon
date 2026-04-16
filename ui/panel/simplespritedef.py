@@ -54,7 +54,7 @@ def update_frame_file_image(self, context):
     if state.QUAIL_UPDATING:
         return
 
-    print("UPDATE CALLED")
+    # print("UPDATE CALLED")
     tree = self.id_data
     props = tree.quail_simplesprite
 
@@ -84,6 +84,36 @@ def update_frame_file_image(self, context):
     if props.has_sleep:
         add_texture_animation(tree)
 
+def update_frame_name(self, context):
+    if state.QUAIL_UPDATING:
+        return
+
+    tree = self.id_data
+    if not tree or tree.get("quaildef") != "simplespritedef":
+        return
+
+    new_name = self.frame_name
+
+    # ----------------------------------------
+    # 1. Mirror into Blender name (optional)
+    # ----------------------------------------
+    self.name = new_name
+
+    # ----------------------------------------
+    # 2. Rename node group (picker field)
+    # ----------------------------------------
+    if self.frame_node:
+        self.frame_node.name = new_name
+
+    # ----------------------------------------
+    # 3. Rename node instance
+    # ----------------------------------------
+    for n in tree.nodes:
+        if n.type == 'GROUP' and n.node_tree == self.frame_node:
+            n.name = new_name
+            n.label = new_name
+            break
+
 def update_frame_node(self, context):
 
     if state.QUAIL_UPDATING:
@@ -93,7 +123,7 @@ def update_frame_node(self, context):
 
     # --- your existing logic below ---
     if self.frame_node:
-        self.name = self.frame_node.name
+        self.frame_name = self.frame_node.name
     else:
         self.name = "Frame"
 
@@ -116,6 +146,8 @@ def update_frame_node(self, context):
     # Sync panel data FROM frame nodegroup
     # -----------------------------------
     if self.frame_node:
+        node.name = self.frame_node.name
+        node.label = self.frame_node.name
 
         # Collect image nodes inside the group
         image_nodes = [
@@ -186,7 +218,7 @@ def sync_numframes(self, context):
     # -----------------------------
     while len(frames) < target:
         frame = frames.add()
-        frame.name = f"Frame_{len(frames)}"
+        frame.frame_name = f"Frame_{len(frames)}"
         frame.frame_id = len(frames) - 1
 
     # -----------------------------
@@ -254,6 +286,11 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
     blend: FloatProperty(default=0.0)
 
 class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
+
+    frame_name: StringProperty(
+        name="Frame Name",
+        update=update_frame_name
+    )
 
     frame_id: IntProperty(default=-1)
 
@@ -336,29 +373,7 @@ class QUAIL_UL_frames(bpy.types.UIList):
 
         row = layout.row(align=True)
 
-        row.label(text=frame.name)
-
-        if frame.frame_node:
-            row.label(text=frame.frame_node.name, icon='NODETREE')
-        else:
-            row.label(text="(None)", icon='QUESTION')
-
-class QUAIL_OT_add_frame(bpy.types.Operator):
-    bl_idname = "quail.add_frame"
-    bl_label = "Add Frame"
-
-    def execute(self, context):
-        print("Add frame")
-        return {'FINISHED'}
-
-
-class QUAIL_OT_remove_frame(bpy.types.Operator):
-    bl_idname = "quail.remove_frame"
-    bl_label = "Remove Frame"
-
-    def execute(self, context):
-        print("Remove frame")
-        return {'FINISHED'}
+        row.prop(frame, "frame_name", text="", emboss=False, icon='NONE')
 
 class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
     bl_label = "SIMPLESPRITEDEF"
@@ -393,17 +408,13 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
         layout.label(text="Frames")
 
         layout.template_list(
-            "UI_UL_list",
             "QUAIL_UL_frames",
+            "",
             props,
             "frames",
             props,
             "active_frame"
         )
-
-        row = layout.row()
-        row.operator("quail.add_frame", icon="ADD")
-        row.operator("quail.remove_frame", icon="REMOVE")
 
         # Active frame detail
         if props.frames and props.active_frame < len(props.frames):
