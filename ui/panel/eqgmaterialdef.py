@@ -669,87 +669,6 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         default=0
     )
 
-class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
-    """Add default World Material Def properties to the selected material"""
-    bl_idname = "material.add_default_wldmatdef"
-    bl_label = "Add Default World MatDef"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.object and context.object.active_material
-
-    def execute(self, context):
-        material = context.object.active_material
-        if not material:
-            return {'CANCELLED'}
-        material['quaildef'] = 'eqgmaterialdef'
-        material.quail_eqgmaterialdef.shadertag = 'Opaque_MaxCB1.fx'
-        material.quail_eqgmaterialdef.e_fShininess0 = 0
-        material.quail_eqgmaterialdef.e_TextureDiffuse0 = ""
-        material.quail_eqgmaterialdef.e_TextureDiffuse0mapChannel = ""
-        material.quail_eqgmaterialdef.e_TextureDiffuse1 = ""
-        material.quail_eqgmaterialdef.e_TextureEnvironment = ""
-        material.quail_eqgmaterialdef.e_TextureEnvironment0 = ""
-        material.quail_eqgmaterialdef.e_TextureFallback = ""
-        material.quail_eqgmaterialdef.e_TextureFallback0 = ""
-        material.quail_eqgmaterialdef.e_TextureNormal0 = ""
-        material.quail_eqgmaterialdef.e_TextureNormal0mapChannel = ""
-        material.quail_eqgmaterialdef.e_TextureNormal1 = ""
-        material.quail_eqgmaterialdef.e_fBumpiness0 = ""
-        material.quail_eqgmaterialdef.e_fCoverageScale0 = ""
-        material.quail_eqgmaterialdef.e_fEnvMapStrength0 = ""
-        material.quail_eqgmaterialdef.e_fFresnelBias = ""
-        material.quail_eqgmaterialdef.e_fFresnelPower = ""
-        material.quail_eqgmaterialdef.e_fGloss0 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity0 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity1 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity2 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity3 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity4 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity5 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity6 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity7 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity8 = ""
-        material.quail_eqgmaterialdef.e_fGrassDensity9 = ""
-        material.quail_eqgmaterialdef.e_fReflectionAmount = ""
-        material.quail_eqgmaterialdef.e_fReflectionColor = ""
-        material.quail_eqgmaterialdef.e_fScale0 = ""
-        material.quail_eqgmaterialdef.e_fScale1 = ""
-        material.quail_eqgmaterialdef.e_fScale2 = ""
-        material.quail_eqgmaterialdef.e_fScale3 = ""
-        material.quail_eqgmaterialdef.e_fScale4 = ""
-        material.quail_eqgmaterialdef.e_fScale5 = ""
-        material.quail_eqgmaterialdef.e_fScale6 = ""
-        material.quail_eqgmaterialdef.e_fScale7 = ""
-        material.quail_eqgmaterialdef.e_fScale8 = ""
-        material.quail_eqgmaterialdef.e_fScale9 = ""
-        material.quail_eqgmaterialdef.e_fSlide1X = ""
-        material.quail_eqgmaterialdef.e_fSlide1Y = ""
-        material.quail_eqgmaterialdef.e_fSlide2X = ""
-        material.quail_eqgmaterialdef.e_fSlide2Y = ""
-        material.quail_eqgmaterialdef.e_fWaterColor1 = ""
-        material.quail_eqgmaterialdef.e_fWaterColor2 = ""
-        material.quail_eqgmaterialdef.e_TextureCoverage = ""
-        material.quail_eqgmaterialdef.e_TextureCoverage0 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail0 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail1 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail2 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail3 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail4 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail5 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail6 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail7 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail8 = ""
-        material.quail_eqgmaterialdef.e_TextureDetail9 = ""
-        material.quail_eqgmaterialdef.e_TextureGlow0 = ""
-        material.quail_eqgmaterialdef.e_TexturePalette0 = ""
-        material.quail_eqgmaterialdef.e_TextureSecond0 = ""
-        material.quail_eqgmaterialdef.e_TextureSecond0mapChannel = ""
-        material.quail_eqgmaterialdef.hexoneflag = False
-        material.quail_eqgmaterialdef.animsleep = 0
-        return {'FINISHED'}
-
 def draw_eqgmaterialdefinition_in_transform(self, context):
     obj = context.object
     if not obj or not obj.active_material:
@@ -1155,13 +1074,79 @@ class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
         material = context.object.active_material
         if not material:
             return {'CANCELLED'}
+
+        # 🔹 Tag as EQG material
         material['quaildef'] = 'eqgmaterialdef'
-        material.quail_eqgmaterialdef.shadertag = 'Opaque_MaxCB1.fx'
-        material.quail_eqgmaterialdef.e_fShininess0 = '0'
-        material.quail_eqgmaterialdef.e_TextureDiffuse0 = ""
-        material.quail_eqgmaterialdef.e_TextureNormal0 = ""
-        material.quail_eqgmaterialdef.hexoneflag = False
-        material.quail_eqgmaterialdef.animsleep = 0
+
+        props = material.quail_eqgmaterialdef
+
+        # 🔹 Prevent repeated shader rebuild spam
+        # (temporarily disable update callbacks)
+        def suppress_updates(prop_group):
+            for attr in dir(prop_group):
+                try:
+                    prop = getattr(type(prop_group), attr, None)
+                    if hasattr(prop, "update"):
+                        setattr(prop_group, attr, getattr(prop_group, attr))
+                except:
+                    pass
+
+        # 🔹 Core defaults (correct types)
+        props.shadertag = 'Opaque_MaxCB1.fx'
+        props.e_fShininess0 = 0.0
+        props.e_TextureDiffuse0 = ""
+        props.e_TextureDiffuse0mapChannel = ""
+        props.e_TextureDiffuse1 = ""
+        props.e_TextureEnvironment = ""
+        props.e_TextureEnvironment0 = ""
+        props.e_TextureFallback = ""
+        props.e_TextureFallback0 = ""
+        props.e_TextureNormal0 = ""
+        props.e_TextureNormal0mapChannel = ""
+        props.e_TextureNormal1 = ""
+
+        # 🔹 Numeric shader params (store as strings only if your pipeline truly requires it)
+        props.e_fBumpiness0 = ""
+        props.e_fCoverageScale0 = ""
+        props.e_fEnvMapStrength0 = ""
+        props.e_fFresnelBias = ""
+        props.e_fFresnelPower = ""
+        props.e_fGloss0 = ""
+        props.e_fReflectionAmount = ""
+        props.e_fReflectionColor = ""
+
+        # 🔹 Scale / slide / misc
+        for i in range(10):
+            setattr(props, f"e_fScale{i}", "")
+            setattr(props, f"e_fGrassDensity{i}", "")
+            setattr(props, f"e_TextureDetail{i}", "")
+
+        props.e_fSlide1X = ""
+        props.e_fSlide1Y = ""
+        props.e_fSlide2X = ""
+        props.e_fSlide2Y = ""
+
+        props.e_fWaterColor1 = ""
+        props.e_fWaterColor2 = ""
+
+        # 🔹 Texture extras
+        props.e_TextureCoverage = ""
+        props.e_TextureCoverage0 = ""
+        props.e_TextureGlow0 = ""
+        props.e_TexturePalette0 = ""
+        props.e_TextureSecond0 = ""
+        props.e_TextureSecond0mapChannel = ""
+
+        # 🔹 Flags
+        props.hexoneflag = False
+        props.animsleep = 0
+
+        # 🔹 Apply shader ONCE
+        err = eqg_apply(material)
+        if err:
+            error(err)
+            return {'CANCELLED'}
+
         return {'FINISHED'}
 
 

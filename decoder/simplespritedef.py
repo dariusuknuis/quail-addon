@@ -7,6 +7,7 @@ from ..wce.simplespritedef import simplespritedef
 from .context import Context
 from ..common.image_loader import load_s3d_image
 from ..common import _add_group_socket, _get_group_io_sockets
+from ..common import state
 
 def read_bmp_palette_color(file_path, color_index):
     """
@@ -279,7 +280,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     base_tex = nodes.new("ShaderNodeTexImage")
     base_tex.image = base_image
     base_tex.location = (current_x, 0)
-
+    base_tex["file_index"] = 0
     # ------------------------------------------------
     # DETAIL case
     # ------------------------------------------------
@@ -312,6 +313,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         detail_tex = nodes.new("ShaderNodeTexImage")
         detail_tex.image = detail_image
         detail_tex.location = (-600, -200)
+        detail_tex["file_index"] = 1
 
         links.new(mapping.outputs["Vector"], detail_tex.inputs["Vector"])
 
@@ -349,6 +351,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         layer_tex = nodes.new("ShaderNodeTexImage")
         layer_tex.image = layer_image
         layer_tex.location = (-600, -150)
+        layer_tex["file_index"] = 1
 
         mix = nodes.new("ShaderNodeMixRGB")
         mix.blend_type = 'MIX'
@@ -384,6 +387,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         palette_tex.image = palette_image
         palette_tex.location = (-600, -150)
         palette_tex.location = (-1400, -1200)
+        palette_tex["file_index"] = 1
         palette_tex.interpolation = 'Closest'
         palette_tex.image.colorspace_settings.name = 'Non-Color'
 
@@ -419,6 +423,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             tiled_tex = nodes.new("ShaderNodeTexImage")
             tiled_tex.image = file.image
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
+            tiled_tex["file_index"] = i
 
             # Mapping
             multiply = nodes.new("ShaderNodeMath")
@@ -491,58 +496,94 @@ def build_texture_atlas(images, name="atlas", padding=2):
     if not images:
         return None
 
-    # Ensure all images are same size
-    width, height = images[0].size
-    for img in images:
-        if img.size[0] != width or img.size[1] != height:
-            raise ValueError("All images must have the same dimensions for atlas")
+    # --------------------------------------------------
+    # Determine target size (max of all images)
+    # --------------------------------------------------
+    max_w = max(img.size[0] for img in images)
+    max_h = max(img.size[1] for img in images)
 
     count = len(images)
 
-    # Atlas dimensions (horizontal strip)
-    atlas_width = count * (width + padding * 2)
-    atlas_height = height + padding * 2
+    atlas_width = count * (max_w + padding * 2)
+    atlas_height = max_h + padding * 2
 
-    atlas = bpy.data.images.new(name, width=atlas_width, height=atlas_height, alpha=True)
+    atlas = bpy.data.images.new(
+        name,
+        width=atlas_width,
+        height=atlas_height,
+        alpha=True
+    )
 
     atlas_pixels = [0.0] * (atlas_width * atlas_height * 4)
 
+    # --------------------------------------------------
+    # Nearest-neighbor resample into target size
+    # --------------------------------------------------
+    def resample_to_size(img, target_w, target_h):
+        src_w, src_h = img.size
+        src_pixels = list(img.pixels)
+
+        result = [0.0] * (target_w * target_h * 4)
+
+        for y in range(target_h):
+            sy = int(y * src_h / target_h)
+            for x in range(target_w):
+                sx = int(x * src_w / target_w)
+
+                src_idx = (sy * src_w + sx) * 4
+                dst_idx = (y * target_w + x) * 4
+
+                result[dst_idx:dst_idx+4] = src_pixels[src_idx:src_idx+4]
+
+        return result
+
+    # --------------------------------------------------
+    # Copy pixel helper
+    # --------------------------------------------------
     def copy_pixel(src_pixels, sx, sy, sw, dx, dy, dw):
         src_index = (sy * sw + sx) * 4
         dst_index = (dy * dw + dx) * 4
         atlas_pixels[dst_index:dst_index+4] = src_pixels[src_index:src_index+4]
 
+    # --------------------------------------------------
+    # Build atlas
+    # --------------------------------------------------
     for i, img in enumerate(images):
-        img_pixels = list(img.pixels)
 
-        x_offset = i * (width + padding * 2) + padding
+        # 🔥 normalize size (non-destructive)
+        img_pixels = resample_to_size(img, max_w, max_h)
+
+        x_offset = i * (max_w + padding * 2) + padding
         y_offset = padding
 
-        for y in range(height):
-            for x in range(width):
+        # main copy
+        for y in range(max_h):
+            for x in range(max_w):
                 copy_pixel(
                     img_pixels,
-                    x, y, width,
+                    x, y, max_w,
                     x + x_offset,
                     y + y_offset,
                     atlas_width
                 )
 
-        # 🔥 padding (edge bleed)
+        # --------------------------------------------------
+        # padding (edge bleed)
+        # --------------------------------------------------
         for p in range(padding):
-            # left/right padding
-            for y in range(height):
-                copy_pixel(img_pixels, 0, y, width,
+            # left/right
+            for y in range(max_h):
+                copy_pixel(img_pixels, 0, y, max_w,
                            x_offset - p - 1, y + y_offset, atlas_width)
-                copy_pixel(img_pixels, width - 1, y, width,
-                           x_offset + width + p, y + y_offset, atlas_width)
+                copy_pixel(img_pixels, max_w - 1, y, max_w,
+                           x_offset + max_w + p, y + y_offset, atlas_width)
 
-            # top/bottom padding
-            for x in range(width):
-                copy_pixel(img_pixels, x, 0, width,
+            # top/bottom
+            for x in range(max_w):
+                copy_pixel(img_pixels, x, 0, max_w,
                            x + x_offset, y_offset - p - 1, atlas_width)
-                copy_pixel(img_pixels, x, height - 1, width,
-                           x + x_offset, y_offset + height + p, atlas_width)
+                copy_pixel(img_pixels, x, max_h - 1, max_w,
+                           x + x_offset, y_offset + max_h + p, atlas_width)
 
     atlas.pixels = atlas_pixels
     atlas.pack()
@@ -738,7 +779,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         'ShaderNodeTree'
     )
     simplesprite_node['quaildef'] = 'simplespritedef'
-    simplesprite_node["_updating"] = True
+    state.QUAIL_UPDATING = True
 
     props = simplesprite_node.quail_simplesprite
 
@@ -787,6 +828,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
             raw = f.file
             file_entry = frame.files.add()
+            file_entry.file_index = len(frame.files) - 1
             file_entry.raw_string = raw
 
             if "," in raw:
@@ -874,6 +916,6 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
     if props.has_sleep:
         add_texture_animation(simplesprite_node)
 
-    simplesprite_node["_updating"] = False
+    state.QUAIL_UPDATING = False
 
     return ""

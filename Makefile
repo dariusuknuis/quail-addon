@@ -28,25 +28,25 @@ build:
 	$(PYTHON) -c "from pathlib import Path; p=Path('common/__init__.py'); t=p.read_text(encoding='utf-8'); t=t.replace('\"0.0.1\"','\"$(VERSION)\"'); t=t.replace('return True  # Build','return False  # Build'); p.write_text(t, encoding='utf-8')"
 
 	# Stage addon files
-	mkdir -p bin/quail-addon
-	cp bin/quail.exe LICENSE README.md *.py bin/quail-addon
+	mkdir -p bin/quail_addon
+	cp bin/quail.exe LICENSE README.md *.py bin/quail_addon
 
 	# IMPORTANT: include the Blender Extensions manifest if present
-	@if [ -f blender_manifest.toml ]; then cp blender_manifest.toml bin/quail-addon; else echo "WARN: blender_manifest.toml missing in repo root"; fi
+	@if [ -f blender_manifest.toml ]; then cp blender_manifest.toml bin/quail_addon; else echo "WARN: blender_manifest.toml missing in repo root"; fi
 
 	# Copy addon directories (only if they exist)
 	@for d in $(ADDON_DIRS); do \
-		if [ -d "$$d" ]; then cp -r "$$d" bin/quail-addon; else echo "skip: $$d (missing)"; fi; \
+		if [ -d "$$d" ]; then cp -r "$$d" bin/quail_addon; else echo "skip: $$d (missing)"; fi; \
 	done
 
 	# Create zip using Python (no external zip dependency)
-	$(PYTHON) -c "import os, zipfile; root='bin/quail-addon'; out='bin/quail-$(VERSION).zip'; z=zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED); \
+	$(PYTHON) -c "import os, zipfile; root='bin/quail_addon'; out='bin/quail-$(VERSION).zip'; z=zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED); \
 	[dn.remove('__pycache__') for dp,dn,fn in os.walk(root) if '__pycache__' in dn]; \
 	[None for dp,dn,fn in os.walk(root) for f in fn if not f.endswith(('.pyc','.pyo')) and (lambda p,arc: z.write(p,arc))(os.path.join(dp,f), os.path.relpath(os.path.join(dp,f),'bin'))]; \
 	z.close()"
 
 	# Cleanup staging
-	rm -rf bin/quail-addon
+	rm -rf bin/quail_addon
 	rm -f bin/quail.exe
 
 	# Revert patched files back to dev defaults

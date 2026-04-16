@@ -25,23 +25,26 @@ def update_transparent(self, context):
     if not self.transparent_override:
         return
     apply_transparent(self)
-    mat = context.material
-    if not mat:
+    mat = getattr(context, "material", None)
+    if mat is None:
         return
 
 def sprite_items(self, context):
-    items = []
+    items = [("NONE", "<None>", "")]
 
     for ng in bpy.data.node_groups:
-        if "_SPRITE" in ng.name:
+        if ng.name.endswith("_SPRITE"):
             items.append((ng.name, ng.name, ""))
-
-    # Always allow empty selection
-    items.insert(0, ("", "<None>", ""))
 
     return items
 
 def update_simplesprite(self, context):
+
+    valid = [i[0] for i in sprite_items(self, context)]
+
+    if not self.simplespritetag or self.simplespritetag not in valid:
+        self.simplespritetag = valid[0] if valid else "NONE"
+        return
 
     mat = self.id_data
     if not isinstance(mat, bpy.types.Material):
@@ -73,7 +76,7 @@ def update_simplesprite(self, context):
             nodes.remove(n)
 
     # If cleared in panel, stop here
-    if not self.simplespritetag:
+    if not self.simplespritetag or self.simplespritetag == "NONE":
         return
 
     sprite_group = bpy.data.node_groups.get(self.simplespritetag)

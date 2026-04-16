@@ -1,0 +1,1 @@
+QUAIL_UPDATING = False

@@ -3,6 +3,7 @@ import typing
 import inspect
 import pkgutil
 import importlib
+import traceback
 from pathlib import Path
 
 __all__ = (
@@ -27,14 +28,22 @@ def init():
 
 def register():
     for cls in ordered_classes:
-        bpy.utils.register_class(cls)
+        try:
+            bpy.utils.register_class(cls)
+        except Exception:
+            print(f"[AUTOLOAD] Failed to register class: {cls.__name__}")
+            traceback.print_exc()
 
     for module in modules:
         if module.__name__ == __name__:
             continue
-        if hasattr(module, "register"):
-            module.register()
 
+        if hasattr(module, "register"):
+            try:
+                module.register()
+            except Exception:
+                print(f"[AUTOLOAD] Failed to run register() in: {module.__name__}")
+                traceback.print_exc()
 
 def unregister():
     global ordered_classes
