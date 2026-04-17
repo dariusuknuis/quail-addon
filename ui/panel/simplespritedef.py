@@ -6,78 +6,40 @@ from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolPr
 from ...decoder.simplespritedef import add_texture_animation, create_frame_nodegroup
 from ...common import state
 
-def update_has_sleep(self, context):
-    tree = self.id_data
+def update_texture_mode(self, context):
 
-    if not tree or tree.get("quaildef") != "simplespritedef":
-        return
-
-    if self.has_sleep:
-        add_texture_animation(tree)
-    else:
-        nodes = tree.nodes
-        links = tree.links
-
-        # ----------------------------------------
-        # 1. Remove TEXANIM node
-        # ----------------------------------------
-        for n in list(nodes):
-            if n.get("texanim_node"):
-                nodes.remove(n)
-
-        # ----------------------------------------
-        # 2. Find first frame node (frame_id == 0)
-        # ----------------------------------------
-        first_frame_node = None
-        for n in nodes:
-            if n.get("frame_id") == 0:
-                first_frame_node = n
-                break
-
-        # ----------------------------------------
-        # 3. Reconnect to output
-        # ----------------------------------------
-        output = next((n for n in nodes if n.type == "GROUP_OUTPUT"), None)
-
-        if output and first_frame_node:
-            # Remove existing links to output
-            for l in list(links):
-                if l.to_node == output:
-                    links.remove(l)
-
-            # Reconnect first frame
-            links.new(first_frame_node.outputs["Color"], output.inputs["sRGB Texture"])
-            links.new(first_frame_node.outputs["Alpha"], output.inputs["Alpha"])
-
-def update_frame_name(self, context):
     if state.QUAIL_UPDATING:
         return
 
     tree = self.id_data
-    if not tree or tree.get("quaildef") != "simplespritedef":
+    props = tree.quail_simplesprite
+
+    frame = None
+    for f in props.frames:
+        for f2 in f.files:
+            if f2 == self:
+                frame = f
+                break
+        if frame:
+            break
+
+    if not frame:
         return
 
-    new_name = self.frame_name
+    state.QUAIL_UPDATING = True
 
-    # ----------------------------------------
-    # 1. Mirror into Blender name (optional)
-    # ----------------------------------------
-    self.name = new_name
+    new_group = create_frame_nodegroup(None, frame, tree.name, force_rebuild=True)
+    frame.frame_node = new_group
 
-    # ----------------------------------------
-    # 2. Rename node group (picker field)
-    # ----------------------------------------
-    if self.frame_node:
-        self.frame_node.name = new_name
+    state.QUAIL_UPDATING = False
 
-    # ----------------------------------------
-    # 3. Rename node instance
-    # ----------------------------------------
-    for n in tree.nodes:
-        if n.type == 'GROUP' and n.node_tree == self.frame_node:
-            n.name = new_name
-            n.label = new_name
-            break
+    node = next((n for n in tree.nodes if n.get("frame_id") == frame.frame_id), None)
+    if node:
+        for socket in node.inputs:
+            socket.hide = True
+
+    if props.has_sleep:
+        add_texture_animation(tree)
 
 def update_frame_file_image(self, context):
 
@@ -99,7 +61,6 @@ def update_frame_file_image(self, context):
     if not frame:
         return
 
-    # 🔥 rebuild safely
     state.QUAIL_UPDATING = True
 
     new_group = create_frame_nodegroup(None, frame, tree.name, force_rebuild=True)
@@ -117,8 +78,6 @@ def update_frame_file_image(self, context):
         for socket in node.inputs:
             socket.hide = True
 
-    # only rebuild atlas
-    print("TEXTURE_ANIMATION_UPDATED")
     if props.has_sleep:
         add_texture_animation(tree)
 
@@ -207,13 +166,78 @@ def update_frame_node(self, context):
             links.new(node.outputs["Color"], output.inputs["sRGB Texture"])
             links.new(node.outputs["Alpha"], output.inputs["Alpha"])
 
-    # -----------------------------------
-    # Always update TEXANIM after changes
-    # -----------------------------------
-    print("TEXTURE_ANIMATION_UPDATED?")
-    props = tree.quail_simplesprite
-    if props.has_sleep:
+def update_frame_name(self, context):
+    if state.QUAIL_UPDATING:
+        return
+
+    tree = self.id_data
+    if not tree or tree.get("quaildef") != "simplespritedef":
+        return
+
+    new_name = self.frame_name
+
+    # ----------------------------------------
+    # 1. Mirror into Blender name (optional)
+    # ----------------------------------------
+    self.name = new_name
+
+    # ----------------------------------------
+    # 2. Rename node group (picker field)
+    # ----------------------------------------
+    if self.frame_node:
+        self.frame_node.name = new_name
+
+    # ----------------------------------------
+    # 3. Rename node instance
+    # ----------------------------------------
+    for n in tree.nodes:
+        if n.type == 'GROUP' and n.node_tree == self.frame_node:
+            n.name = new_name
+            n.label = new_name
+            break
+
+def update_has_sleep(self, context):
+    tree = self.id_data
+
+    if not tree or tree.get("quaildef") != "simplespritedef":
+        return
+
+    if self.has_sleep:
         add_texture_animation(tree)
+    else:
+        nodes = tree.nodes
+        links = tree.links
+
+        # ----------------------------------------
+        # 1. Remove TEXANIM node
+        # ----------------------------------------
+        for n in list(nodes):
+            if n.get("texanim_node"):
+                nodes.remove(n)
+
+        # ----------------------------------------
+        # 2. Find first frame node (frame_id == 0)
+        # ----------------------------------------
+        first_frame_node = None
+        for n in nodes:
+            if n.get("frame_id") == 0:
+                first_frame_node = n
+                break
+
+        # ----------------------------------------
+        # 3. Reconnect to output
+        # ----------------------------------------
+        output = next((n for n in nodes if n.type == "GROUP_OUTPUT"), None)
+
+        if output and first_frame_node:
+            # Remove existing links to output
+            for l in list(links):
+                if l.to_node == output:
+                    links.remove(l)
+
+            # Reconnect first frame
+            links.new(first_frame_node.outputs["Color"], output.inputs["sRGB Texture"])
+            links.new(first_frame_node.outputs["Alpha"], output.inputs["Alpha"])
 
 def update_simplesprite_node(self, context):
     print("Updated simplesprite:", self.name)
@@ -287,7 +311,8 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
             ('PALETTE', 'Palette', ''),
             ('TILED', 'Tiled', ''),
         ],
-        default='BASE'
+        default='BASE',
+        update=update_texture_mode
     )
 
     palette_index: IntProperty(default=0)
