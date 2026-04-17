@@ -226,13 +226,19 @@ def create_blur_node_group(blur_node_group):
     # Output to group
     links.new(add_vector_node.outputs['Vector'], go["Vector"])
 
-def create_frame_nodegroup(ctx, frame, sprite_tag):
-    frame_group_name = f"{frame.frame_name}"
+def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
 
-    if frame_group_name in bpy.data.node_groups:
-        return bpy.data.node_groups[frame_group_name]
+    group = bpy.data.node_groups.get(frame.frame_name)
 
-    group = bpy.data.node_groups.new(frame_group_name, 'ShaderNodeTree')
+    if group and not force_rebuild:
+        return group
+
+    if group and force_rebuild:
+        group.nodes.clear()
+        group.links.clear()
+        group.interface.clear()
+    else:
+        group = bpy.data.node_groups.new(frame.frame_name, 'ShaderNodeTree')
     group['quaildef'] = 'simplesprite_frame'
 
     nodes = group.nodes
@@ -274,13 +280,12 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
     base_file = frame.files[0]
     base_image = base_file.image
 
-    if not base_image:
-        return group
-
     base_tex = nodes.new("ShaderNodeTexImage")
-    base_tex.image = base_image
     base_tex.location = (current_x, 0)
     base_tex["file_index"] = 0
+    if base_image:
+        base_tex.image = base_image
+
     # ------------------------------------------------
     # DETAIL case
     # ------------------------------------------------
@@ -289,9 +294,6 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
 
         detail_file = frame.files[1]
         detail_image = detail_file.image
-
-        if not detail_image:
-            return group
 
         # Mapping node
         mapping = nodes.new("ShaderNodeMapping")
@@ -311,9 +313,10 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
 
         # Detail texture
         detail_tex = nodes.new("ShaderNodeTexImage")
-        detail_tex.image = detail_image
         detail_tex.location = (-600, -200)
         detail_tex["file_index"] = 1
+        if detail_image:
+            detail_tex.image = detail_image
 
         links.new(mapping.outputs["Vector"], detail_tex.inputs["Vector"])
 
@@ -345,13 +348,11 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         layer_file = frame.files[1]
         layer_image = layer_file.image
 
-        if not layer_image:
-            return group
-
         layer_tex = nodes.new("ShaderNodeTexImage")
-        layer_tex.image = layer_image
         layer_tex.location = (-600, -150)
         layer_tex["file_index"] = 1
+        if layer_image:
+            layer_tex.image = layer_image
 
         mix = nodes.new("ShaderNodeMixRGB")
         mix.blend_type = 'MIX'
@@ -380,16 +381,15 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
         palette_file = frame.files[1]
         palette_image = palette_file.image
 
-        if not palette_image:
-            return group
-
         palette_tex = nodes.new("ShaderNodeTexImage")
-        palette_tex.image = palette_image
         palette_tex.location = (-600, -150)
         palette_tex.location = (-1400, -1200)
         palette_tex["file_index"] = 1
         palette_tex.interpolation = 'Closest'
         palette_tex.image.colorspace_settings.name = 'Non-Color'
+        if palette_image:
+            palette_tex.image = palette_image
+
 
         # Create or get the Blur node group
         blur_node_group_name = "Blur"
@@ -421,9 +421,10 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
                 continue
 
             tiled_tex = nodes.new("ShaderNodeTexImage")
-            tiled_tex.image = file.image
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
             tiled_tex["file_index"] = i
+            if file.image:
+                tiled_tex.image = file.image
 
             # Mapping
             multiply = nodes.new("ShaderNodeMath")
@@ -446,10 +447,13 @@ def create_frame_nodegroup(ctx, frame, sprite_tag):
             index_color.location = (-800, -400 - tiled_index * 300)
 
             # Set palette color (read from bmp like your old code)
-            palette_color = read_bmp_palette_color(
-                palette_image.filepath,
-                (file.palette_index - 1)
-            )
+            if palette_image:
+                palette_color = read_bmp_palette_color(
+                    palette_image.filepath,
+                    (file.palette_index - 1)
+                )
+            else:
+                palette_color = (0.0, 0.0, 0.0)
             index_color.outputs[0].default_value = (*palette_color, 1.0)
 
             # PaletteMask group node
@@ -499,8 +503,13 @@ def build_texture_atlas(images, name="atlas", padding=2):
     # --------------------------------------------------
     # Determine target size (max of all images)
     # --------------------------------------------------
-    max_w = max(img.size[0] for img in images)
-    max_h = max(img.size[1] for img in images)
+    valid_images = [img for img in images if img is not None]
+
+    if not valid_images:
+        return None  # or bail safely
+
+    max_w = max(img.size[0] for img in valid_images)
+    max_h = max(img.size[1] for img in valid_images)
 
     count = len(images)
 
@@ -550,8 +559,10 @@ def build_texture_atlas(images, name="atlas", padding=2):
     # --------------------------------------------------
     for i, img in enumerate(images):
 
-        # 🔥 normalize size (non-destructive)
-        img_pixels = resample_to_size(img, max_w, max_h)
+        if img:
+            img_pixels = resample_to_size(img, max_w, max_h)
+        else:
+            img_pixels = [1.0, 0.0, 1.0, 1.0] * (max_w * max_h)
 
         x_offset = i * (max_w + padding * 2) + padding
         y_offset = padding
@@ -611,10 +622,16 @@ def add_texture_animation(simplesprite_node):
 
     images = []
     for fn in frame_nodes:
-        for n in fn.node_tree.nodes:
-            if n.type == 'TEX_IMAGE' and n.image:
-                images.append(n.image)
-                break
+        base = next(
+            (n for n in fn.node_tree.nodes
+            if n.type == 'TEX_IMAGE' and n.get("file_index") == 0),
+            None
+        )
+
+        if base:
+            images.append(base.image if base.image else None)
+        else:
+            images.append(None)
 
     if not images:
         return
@@ -871,7 +888,8 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         frame_group = create_frame_nodegroup(
             ctx,
             frame,
-            simplesprite.tag
+            simplesprite.tag,
+            force_rebuild=False
         )
 
         frame.frame_node = frame_group
