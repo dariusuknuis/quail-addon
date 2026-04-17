@@ -49,6 +49,36 @@ def update_has_sleep(self, context):
             links.new(first_frame_node.outputs["Color"], output.inputs["sRGB Texture"])
             links.new(first_frame_node.outputs["Alpha"], output.inputs["Alpha"])
 
+def update_frame_name(self, context):
+    if state.QUAIL_UPDATING:
+        return
+
+    tree = self.id_data
+    if not tree or tree.get("quaildef") != "simplespritedef":
+        return
+
+    new_name = self.frame_name
+
+    # ----------------------------------------
+    # 1. Mirror into Blender name (optional)
+    # ----------------------------------------
+    self.name = new_name
+
+    # ----------------------------------------
+    # 2. Rename node group (picker field)
+    # ----------------------------------------
+    if self.frame_node:
+        self.frame_node.name = new_name
+
+    # ----------------------------------------
+    # 3. Rename node instance
+    # ----------------------------------------
+    for n in tree.nodes:
+        if n.type == 'GROUP' and n.node_tree == self.frame_node:
+            n.name = new_name
+            n.label = new_name
+            break
+
 def update_frame_file_image(self, context):
 
     if state.QUAIL_UPDATING:
@@ -83,36 +113,6 @@ def update_frame_file_image(self, context):
     props = tree.quail_simplesprite
     if props.has_sleep:
         add_texture_animation(tree)
-
-def update_frame_name(self, context):
-    if state.QUAIL_UPDATING:
-        return
-
-    tree = self.id_data
-    if not tree or tree.get("quaildef") != "simplespritedef":
-        return
-
-    new_name = self.frame_name
-
-    # ----------------------------------------
-    # 1. Mirror into Blender name (optional)
-    # ----------------------------------------
-    self.name = new_name
-
-    # ----------------------------------------
-    # 2. Rename node group (picker field)
-    # ----------------------------------------
-    if self.frame_node:
-        self.frame_node.name = new_name
-
-    # ----------------------------------------
-    # 3. Rename node instance
-    # ----------------------------------------
-    for n in tree.nodes:
-        if n.type == 'GROUP' and n.node_tree == self.frame_node:
-            n.name = new_name
-            n.label = new_name
-            break
 
 def update_frame_node(self, context):
 
