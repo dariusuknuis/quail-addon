@@ -226,13 +226,20 @@ def create_blur_node_group(blur_node_group):
     # Output to group
     links.new(add_vector_node.outputs['Vector'], go["Vector"])
 
-def create_frame_nodegroup(ctx, frame, sprite_tag):
-    frame_group_name = f"{frame.frame_name}"
+def build_frame_nodegroup(ctx, frame, sprite_tag, rebuild=False):
 
-    if frame_group_name in bpy.data.node_groups:
-        return bpy.data.node_groups[frame_group_name]
+    group = bpy.data.node_groups.get(frame.frame_name)
 
-    group = bpy.data.node_groups.new(frame_group_name, 'ShaderNodeTree')
+    if group and not rebuild:
+        return group
+
+    if group and rebuild:
+        group.nodes.clear()
+        group.links.clear()
+        group.interface.clear()
+    else:
+        group = bpy.data.node_groups.new(frame.frame_name, 'ShaderNodeTree')
+
     group['quaildef'] = 'simplesprite_frame'
 
     nodes = group.nodes
@@ -611,10 +618,14 @@ def add_texture_animation(simplesprite_node):
 
     images = []
     for fn in frame_nodes:
-        for n in fn.node_tree.nodes:
-            if n.type == 'TEX_IMAGE' and n.image:
-                images.append(n.image)
-                break
+        base = next(
+            (n for n in fn.node_tree.nodes
+            if n.type == 'TEX_IMAGE' and n.get("file_index") == 0 and n.image),
+            None
+        )
+
+        if base:
+            images.append(base.image)
 
     if not images:
         return
@@ -868,10 +879,11 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         # -----------------------------
         # Create frame nodegroup
         # -----------------------------
-        frame_group = create_frame_nodegroup(
+        frame_group = build_frame_nodegroup(
             ctx,
             frame,
-            simplesprite.tag
+            simplesprite.tag,
+            rebuild=False
         )
 
         frame.frame_node = frame_group

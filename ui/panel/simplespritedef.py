@@ -3,7 +3,7 @@
 import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
-from ...decoder.simplespritedef import add_texture_animation
+from ...decoder.simplespritedef import add_texture_animation, build_frame_nodegroup
 from ...common import state
 
 def update_has_sleep(self, context):
@@ -54,11 +54,10 @@ def update_frame_file_image(self, context):
     if state.QUAIL_UPDATING:
         return
 
-    # print("UPDATE CALLED")
     tree = self.id_data
     props = tree.quail_simplesprite
 
-    # 🔹 find parent frame
+    # find parent frame
     frame = None
     for f in props.frames:
         for f2 in f.files:
@@ -68,19 +67,27 @@ def update_frame_file_image(self, context):
         if frame:
             break
 
-    if not frame or not frame.frame_node:
+    if not frame:
         return
 
-    frame_group = frame.frame_node
+    # ----------------------------------------
+    # REBUILD FRAME NODEGROUP
+    # ----------------------------------------
+    state.QUAIL_UPDATING = True
 
-    # 🔹 match node by index
-    for n in frame_group.nodes:
-        if n.type == 'TEX_IMAGE' and n.get("file_index") == self.file_index:
-            n.image = self.image
-            break
+    new_group = build_frame_nodegroup(None, frame, tree.name, rebuild=True)
+    frame.frame_node = new_group
 
-    # Rebuild anim if needed
-    props = tree.quail_simplesprite
+    state.QUAIL_UPDATING = False
+
+    # ----------------------------------------
+    # refresh main node
+    # ----------------------------------------
+    update_frame_node(frame, context)
+
+    # ----------------------------------------
+    # rebuild animation if needed
+    # ----------------------------------------
     if props.has_sleep:
         add_texture_animation(tree)
 
