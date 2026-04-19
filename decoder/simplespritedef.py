@@ -17,6 +17,11 @@ def read_bmp_palette_color(file_path, color_index):
     :param color_index: The index of the color in the BMP palette.
     :return: The RGB color as a tuple (red, green, blue).
     """
+
+    print(f"\n=== BMP PALETTE DEBUG ===")
+    print("File:", file_path)
+    print("Requested index:", color_index)
+
     with open(file_path, 'rb') as f:
         palette_offset = 54 + color_index * 4  # BMP header is 54 bytes + 4 bytes per color entry
         f.seek(palette_offset)
@@ -284,6 +289,8 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
     base_tex = nodes.new("ShaderNodeTexImage")
     base_tex.location = (current_x, 0)
     base_tex["file_index"] = 0
+    base_tex.name = base_file.file_name
+    base_tex.label = base_tex.name
     if base_image:
         base_tex.image = base_image
 
@@ -316,6 +323,8 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         detail_tex = nodes.new("ShaderNodeTexImage")
         detail_tex.location = (-600, -200)
         detail_tex["file_index"] = 1
+        detail_tex.name = detail_file.file_name
+        detail_tex.label = detail_tex.name
         if detail_image:
             detail_tex.image = detail_image
 
@@ -352,6 +361,8 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         layer_tex = nodes.new("ShaderNodeTexImage")
         layer_tex.location = (-600, -150)
         layer_tex["file_index"] = 1
+        layer_tex.name = layer_file.file_name
+        layer_tex.label = layer_tex.name
         if layer_image:
             layer_tex.image = layer_image
 
@@ -387,6 +398,8 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         palette_tex.location = (-1400, -1200)
         palette_tex["file_index"] = 1
         palette_tex.interpolation = 'Closest'
+        palette_tex.name = palette_file.file_name
+        palette_tex.label = palette_tex.name
         if palette_image:
             palette_tex.image = palette_image
             palette_tex.image.colorspace_settings.name = 'Non-Color'
@@ -425,6 +438,8 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
             tiled_tex["file_index"] = tiled_index + 2
             tiled_image = bpy.data.images.get(file.image_name)
+            tiled_tex.name = file.file_name
+            tiled_tex.label = tiled_tex.name
             if tiled_image:
                 tiled_tex.image = tiled_image
 
@@ -449,13 +464,20 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
             index_color.location = (-800, -400 - tiled_index * 300)
 
             # Set palette color (read from bmp like your old code)
-            if palette_image:
-                palette_color = read_bmp_palette_color(
-                    palette_image.filepath,
-                    (file.palette_index - 1)
-                )
+            if palette_image and "bmp_palette" in palette_image:
+                palette = palette_image["bmp_palette"]
+                idx = max(0, file.palette_index - 1)
+                if idx < len(palette):
+                    r, g, b = palette[idx]
+                    palette_color = (r / 255.0, g / 255.0, b / 255.0)
+                else:
+                    print(f"[WARN] Palette index out of range: {idx}")
+                    palette_color = (0.0, 0.0, 0.0)
+
             else:
+                print(f"[WARN] No palette on image: {palette_image.name if palette_image else 'None'}")
                 palette_color = (0.0, 0.0, 0.0)
+
             index_color.outputs[0].default_value = (*palette_color, 1.0)
 
             # PaletteMask group node
@@ -915,9 +937,9 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
                 filename = raw
                 file_entry.texture_mode = 'BASE'
 
+            file_entry.file_name = filename
             image, err = load_s3d_image(ctx, filename)
             if image:
-                # file_entry.image = image
                 file_entry.image_name = image.name
 
         frame.numfiles = len(frame.files)

@@ -2,9 +2,12 @@
 
 import bpy
 import os
+from bpy_extras.io_utils import ImportHelper
+from bpy.types import Operator
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 from ...decoder.simplespritedef import add_texture_animation, create_frame_nodegroup
 from ...common import state
+from ...common.image_loader import load_s3d_image
 
 def ensure_frame_connected(tree, frame):
     nodes = tree.nodes
@@ -24,6 +27,55 @@ def ensure_frame_connected(tree, frame):
     # reconnect
     links.new(node.outputs["Color"], output.inputs["sRGB Texture"])
     links.new(node.outputs["Alpha"], output.inputs["Alpha"])
+
+def update_file_values(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    state.QUAIL_UPDATING = True
+
+    tree = self.id_data
+    props = tree.quail_simplesprite
+
+    # find frame
+    frame = next(
+        (
+            f for f in props.frames
+            if any(file == self for file in f.files)
+        ),
+        None
+    )
+    if not frame:
+        state.QUAIL_UPDATING = False
+        return
+
+    # find node instance
+    node = next((n for n in tree.nodes if n.get("frame_id") == frame.frame_id), None)
+    if not node or not node.node_tree:
+        state.QUAIL_UPDATING = False
+        return
+
+    nt = node.node_tree
+
+    # ------------------------------------------------
+    # DETAIL
+    # ------------------------------------------------
+    if self.texture_mode == 'DETAIL':
+        if "Detail Scale" in node.inputs:
+            node.inputs["Detail Scale"].default_value = self.scale
+
+    # ------------------------------------------------
+    # TILED
+    # ------------------------------------------------
+    elif self.texture_mode == 'TILED':
+        tiled_index = self.file_index - 1
+        socket_name = f"Tiled {tiled_index} Scale"
+
+        if socket_name in node.inputs:
+            node.inputs[socket_name].default_value = self.scale
+
+    state.QUAIL_UPDATING = False
 
 def update_texture_mode(self, context):
 
@@ -63,6 +115,10 @@ def update_texture_mode(self, context):
 
     if props.has_sleep:
         add_texture_animation(tree)
+
+    if self.file_index >= 2 and self.texture_mode != 'TILED':
+        self.texture_mode = 'TILED'
+        self.palette_index = self.file_index - 1
 
     state.QUAIL_UPDATING = False
 
@@ -110,6 +166,10 @@ def update_frame_file_image(self, context):
 
     if props.has_sleep:
         add_texture_animation(tree)
+
+    if self.file_index >= 2 and self.texture_mode != 'TILED':
+        self.texture_mode = 'TILED'
+        self.palette_index = self.file_index - 1
 
 def update_frame_node(self, context):
 
@@ -300,17 +360,22 @@ def update_simplesprite_node(self, context):
     print("Updated simplesprite:", self.name)
 
 def update_numframes(self, context):
+    if state.QUAIL_UPDATING:
+        return
     target = self.numframes
     frames = self.frames
 
     # -----------------------------
     # Add frames
     # -----------------------------
+    state.QUAIL_UPDATING = True
+
     while len(frames) < target:
         frame = frames.add()
-        frame.frame_name = f"Frame_{len(frames)}"
         frame.frame_id = len(frames) - 1
+        frame.frame_name = f"Frame_{frame.frame_id}"
 
+    state.QUAIL_UPDATING = False
     # -----------------------------
     # Remove frames
     # -----------------------------
@@ -349,11 +414,55 @@ def update_numfiles(self, context):
     if self.active_file_index >= len(files):
         self.active_file_index = max(0, len(files) - 1)
 
+    for i, f in enumerate(files):
+        f.file_index = i
+
+class QUAIL_OT_load_image(Operator, ImportHelper):
+    bl_idname = "quail.load_image"
+    bl_label = "Load Image"
+
+    filename_ext = ".dds;.bmp;.png;.tga"
+    filter_glob: bpy.props.StringProperty(
+        default="*.dds;*.bmp;*.png;*.tga",
+        options={'HIDDEN'}
+    )
+
+    # 👇 pass context info
+    frame_index: bpy.props.IntProperty()
+    file_index: bpy.props.IntProperty()
+
+    def execute(self, context):
+
+        tree = context.space_data.edit_tree
+        props = tree.quail_simplesprite
+
+        frame = props.frames[self.frame_index]
+        file = frame.files[self.file_index]
+
+        # Load image
+        ctx = type("Ctx", (), {"parser": type("Parser", (), {"assets_path": os.path.dirname(self.filepath)})()})()
+
+        filename = bpy.path.basename(self.filepath)
+
+        img, err = load_s3d_image(ctx, filename)
+
+        if err or not img:
+            self.report({'ERROR'}, err or "Failed to load image")
+            return {'CANCELLED'}
+
+        # Assign
+        file.image_name = img.name
+        file.file_name = bpy.path.basename(self.filepath)
+
+        return {'FINISHED'}
+
 class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
 
     file_index: IntProperty()
 
     raw_string: StringProperty()
+
+    file_name: StringProperty()
 
     image_name: bpy.props.StringProperty(
         update=update_frame_file_image
@@ -372,7 +481,11 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
     )
 
     palette_index: IntProperty(default=0)
-    scale: FloatProperty(default=1.0)
+    scale: FloatProperty(
+        default=1.0,
+        update=update_file_values
+    )
+
     blend: FloatProperty(default=0.0)
 
 class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
@@ -530,13 +643,19 @@ class QUAIL_PT_simplesprite_nodepanel(bpy.types.Panel):
                 for i, file in enumerate(frame.files):
 
                     file_box = box.box()
-                    file_box.prop_search(
+
+                    row = file_box.row(align=True)
+                    row.prop_search(
                         file,
                         "image_name",
                         bpy.data,
                         "images",
                         text="Image"
                     )
+
+                    op = row.operator("quail.load_image", text="", icon='FILE_FOLDER')
+                    op.frame_index = props.active_frame
+                    op.file_index = i
 
                     # FILE 0 — BASE
                     if i == 0:

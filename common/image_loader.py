@@ -71,62 +71,64 @@ def flip_image_vertically(image):
     image.pixels[:] = flipped
     image.update()
 
-def process_bmp_image(path, image):
-    image.alpha_mode = 'CHANNEL_PACKED'
+def extract_bmp_palette(path, image):
     with open(path, "rb") as f:
         header = f.read(54)
 
         if len(header) < 54 or header[:2] != BMP_MAGIC:
+            print("Invalid BMP header")
             return
 
-        width = struct.unpack_from("<I", header, 18)[0]
-        height = struct.unpack_from("<I", header, 22)[0]
         bpp = struct.unpack_from("<H", header, 28)[0]
-
         if bpp != 8:
-            return  # not indexed BMP
+            print("Not 8-bit BMP, skipping palette")
+            return
 
-        # ----------------------------------------
-        # Read palette (256 entries)
-        # ----------------------------------------
-        # Read palette size from header
         clr_used = struct.unpack_from("<I", header, 46)[0]
-
         if clr_used == 0:
-            clr_used = 256  # default for 8-bit
+            clr_used = 256
 
         palette = []
 
         for i in range(clr_used):
             entry = f.read(4)
             if len(entry) < 4:
-                break  # safety
+                break
 
             b, g, r, _ = struct.unpack("BBBB", entry)
             palette.append((r, g, b))
 
-        # Pad to 256 if needed (important for indexing)
         while len(palette) < 256:
             palette.append((0, 0, 0))
 
-        # ----------------------------------------
-        # Store palette
-        # ----------------------------------------
         image["bmp_palette"] = palette
 
-        # ----------------------------------------
-        # Index 0 color
-        # ----------------------------------------
+        # Store index 0 color normalized
         r0, g0, b0 = palette[0]
-        index0 = (r0 / 255.0, g0 / 255.0, b0 / 255.0)
-        image["bmp_index0_color"] = index0
+        image["bmp_index0_color"] = (
+            r0 / 255.0,
+            g0 / 255.0,
+            b0 / 255.0
+        )
+
+def process_bmp_image(path, image):
+    image.alpha_mode = 'CHANNEL_PACKED'
+
+    # 🔹 Always extract + store palette first
+    if not image.get("bmp_palette"):
+        extract_bmp_palette(path, image)
+
+    # Safety: make sure index0 exists
+    if "bmp_index0_color" not in image:
+        print(f"[WARN] No bmp_index0_color on {image.name}, skipping alpha bake")
+        return
 
     # ----------------------------------------
     # Bake alpha into image
     # ----------------------------------------
     pixels = list(image.pixels)
 
-    r0, g0, b0 = index0
+    r0, g0, b0 = image["bmp_index0_color"]
 
     for i in range(0, len(pixels), 4):
         r, g, b = pixels[i], pixels[i+1], pixels[i+2]
@@ -153,6 +155,12 @@ def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
     if not os.path.exists(texture_path):
         return None, f"Texture not found: {texture_path}"
 
+    abs_path = bpy.path.abspath(texture_path)
+
+    for img in bpy.data.images:
+        if bpy.path.abspath(img.filepath) == abs_path:
+            return img, None
+
     tex_type = detect_texture_type(texture_path)
 
     if tex_type == "DDS":
@@ -167,7 +175,9 @@ def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
     image["image_type"] = tex_type
 
     if tex_type == "BMP":
-        if not name.upper().endswith("PAL.BMP"):
+        if name.upper().endswith("PAL.BMP"):
+            extract_bmp_palette(texture_path, image)
+        else:
             process_bmp_image(texture_path, image)
 
     else:
