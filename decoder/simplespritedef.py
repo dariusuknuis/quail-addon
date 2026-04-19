@@ -387,9 +387,9 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         palette_tex.location = (-1400, -1200)
         palette_tex["file_index"] = 1
         palette_tex.interpolation = 'Closest'
-        palette_tex.image.colorspace_settings.name = 'Non-Color'
         if palette_image:
             palette_tex.image = palette_image
+            palette_tex.image.colorspace_settings.name = 'Non-Color'
 
 
         # Create or get the Blur node group
@@ -423,9 +423,10 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
 
             tiled_tex = nodes.new("ShaderNodeTexImage")
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
-            tiled_tex["file_index"] = i
-            if file.image:
-                tiled_tex.image = bpy.data.images.get(file.image_name)
+            tiled_tex["file_index"] = tiled_index + 2
+            tiled_image = bpy.data.images.get(file.image_name)
+            if tiled_image:
+                tiled_tex.image = tiled_image
 
             # Mapping
             multiply = nodes.new("ShaderNodeMath")
@@ -480,7 +481,10 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         mix_node.inputs[0].default_value = 0.5
 
         links.new(base_tex.outputs["Color"], mix_node.inputs[6])
-        links.new(accumulated_color, mix_node.inputs[7])
+        if accumulated_color:
+            links.new(accumulated_color, mix_node.inputs[7])
+        else:
+            links.new(base_tex.outputs["Color"], mix_node.inputs[7])
         links.new(mix_node.outputs[2], group_output.inputs["Color"])
 
         if "Alpha" in base_tex.outputs:
@@ -507,7 +511,7 @@ def build_texture_atlas(images, name="atlas", padding=2):
     valid_images = [img for img in images if img is not None]
 
     if not valid_images:
-        return None  # or bail safely
+        return None
 
     max_w = max(img.size[0] for img in valid_images)
     max_h = max(img.size[1] for img in valid_images)
@@ -517,12 +521,35 @@ def build_texture_atlas(images, name="atlas", padding=2):
     atlas_width = count * (max_w + padding * 2)
     atlas_height = max_h + padding * 2
 
-    atlas = bpy.data.images.new(
-        name,
-        width=atlas_width,
-        height=atlas_height,
-        alpha=True
-    )
+    # --------------------------------------------------
+    # CREATE / REUSE / REPLACE IMAGE
+    # --------------------------------------------------
+    atlas = bpy.data.images.get(name)
+
+    if atlas:
+        if atlas.size[0] != atlas_width or atlas.size[1] != atlas_height:
+            # Size mismatch → must replace
+
+            if atlas.users > 0:
+                # Safer: rename old instead of deleting
+                atlas.name = name + "_old"
+            else:
+                bpy.data.images.remove(atlas)
+
+            atlas = bpy.data.images.new(
+                name,
+                width=atlas_width,
+                height=atlas_height,
+                alpha=True
+            )
+        # else: same size → reuse (overwrite pixels below)
+    else:
+        atlas = bpy.data.images.new(
+            name,
+            width=atlas_width,
+            height=atlas_height,
+            alpha=True
+        )
 
     atlas_pixels = [0.0] * (atlas_width * atlas_height * 4)
 
@@ -579,26 +606,29 @@ def build_texture_atlas(images, name="atlas", padding=2):
                     atlas_width
                 )
 
-        # --------------------------------------------------
         # padding (edge bleed)
-        # --------------------------------------------------
         for p in range(padding):
-            # left/right
             for y in range(max_h):
                 copy_pixel(img_pixels, 0, y, max_w,
                            x_offset - p - 1, y + y_offset, atlas_width)
                 copy_pixel(img_pixels, max_w - 1, y, max_w,
                            x_offset + max_w + p, y + y_offset, atlas_width)
 
-            # top/bottom
             for x in range(max_w):
                 copy_pixel(img_pixels, x, 0, max_w,
                            x + x_offset, y_offset - p - 1, atlas_width)
                 copy_pixel(img_pixels, x, max_h - 1, max_w,
                            x + x_offset, y_offset + max_h + p, atlas_width)
 
-    atlas.pixels = atlas_pixels
-    atlas.pack()
+    # --------------------------------------------------
+    # WRITE PIXELS (overwrite)
+    # --------------------------------------------------
+    atlas.pixels[:] = atlas_pixels
+    atlas.update()
+
+    # Optional: only pack once
+    if not atlas.packed_file:
+        atlas.pack()
 
     return atlas
 
@@ -641,6 +671,13 @@ def add_texture_animation(simplesprite_node):
     # 2. BUILD ATLAS
     # --------------------------------------------------
     atlas = build_texture_atlas(images, name=f"{simplesprite_node.name}_atlas")
+
+    for img in images:
+        if img and not img.packed_file:
+            try:
+                img.reload()
+            except:
+                pass
 
     # --------------------------------------------------
     # 3. CREATE / RESET TEXANIM GROUP
@@ -894,8 +931,6 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
             simplesprite.tag,
             force_rebuild=False
         )
-
-        # frame.frame_node = frame_group
 
         frame.frame_node_name = frame_group.name
 

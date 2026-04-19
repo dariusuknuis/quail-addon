@@ -33,7 +33,7 @@ def sprite_items(self, context):
     items = [("NONE", "<None>", "")]
 
     for ng in bpy.data.node_groups:
-        if ng.name.endswith("_SPRITE"):
+        if ng.get("quaildef") == "simplespritedef":
             items.append((ng.name, ng.name, ""))
 
     return items
