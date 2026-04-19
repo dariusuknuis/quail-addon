@@ -298,10 +298,12 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
 
     raw_string: StringProperty()
 
-    image: PointerProperty(
-        type=bpy.types.Image,
-        update=update_frame_file_image
-    )
+    # image: PointerProperty(
+    #     type=bpy.types.Image
+    #     # update=update_frame_file_image
+    # )
+
+    image_name: bpy.props.StringProperty()
 
     texture_mode: EnumProperty(
         items=[
@@ -311,8 +313,8 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
             ('PALETTE', 'Palette', ''),
             ('TILED', 'Tiled', ''),
         ],
-        default='BASE',
-        update=update_texture_mode
+        default='BASE'
+        # update=update_texture_mode
     )
 
     palette_index: IntProperty(default=0)
@@ -322,24 +324,26 @@ class QuailSimpleSpriteFrameFile(bpy.types.PropertyGroup):
 class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
 
     frame_name: StringProperty(
-        name="Frame Name",
-        update=update_frame_name
+        name="Frame Name"
+        # update=update_frame_name
     )
 
     frame_id: IntProperty(default=-1)
 
-    frame_node: PointerProperty(
-        name="Frame Node",
-        type=bpy.types.NodeTree,
-        poll=lambda self, nt: nt.get("quaildef") == "simplesprite_frame",
-        update=update_frame_node
-    )
+    # frame_node: PointerProperty(
+    #     name="Frame Node",
+    #     type=bpy.types.NodeTree,
+    #     poll=lambda self, nt: nt.get("quaildef") == "simplesprite_frame",
+    #     update=update_frame_node
+    # )
+
+    frame_node_name: bpy.props.StringProperty()
 
     numfiles: IntProperty(
         name="Num Files",
         default=0,
-        min=0,
-        update=sync_numfiles
+        min=0
+        # update=sync_numfiles
     )
 
     files: CollectionProperty(
@@ -361,8 +365,8 @@ class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
     has_sleep: BoolProperty(
         name="Has Sleep",
         description="If not set, Sleep is NULL",
-        default=False,
-        update=update_has_sleep
+        default=False
+        # update=update_has_sleep
     )
 
     sleep: IntProperty(
@@ -389,8 +393,8 @@ class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
         name="Num Frames",
         description="Number of frames for an animated texture",
         default=0,
-        min=0,
-        update=sync_numframes
+        min=0
+        # update=sync_numframes
     )
 
     frames: CollectionProperty(

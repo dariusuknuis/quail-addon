@@ -237,6 +237,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         group.nodes.clear()
         group.links.clear()
         group.interface.clear()
+        print("group_clear")
     else:
         group = bpy.data.node_groups.new(frame.frame_name, 'ShaderNodeTree')
     group['quaildef'] = 'simplesprite_frame'
@@ -278,7 +279,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
     # BASE (File 0)
     # ------------------------------------------------
     base_file = frame.files[0]
-    base_image = base_file.image
+    base_image = bpy.data.images.get(base_file.image_name)
 
     base_tex = nodes.new("ShaderNodeTexImage")
     base_tex.location = (current_x, 0)
@@ -293,7 +294,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         group["mode"] = "DETAIL"
 
         detail_file = frame.files[1]
-        detail_image = detail_file.image
+        detail_image = bpy.data.images.get(detail_file.image_name)
 
         # Mapping node
         mapping = nodes.new("ShaderNodeMapping")
@@ -346,7 +347,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         group["mode"] = "LAYER"
 
         layer_file = frame.files[1]
-        layer_image = layer_file.image
+        layer_image = bpy.data.images.get(layer_file.image_name)
 
         layer_tex = nodes.new("ShaderNodeTexImage")
         layer_tex.location = (-600, -150)
@@ -379,7 +380,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         group["mode"] = "PALETTE"
 
         palette_file = frame.files[1]
-        palette_image = palette_file.image
+        palette_image = bpy.data.images.get(palette_file.image_name)
 
         palette_tex = nodes.new("ShaderNodeTexImage")
         palette_tex.location = (-600, -150)
@@ -424,7 +425,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
             tiled_tex.location = (-1000, -400 - tiled_index * 300)
             tiled_tex["file_index"] = i
             if file.image:
-                tiled_tex.image = file.image
+                tiled_tex.image = bpy.data.images.get(file.image_name)
 
             # Mapping
             multiply = nodes.new("ShaderNodeMath")
@@ -649,6 +650,7 @@ def add_texture_animation(simplesprite_node):
         group.nodes.clear()
         group.links.clear()
         group.interface.clear()
+        print("tex_clear")
     else:
         group = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
 
@@ -878,7 +880,8 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
             image, err = load_s3d_image(ctx, filename)
             if image:
-                file_entry.image = image
+                # file_entry.image = image
+                file_entry.image_name = image.name
 
         frame.numfiles = len(frame.files)
 
@@ -892,7 +895,9 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
             force_rebuild=False
         )
 
-        frame.frame_node = frame_group
+        # frame.frame_node = frame_group
+
+        frame.frame_node_name = frame_group.name
 
         # -----------------------------
         # Instance nodegroup
