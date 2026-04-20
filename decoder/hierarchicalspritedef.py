@@ -22,6 +22,7 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     arm_obj.parent = ctx.parent
     ctx.collection.objects.link(arm_obj)
+    arm_obj['quaildef'] = 'hierarchicalspritedef'
 
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode='EDIT')
@@ -135,24 +136,16 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     # Decode skins and parent to bones
     # ------------------------------------------------
 
-    for skin in sprite.attachedskins:
+    for mesh_obj in bpy.data.objects:
 
-        tag = skin.dmsprite
+        if mesh_obj.type != 'MESH':
+            continue
 
-        mesh_obj = bpy.data.objects.get(tag)
+        if mesh_obj.get("quaildef") not in {"dmspritedef2", "dmspritedefinition"}:
+            continue
 
-        if not mesh_obj:
-
-            dmsprite = ctx.parser.dmspritedef2s.get(tag)
-
-            if not dmsprite:
-                return f"hsprite {sprite.tag} refers to dmsprite {tag} but not found"
-
-            err = decode_dmspritedef2(ctx, dmsprite)
-            if err:
-                return err
-
-            mesh_obj = bpy.data.objects.get(tag)
+        if mesh_obj.get("hsprite") != sprite.tag:
+            continue
 
         mesh = mesh_obj.data
 

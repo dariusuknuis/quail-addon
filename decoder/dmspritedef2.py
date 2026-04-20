@@ -10,8 +10,9 @@ from .context import Context
 
 def find_hsprite_for_mesh(parser, mesh_name):
 
-    for hs in parser.hierarchicalspritedefs.values():
+    mesh_base = mesh_name.replace("_DMSPRITEDEF", "")[:5]
 
+    for hs in parser.hierarchicalspritedefs.values():
         for skin in hs.attachedskins:
 
             tag = skin.dmsprite
@@ -20,8 +21,10 @@ def find_hsprite_for_mesh(parser, mesh_name):
             if tag == mesh_name:
                 return hs, skin
 
-            # prefix match (BAM -> BAM01 etc)
-            if mesh_name.startswith(tag.replace("_DMSPRITEDEF","")):
+            # base match (ignore index)
+            tag_base = tag.replace("_DMSPRITEDEF", "")[:5]
+
+            if tag_base == mesh_base:
                 return hs, skin
 
     return None, None
@@ -30,10 +33,13 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
     ctx.collection.objects.link(obj)
+    obj['quaildef'] = 'dmspritedef2'
 
     obj.parent = ctx.parent
 
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
+    if hsprite:
+        obj["hsprite"] = hsprite.tag
 
     obj.location = mathutils.Vector(sprite.centeroffset)
 

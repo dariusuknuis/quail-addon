@@ -30,10 +30,13 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
     ctx.collection.objects.link(obj)
+    obj['quaildef'] = 'dmspritedefinition'
 
     obj.parent = ctx.parent
 
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
+    if hsprite:
+        obj["hsprite"] = hsprite.tag
 
     center = tuple(c if c is not None else 0.0 for c in sprite.center)
     obj.location = mathutils.Vector(center)
