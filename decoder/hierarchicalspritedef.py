@@ -24,6 +24,67 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     ctx.collection.objects.link(arm_obj)
     arm_obj['quaildef'] = 'hierarchicalspritedef'
 
+    props = arm_obj.quail_hierarchicalspritedef
+
+    while len(props.dags) > 0:
+        props.dags.remove(0)
+
+    for dag in sprite.dags:
+        d = props.dags.add()
+
+        d.tag = dag.tag
+        d.spritetag = dag.spritetag or ""
+        d.track = dag.track or ""
+
+        while len(d.subdags) > 0:
+            d.subdags.remove(0)
+
+        if dag.subdaglist:
+            count = int(dag.subdaglist[0])
+            children = [int(x) for x in dag.subdaglist[1:1 + count]]
+
+            for child_idx in children:
+                item = d.subdags.add()
+                item.dag_index = child_idx
+
+    props.haveattachedskins = bool(sprite.haveattachedskins)
+
+    # IMPORTANT: set count BEFORE filling (triggers update)
+    props.numattachedskins = len(sprite.attachedskins)
+
+    while len(props.attachedskins) > 0:
+        props.attachedskins.remove(0)
+
+    for skin in sprite.attachedskins:
+        s = props.attachedskins.add()
+
+        s.linkdagindex = skin.linkskinupdatestodagindex
+
+        obj = bpy.data.objects.get(skin.dmsprite)
+        if obj:
+            s.dmsprite = obj
+
+    props.boundingradius = sprite.boundingradius or 0.0
+
+    props.dagcollisions = bool(sprite.dagcollisions)
+
+    if sprite.centeroffset:
+        values = [
+            v[0] if isinstance(v, tuple) else v
+            for v in sprite.centeroffset
+        ]
+
+        if all(v is None for v in values):
+            props.has_centeroffset = False
+        else:
+            props.has_centeroffset = True
+
+            props.center_x = float(values[0] or 0.0)
+            props.center_y = float(values[1] or 0.0)
+            props.center_z = float(values[2] or 0.0)
+    else:
+        props.has_centeroffset = False
+
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode='EDIT')
 

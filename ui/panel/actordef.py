@@ -162,23 +162,6 @@ class OBJECT_OT_add_quail_actordef(bpy.types.Operator):
 
         return {'FINISHED'}
 
-# Panel to display actor properties
-class PROPERTIES_PT_quail_actordef(bpy.types.Panel):
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "object"  # This puts it in the Object Properties panel
-    bl_label = "ACTORDEF"
-    # bl_options = {'DEFAULT_CLOSED'}
-    bl_order = -100
-
-    @classmethod
-    def poll(cls, context):
-        # Only show this panel when an actor is selected
-        return context.object and context.object.get('quaildef') == 'actordef'
-
-    def draw(self, context):
-        pass
-
 def draw_actordef_in_transform(self, context):
     obj = context.object
     if not obj or obj.get('quaildef') != 'actordef':
