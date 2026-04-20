@@ -7,60 +7,120 @@ from ..wce.actordef import actordef
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .dmspritedef2 import decode_dmspritedef2
 
-def decode_actordef(ctx:Context, actordef:actordef) -> str:
+def decode_actordef(ctx: Context, actordef: actordef) -> str:
     obj = bpy.data.objects.new(actordef.tag, None)
     obj.empty_display_type = 'SINGLE_ARROW'
     obj['quaildef'] = 'actordef'
-    obj.quail_actordef.currentaction = actordef.currentaction or ""
-    obj.quail_actordef.boundsref = actordef.boundsref
-    obj.quail_actordef.callback = actordef.callback
-    obj.quail_actordef.activegeometry = actordef.activegeometry or ""
-    obj.quail_actordef.spritevolumeonly = actordef.spritevolumeonly == 1
-    obj.quail_actordef.userdata = actordef.userdata
-    if actordef.location[0]:
-        obj.location = mathutils.Vector(actordef.location[0:3])
+
+    props = obj.quail_actordef
+
+    # -------------------------
+    # Current Action
+    # -------------------------
+    ca = actordef.currentaction[0] if isinstance(actordef.currentaction, tuple) else actordef.currentaction
+    if ca is None:
+        props.has_currentaction = False
+        props.currentaction = 0
+    else:
+        props.has_currentaction = True
+        props.currentaction = int(ca)
+
+    # -------------------------
+    props.boundsref = actordef.boundsref
+    props.callback = actordef.callback
+
+    # -------------------------
+    # Active Geometry (flag)
+    # -------------------------
+    ag = actordef.activegeometry[0] if isinstance(actordef.activegeometry, tuple) else actordef.activegeometry
+    props.activegeometry = ag is not None
+
+    # -------------------------
+    props.collider = actordef.spritevolumeonly == 1
+    props.userdata = actordef.userdata
+
+    # -------------------------
+    # Location (6 x (value, None))
+    # -------------------------
+    loc = actordef.location
+
+    if loc and isinstance(loc, tuple):
+        values = [v[0] if isinstance(v, tuple) else v for v in loc]
+
+        if all(v is None for v in values):
+            props.has_location = False
+        else:
+            props.has_location = True
+
+            props.loc_x, props.loc_y, props.loc_z = values[:3]
+            props.rot_x, props.rot_y, props.rot_z = values[3:]
+
+            # Only assign if valid floats
+            if all(v is not None for v in values[:3]):
+                obj.location = mathutils.Vector(values[:3])
+    else:
+        props.has_location = False
+
+    # -------------------------
+    # Actions (FIXED)
+    # -------------------------
+    props.numactions = len(actordef.actions)
+
+    # Clear existing
+    while len(props.actions) > 0:
+        props.actions.remove(0)
+
+    for action in actordef.actions:
+        act = props.actions.add()
+
+        # unk1 (may or may not exist depending on parser)
+        act.unk1 = bool(getattr(action, "unk1", 0))
+
+        act.numlods = len(action.levelsofdetails)
+
+        # Clear LODs
+        while len(act.lods) > 0:
+            act.lods.remove(0)
+
+        for lod in action.levelsofdetails:
+            l = act.lods.add()
+
+            tag = lod.sprite
+            sprite_obj = bpy.data.objects.get(tag)
+
+            if sprite_obj:
+                l.sprite = sprite_obj
+
+            l.mindistance = lod.mindistance
+
+    # -------------------------
     obj.parent = ctx.parent
     ctx.parent = obj
     ctx.collection.objects.link(obj)
 
-
+    # -------------------------
+    # Attach sprites (unchanged logic)
+    # -------------------------
     for action in actordef.actions:
         for lod in action.levelsofdetails:
 
             tag = lod.sprite
-
             sprite_obj = bpy.data.objects.get(tag)
 
             if sprite_obj:
                 sprite_obj.parent = obj
                 continue
 
-            # if tag in ctx.parser.hierarchicalspritedefs:
-            #     hsprite = ctx.parser.hierarchicalspritedefs[tag]
-            #     err = decode_hierarchicalspritedef(ctx, hsprite)
-            #     if err:
-            #         return f"actordef {actordef.tag}: {err}"
-
-            # elif tag in ctx.parser.dmspritedef2s:
-            #     sprite = ctx.parser.dmspritedef2s[tag]
-            #     err = decode_dmspritedef2(ctx, sprite)
-            #     if err:
-            #         return f"actordef {actordef.tag}: {err}"
-
             elif tag in ctx.parser.dmspritedefinitions:
-                # TODO: implement decode_dmspritedef later
                 pass
 
             elif tag in ctx.parser.blitspritedefs:
-                # TODO
                 pass
 
             elif tag in ctx.parser.sprite2ddefs:
-                # TODO
                 pass
 
             elif tag in ctx.parser.sprite3ddefs:
-                # TODO
                 pass
 
             else:

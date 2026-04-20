@@ -10,7 +10,7 @@ class actordef:
 	tag:str
 	callback:str
 	boundsref:int
-	currentaction:tuple[str, None]
+	currentaction:tuple[int, None]
 	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]]
 	activegeometry:tuple[str, None]
 	spritevolumeonly:int
@@ -20,7 +20,7 @@ class actordef:
 		self.tag = ""
 		self.callback = "" #2
 		self.boundsref = 0 #2
-		self.currentaction = tuple[str, None] #2
+		self.currentaction = tuple[int, None] #2
 		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] #2
 		self.activegeometry = tuple[str, None] #2
 		self.spritevolumeonly = 0 #2
@@ -52,7 +52,7 @@ class actordef:
 		records = property(r, "BOUNDSREF", 1)
 		self.boundsref = int(records[1])
 		records = property(r, "CURRENTACTION?", 1)
-		self.currentaction = (str(records[1]) if records[1] != "NULL" else None)
+		self.currentaction = (int(records[1]) if records[1] != "NULL" else None)
 		records = property(r, "LOCATION?", 6)
 		self.location = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (int(records[4]) if records[4] != "NULL" else None), (int(records[5]) if records[5] != "NULL" else None), (int(records[6]) if records[6] != "NULL" else None)
 		records = property(r, "ACTIVEGEOMETRY?", 1)

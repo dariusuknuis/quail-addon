@@ -7,8 +7,8 @@ ACTORDEF "tag"
  	 // Argument 1 (%d): The bounds reference
 	BOUNDSREF 1
 	// The current action of the actor
- 	 // Argument 1 (%s): The current action
-	CURRENTACTION? "1"
+ 	 // Argument 1 (%d): The current action
+	CURRENTACTION? 1
 	// The location of the actor
  	 // Argument 1 (%0.8e): The x coordinate
  	 // Argument 2 (%0.8e): The y coordinate
