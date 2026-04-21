@@ -57,6 +57,6 @@ class eqgloddef:
 			w.write(f"\t\tLOD\n")
 			w.write(f"\t\t\tTAG \"{lodi.lod.tag}\"\n")
 			w.write(f"\t\t\tCATEGORY \"{lodi.lod.category}\"\n")
-			w.write(f"\t\t\tDISTANCE \"{lodi.lod.distance}\"\n")
+			w.write(f"\t\t\tDISTANCE {lodi.lod.distance}\n")
 		return ""
 

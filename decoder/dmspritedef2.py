@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
+from ..common.s3dobject import create_bounding_radius_empty, attach_collision_volume
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
@@ -214,5 +215,11 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                 vg.add([vertex_index], 1.0, 'REPLACE')
 
             vertex_index += 1
+
+    if sprite.sprite:
+        attach_collision_volume(
+            parent_obj=obj,
+            poly_tag=sprite.sprite
+        )
 
     return ""

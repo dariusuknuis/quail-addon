@@ -10,9 +10,9 @@ class actordef:
 	tag:str
 	callback:str
 	boundsref:int
-	currentaction:tuple[int, None]
-	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]]
-	activegeometry:tuple[str, None]
+	currentaction:int | None
+	location:tuple[float, float, float, int, int, int] | None
+	activegeometry:str | None
 	spritevolumeonly:int
 	userdata:str
 
@@ -20,9 +20,9 @@ class actordef:
 		self.tag = ""
 		self.callback = "" #2
 		self.boundsref = 0 #2
-		self.currentaction = tuple[int, None] #2
-		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[int, None], tuple[int, None], tuple[int, None]] #2
-		self.activegeometry = tuple[str, None] #2
+		self.currentaction = None #2
+		self.location = None #2
+		self.activegeometry = None #2
 		self.spritevolumeonly = 0 #2
 		self.userdata = "" #2
 		self.actions = []
@@ -52,11 +52,11 @@ class actordef:
 		records = property(r, "BOUNDSREF", 1)
 		self.boundsref = int(records[1])
 		records = property(r, "CURRENTACTION?", 1)
-		self.currentaction = (int(records[1]) if records[1] != "NULL" else None)
+		self.currentaction = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "LOCATION?", 6)
-		self.location = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (int(records[4]) if records[4] != "NULL" else None), (int(records[5]) if records[5] != "NULL" else None), (int(records[6]) if records[6] != "NULL" else None)
+		self.location = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]), int(records[4]), int(records[5]), int(records[6]))
 		records = property(r, "ACTIVEGEOMETRY?", 1)
-		self.activegeometry = (str(records[1]) if records[1] != "NULL" else None)
+		self.activegeometry = str(records[1]) if records[1] != "NULL" else None
 		records = property(r, "NUMACTIONS", 1)
 		numactions = int(records[1])
 
@@ -90,20 +90,20 @@ class actordef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tCALLBACK \"{self.callback}\"\n")
-		w.write(f"\tBOUNDSREF \"{self.boundsref}\"\n")
-		w.write(f"\tCURRENTACTION? \"{self.currentaction}\"\n")
-		w.write(f"\tLOCATION? \"{self.location}\"\n")
+		w.write(f"\tBOUNDSREF {self.boundsref}\n")
+		w.write(f"\tCURRENTACTION? {('NULL' if self.currentaction is None else self.currentaction)}\n")
+		w.write(f"\tLOCATION? {('NULL' if self.location is None else self.location[0])} {('NULL' if self.location is None else self.location[1])} {('NULL' if self.location is None else self.location[2])} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
 		w.write(f"\tACTIVEGEOMETRY? \"{self.activegeometry}\"\n")
 		w.write(f"\tNUMACTIONS \"{len(self.actions)}\"\n")
 		for actioni in self.actions:
 			w.write(f"\t\tACTION\n")
-			w.write(f"\t\tUNK1 \"{actioni.unk1}\"\n")
+			w.write(f"\t\tUNK1 {actioni.unk1}\n")
 			w.write(f"\t\tNUMLEVELSOFDETAILS \"{len(actioni.levelsofdetails)}\"\n")
 			for levelofdetailj in actioni.levelsofdetails:
 				w.write(f"\t\t\tLEVELOFDETAIL\n")
 				w.write(f"\t\t\tSPRITE \"{levelofdetailj.sprite}\"\n")
-				w.write(f"\t\t\tMINDISTANCE \"{levelofdetailj.mindistance}\"\n")
-		w.write(f"\tSPRITEVOLUMEONLY \"{self.spritevolumeonly}\"\n")
+				w.write(f"\t\t\tMINDISTANCE {levelofdetailj.mindistance}\n")
+		w.write(f"\tSPRITEVOLUMEONLY {self.spritevolumeonly}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		return ""
 

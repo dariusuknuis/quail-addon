@@ -14,7 +14,7 @@ class ambientlight:
 	def __init__(self):
 		self.tag = ""
 		self.light = "" #2
-		self.regionlist = list[str] #2
+		self.regionlist = [] #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -31,6 +31,6 @@ class ambientlight:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tLIGHT \"{self.light}\"\n")
-		w.write(f"\tREGIONLIST \"{self.regionlist}\"\n")
+		w.write(f"\tREGIONLIST {self.regionlist}\n")
 		return ""
 

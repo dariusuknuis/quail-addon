@@ -13,7 +13,7 @@ class zone:
 
 	def __init__(self):
 		self.tag = ""
-		self.regionlist = list[str] #2
+		self.regionlist = [] #2
 		self.userdata = "" #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
@@ -30,7 +30,7 @@ class zone:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tREGIONLIST \"{self.regionlist}\"\n")
+		w.write(f"\tREGIONLIST {self.regionlist}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		return ""
 

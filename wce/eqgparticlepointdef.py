@@ -25,9 +25,9 @@ class eqgparticlepointdef:
 		def __init__(self):
 			self.point = "" #3
 			self.bonename = "" #3
-			self.translation = tuple[float, float, float] #3
-			self.rotation = tuple[float, float, float] #3
-			self.scale = tuple[float, float, float] #3
+			self.translation = (0.0, 0.0, 0.0) #3
+			self.rotation = (0.0, 0.0, 0.0) #3
+			self.scale = (0.0, 0.0, 0.0) #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -47,23 +47,23 @@ class eqgparticlepointdef:
 			records = property(r, "BONENAME", 1)
 			pointi.bonename = str(records[1])
 			records = property(r, "TRANSLATION", 3)
-			pointi.translation = float(records[1]), float(records[2]), float(records[3])
+			pointi.translation = (float(records[1]), float(records[2]), float(records[3]))
 			records = property(r, "ROTATION", 3)
-			pointi.rotation = float(records[1]), float(records[2]), float(records[3])
+			pointi.rotation = (float(records[1]), float(records[2]), float(records[3]))
 			records = property(r, "SCALE", 3)
-			pointi.scale = float(records[1]), float(records[2]), float(records[3])
+			pointi.scale = (float(records[1]), float(records[2]), float(records[3]))
 			self.points.append(pointi)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tVERSION \"{self.version}\"\n")
+		w.write(f"\tVERSION {self.version}\n")
 		w.write(f"\tNUMPOINTS \"{len(self.points)}\"\n")
 		for pointi in self.points:
 			w.write(f"\t\tPOINT \"{pointi.point}\"\n")
 			w.write(f"\t\tBONENAME \"{pointi.bonename}\"\n")
-			w.write(f"\t\tTRANSLATION \"{pointi.translation}\"\n")
-			w.write(f"\t\tROTATION \"{pointi.rotation}\"\n")
-			w.write(f"\t\tSCALE \"{pointi.scale}\"\n")
+			w.write(f"\t\tTRANSLATION {pointi.translation[0]} {pointi.translation[1]} {pointi.translation[2]}\n")
+			w.write(f"\t\tROTATION {pointi.rotation[0]} {pointi.rotation[1]} {pointi.rotation[2]}\n")
+			w.write(f"\t\tSCALE {pointi.scale[0]} {pointi.scale[1]} {pointi.scale[2]}\n")
 		return ""
 

@@ -8,15 +8,15 @@ class lightdefinition:
 		return "LIGHTDEFINITION"
 
 	tag:str
-	currentframe:tuple[int, None]
-	sleep:tuple[int, None]
+	currentframe:int | None
+	sleep:int | None
 	haveskipframes:int
 	skipframes:int
 
 	def __init__(self):
 		self.tag = ""
-		self.currentframe = tuple[int, None] #2
-		self.sleep = tuple[int, None] #2
+		self.currentframe = None #2
+		self.sleep = None #2
 		self.haveskipframes = 0 #2
 		self.skipframes = 0 #2
 		self.frames = []
@@ -32,7 +32,7 @@ class lightdefinition:
 		color:tuple[float, float, float]
 
 		def __init__(self):
-			self.color = tuple[float, float, float] #3
+			self.color = (0.0, 0.0, 0.0) #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -40,7 +40,7 @@ class lightdefinition:
 			return "no reader provided"
 
 		records = property(r, "CURRENTFRAME?", 1)
-		self.currentframe = (int(records[1]) if records[1] != "NULL" else None)
+		self.currentframe = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "NUMFRAMES", 1)
 		numframes = int(records[1])
 
@@ -51,7 +51,7 @@ class lightdefinition:
 			lightlevelsi.lightlevels = float(records[1])
 			self.frames.append(lightlevelsi)
 		records = property(r, "SLEEP?", 1)
-		self.sleep = (int(records[1]) if records[1] != "NULL" else None)
+		self.sleep = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "HAVESKIPFRAMES", 1)
 		self.haveskipframes = int(records[1])
 		records = property(r, "SKIPFRAMES", 1)
@@ -63,21 +63,21 @@ class lightdefinition:
 		for i in range(numcolors):
 			colori = type(self).color()
 			records = property(r, "COLOR", 3)
-			colori.color = float(records[1]), float(records[2]), float(records[3])
+			colori.color = (float(records[1]), float(records[2]), float(records[3]))
 			self.colors.append(colori)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tCURRENTFRAME? \"{self.currentframe}\"\n")
+		w.write(f"\tCURRENTFRAME? {('NULL' if self.currentframe is None else self.currentframe)}\n")
 		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for lightlevelsi in self.frames:
-			w.write(f"\t\tLIGHTLEVELS \"{lightlevelsi.lightlevels}\"\n")
-		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
-		w.write(f"\tHAVESKIPFRAMES \"{self.haveskipframes}\"\n")
-		w.write(f"\tSKIPFRAMES \"{self.skipframes}\"\n")
+			w.write(f"\t\tLIGHTLEVELS {lightlevelsi.lightlevels}\n")
+		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
+		w.write(f"\tHAVESKIPFRAMES {self.haveskipframes}\n")
+		w.write(f"\tSKIPFRAMES {self.skipframes}\n")
 		w.write(f"\tNUMCOLORS \"{len(self.colors)}\"\n")
 		for colori in self.colors:
-			w.write(f"\t\tCOLOR \"{colori.color}\"\n")
+			w.write(f"\t\tCOLOR {colori.color[0]} {colori.color[1]} {colori.color[2]}\n")
 		return ""
 

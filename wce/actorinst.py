@@ -9,14 +9,14 @@ class actorinst:
 
 	tag:str
 	sprite:str
-	currentaction:tuple[str, None]
-	location:tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]]
-	boundingradius:tuple[float, None]
-	scalefactor:tuple[float, None]
-	sound:tuple[str, None]
-	active:tuple[int, None]
+	currentaction:str | None
+	location:tuple[float, float, float, float, float, float] | None
+	boundingradius:float | None
+	scalefactor:float | None
+	sound:str | None
+	active:int | None
 	spritevolumeonly:int
-	dmrgbtrack:tuple[str, None]
+	dmrgbtrack:str | None
 	sphere:str
 	sphereradius:float
 	useboundingbox:int
@@ -25,14 +25,14 @@ class actorinst:
 	def __init__(self):
 		self.tag = ""
 		self.sprite = "" #2
-		self.currentaction = tuple[str, None] #2
-		self.location = tuple[tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None], tuple[float, None]] #2
-		self.boundingradius = tuple[float, None] #2
-		self.scalefactor = tuple[float, None] #2
-		self.sound = tuple[str, None] #2
-		self.active = tuple[int, None] #2
+		self.currentaction = None #2
+		self.location = None #2
+		self.boundingradius = None #2
+		self.scalefactor = None #2
+		self.sound = None #2
+		self.active = None #2
 		self.spritevolumeonly = 0 #2
-		self.dmrgbtrack = tuple[str, None] #2
+		self.dmrgbtrack = None #2
 		self.sphere = "" #2
 		self.sphereradius = 0.0 #2
 		self.useboundingbox = 0 #2
@@ -46,21 +46,21 @@ class actorinst:
 		records = property(r, "SPRITE", 1)
 		self.sprite = str(records[1])
 		records = property(r, "CURRENTACTION?", 1)
-		self.currentaction = (str(records[1]) if records[1] != "NULL" else None)
+		self.currentaction = str(records[1]) if records[1] != "NULL" else None
 		records = property(r, "LOCATION?", 6)
-		self.location = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None), (float(records[4]) if records[4] != "NULL" else None), (float(records[5]) if records[5] != "NULL" else None), (float(records[6]) if records[6] != "NULL" else None)
+		self.location = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]), float(records[4]), float(records[5]), float(records[6]))
 		records = property(r, "BOUNDINGRADIUS?", 1)
-		self.boundingradius = (float(records[1]) if records[1] != "NULL" else None)
+		self.boundingradius = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SCALEFACTOR?", 1)
-		self.scalefactor = (float(records[1]) if records[1] != "NULL" else None)
+		self.scalefactor = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SOUND?", 1)
-		self.sound = (str(records[1]) if records[1] != "NULL" else None)
+		self.sound = str(records[1]) if records[1] != "NULL" else None
 		records = property(r, "ACTIVE?", 1)
-		self.active = (int(records[1]) if records[1] != "NULL" else None)
+		self.active = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SPRITEVOLUMEONLY", 1)
 		self.spritevolumeonly = int(records[1])
 		records = property(r, "DMRGBTRACK?", 1)
-		self.dmrgbtrack = (str(records[1]) if records[1] != "NULL" else None)
+		self.dmrgbtrack = str(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SPHERE", 1)
 		self.sphere = str(records[1])
 		records = property(r, "SPHERERADIUS", 1)
@@ -75,16 +75,16 @@ class actorinst:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		w.write(f"\tCURRENTACTION? \"{self.currentaction}\"\n")
-		w.write(f"\tLOCATION? \"{self.location}\"\n")
-		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
-		w.write(f"\tSCALEFACTOR? \"{self.scalefactor}\"\n")
+		w.write(f"\tLOCATION? {('NULL' if self.location is None else self.location[0])} {('NULL' if self.location is None else self.location[1])} {('NULL' if self.location is None else self.location[2])} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
+		w.write(f"\tBOUNDINGRADIUS? {('NULL' if self.boundingradius is None else self.boundingradius)}\n")
+		w.write(f"\tSCALEFACTOR? {('NULL' if self.scalefactor is None else self.scalefactor)}\n")
 		w.write(f"\tSOUND? \"{self.sound}\"\n")
-		w.write(f"\tACTIVE? \"{self.active}\"\n")
-		w.write(f"\tSPRITEVOLUMEONLY \"{self.spritevolumeonly}\"\n")
+		w.write(f"\tACTIVE? {('NULL' if self.active is None else self.active)}\n")
+		w.write(f"\tSPRITEVOLUMEONLY {self.spritevolumeonly}\n")
 		w.write(f"\tDMRGBTRACK? \"{self.dmrgbtrack}\"\n")
 		w.write(f"\tSPHERE \"{self.sphere}\"\n")
-		w.write(f"\tSPHERERADIUS \"{self.sphereradius}\"\n")
-		w.write(f"\tUSEBOUNDINGBOX \"{self.useboundingbox}\"\n")
+		w.write(f"\tSPHERERADIUS {self.sphereradius}\n")
+		w.write(f"\tUSEBOUNDINGBOX {self.useboundingbox}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		return ""
 

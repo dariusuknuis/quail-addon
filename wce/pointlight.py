@@ -22,9 +22,9 @@ class pointlight:
 		self.static = 0 #2
 		self.staticinfluence = 0 #2
 		self.dynamicinfluence = 0 #2
-		self.xyz = tuple[float, float, float] #2
+		self.xyz = (0.0, 0.0, 0.0) #2
 		self.radiusofinfluence = 0.0 #2
-		self.regions = list[str] #2
+		self.regions = [] #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -40,7 +40,7 @@ class pointlight:
 		records = property(r, "DYNAMICINFLUENCE", 1)
 		self.dynamicinfluence = int(records[1])
 		records = property(r, "XYZ", 3)
-		self.xyz = float(records[1]), float(records[2]), float(records[3])
+		self.xyz = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "RADIUSOFINFLUENCE", 1)
 		self.radiusofinfluence = float(records[1])
 		records = property(r, "REGIONS?", -1)
@@ -51,11 +51,11 @@ class pointlight:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tLIGHT \"{self.light}\"\n")
-		w.write(f"\tSTATIC \"{self.static}\"\n")
-		w.write(f"\tSTATICINFLUENCE \"{self.staticinfluence}\"\n")
-		w.write(f"\tDYNAMICINFLUENCE \"{self.dynamicinfluence}\"\n")
-		w.write(f"\tXYZ \"{self.xyz}\"\n")
-		w.write(f"\tRADIUSOFINFLUENCE \"{self.radiusofinfluence}\"\n")
-		w.write(f"\tREGIONS? \"{self.regions}\"\n")
+		w.write(f"\tSTATIC {self.static}\n")
+		w.write(f"\tSTATICINFLUENCE {self.staticinfluence}\n")
+		w.write(f"\tDYNAMICINFLUENCE {self.dynamicinfluence}\n")
+		w.write(f"\tXYZ {self.xyz[0]} {self.xyz[1]} {self.xyz[2]}\n")
+		w.write(f"\tRADIUSOFINFLUENCE {self.radiusofinfluence}\n")
+		w.write(f"\tREGIONS? {('NULL' if self.regions is None else self.regions)}\n")
 		return ""
 

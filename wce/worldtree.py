@@ -20,7 +20,7 @@ class worldtree:
 		backtree:int
 
 		def __init__(self):
-			self.normalabcd = tuple[float, float, float, float] #3
+			self.normalabcd = (0.0, 0.0, 0.0, 0.0) #3
 			self.worldregiontag = "" #3
 			self.fronttree = 0 #3
 			self.backtree = 0 #3
@@ -39,7 +39,7 @@ class worldtree:
 			property(r, "WORLDNODE", 0)
 
 			records = property(r, "NORMALABCD", 4)
-			worldnodei.normalabcd = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			worldnodei.normalabcd = (float(records[1]), float(records[2]), float(records[3]), float(records[4]))
 			records = property(r, "WORLDREGIONTAG", 1)
 			worldnodei.worldregiontag = str(records[1])
 			records = property(r, "FRONTTREE", 1)
@@ -54,9 +54,9 @@ class worldtree:
 		w.write(f"\tNUMWORLDNODES \"{len(self.worldnodes)}\"\n")
 		for worldnodei in self.worldnodes:
 			w.write(f"\t\tWORLDNODE\n")
-			w.write(f"\t\tNORMALABCD \"{worldnodei.normalabcd}\"\n")
+			w.write(f"\t\tNORMALABCD {worldnodei.normalabcd[0]} {worldnodei.normalabcd[1]} {worldnodei.normalabcd[2]} {worldnodei.normalabcd[3]}\n")
 			w.write(f"\t\tWORLDREGIONTAG \"{worldnodei.worldregiontag}\"\n")
-			w.write(f"\t\tFRONTTREE \"{worldnodei.fronttree}\"\n")
-			w.write(f"\t\tBACKTREE \"{worldnodei.backtree}\"\n")
+			w.write(f"\t\tFRONTTREE {worldnodei.fronttree}\n")
+			w.write(f"\t\tBACKTREE {worldnodei.backtree}\n")
 		return ""
 

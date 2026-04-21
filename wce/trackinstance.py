@@ -11,14 +11,14 @@ class trackinstance:
 	trackdef:str
 	interpolate:int
 	reverse:int
-	sleep:tuple[int, None]
+	sleep:int | None
 
 	def __init__(self):
 		self.tag = ""
 		self.trackdef = "" #2
 		self.interpolate = 0 #2
 		self.reverse = 0 #2
-		self.sleep = tuple[int, None] #2
+		self.sleep = None #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -32,14 +32,14 @@ class trackinstance:
 		records = property(r, "REVERSE", 1)
 		self.reverse = int(records[1])
 		records = property(r, "SLEEP?", 1)
-		self.sleep = (int(records[1]) if records[1] != "NULL" else None)
+		self.sleep = int(records[1]) if records[1] != "NULL" else None
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tTRACKDEF \"{self.trackdef}\"\n")
-		w.write(f"\tINTERPOLATE \"{self.interpolate}\"\n")
-		w.write(f"\tREVERSE \"{self.reverse}\"\n")
-		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
+		w.write(f"\tINTERPOLATE {self.interpolate}\n")
+		w.write(f"\tREVERSE {self.reverse}\n")
+		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
 		return ""
 

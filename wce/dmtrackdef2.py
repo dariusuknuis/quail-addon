@@ -30,7 +30,7 @@ class dmtrackdef2:
 			xyz:tuple[float, float, float]
 
 			def __init__(self):
-				self.xyz = tuple[float, float, float] #4
+				self.xyz = (0.0, 0.0, 0.0) #4
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -58,21 +58,21 @@ class dmtrackdef2:
 			for j in range(numvertices):
 				xyzj = type(numverticesi).xyz()
 				records = property(r, "XYZ", 3)
-				xyzj.xyz = float(records[1]), float(records[2]), float(records[3])
+				xyzj.xyz = (float(records[1]), float(records[2]), float(records[3]))
 				numverticesi.vertices.append(xyzj)
 			self.frames.append(numverticesi)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tSLEEP \"{self.sleep}\"\n")
-		w.write(f"\tPARAM2 \"{self.param2}\"\n")
-		w.write(f"\tFPSCALE \"{self.fpscale}\"\n")
-		w.write(f"\tSIZE6 \"{self.size6}\"\n")
+		w.write(f"\tSLEEP {self.sleep}\n")
+		w.write(f"\tPARAM2 {self.param2}\n")
+		w.write(f"\tFPSCALE {self.fpscale}\n")
+		w.write(f"\tSIZE6 {self.size6}\n")
 		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for numverticesi in self.frames:
 			w.write(f"\t\tNUMVERTICES \"{len(numverticesi.vertices)}\"\n")
 			for xyzj in numverticesi.vertices:
-				w.write(f"\t\t\tXYZ \"{xyzj.xyz}\"\n")
+				w.write(f"\t\t\tXYZ {xyzj.xyz[0]} {xyzj.xyz[1]} {xyzj.xyz[2]}\n")
 		return ""
 

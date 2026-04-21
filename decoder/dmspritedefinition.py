@@ -38,7 +38,7 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     if hsprite:
         obj["hsprite"] = hsprite.tag
 
-    center = tuple(c if c is not None else 0.0 for c in sprite.center)
+    center = sprite.center or (0.0, 0.0, 0.0)
     obj.location = mathutils.Vector(center)
 
     if sprite.materialpalette != "":

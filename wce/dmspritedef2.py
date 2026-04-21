@@ -30,17 +30,17 @@ class dmspritedef2:
 
 	def __init__(self):
 		self.tag = ""
-		self.centeroffset = tuple[float, float, float] #2
-		self.skinassignmentgroups = list[str] #2
+		self.centeroffset = (0.0, 0.0, 0.0) #2
+		self.skinassignmentgroups = [] #2
 		self.materialpalette = "" #2
 		self.dmtrackinst = "" #2
 		self.dmrgbtrack = "" #2
 		self.sprite = "" #2
-		self.facematerialgroups = list[str] #2
-		self.vertexmaterialgroups = list[str] #2
-		self.params2 = tuple[float, float, float] #2
-		self.boundingboxmin = tuple[float, float, float] #2
-		self.boundingboxmax = tuple[float, float, float] #2
+		self.facematerialgroups = [] #2
+		self.vertexmaterialgroups = [] #2
+		self.params2 = (0.0, 0.0, 0.0) #2
+		self.boundingboxmin = (0.0, 0.0, 0.0) #2
+		self.boundingboxmax = (0.0, 0.0, 0.0) #2
 		self.boundingradius = 0.0 #2
 		self.fpscale = 0 #2
 		self.usecenteroffset = 0 #2
@@ -60,25 +60,25 @@ class dmspritedef2:
 		vxyz:tuple[float, float, float]
 
 		def __init__(self):
-			self.vxyz = tuple[float, float, float] #3
+			self.vxyz = (0.0, 0.0, 0.0) #3
 
 	class uv:
 		uv:tuple[float, float]
 
 		def __init__(self):
-			self.uv = tuple[float, float] #3
+			self.uv = (0.0, 0.0) #3
 
 	class nxyz:
 		nxyz:tuple[float, float, float]
 
 		def __init__(self):
-			self.nxyz = tuple[float, float, float] #3
+			self.nxyz = (0.0, 0.0, 0.0) #3
 
 	class rgba:
 		rgba:tuple[int, int, int, int]
 
 		def __init__(self):
-			self.rgba = tuple[int, int, int, int] #3
+			self.rgba = (0, 0, 0, 0) #3
 
 	class dmface2:
 		passable:int
@@ -86,13 +86,13 @@ class dmspritedef2:
 
 		def __init__(self):
 			self.passable = 0 #3
-			self.triangle = tuple[int, int, int] #3
+			self.triangle = (0, 0, 0) #3
 
 	class meshop:
 		meshop:tuple[int, int, float, int, int]
 
 		def __init__(self):
-			self.meshop = tuple[int, int, float, int, int] #3
+			self.meshop = (0, 0, 0.0, 0, 0) #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -100,7 +100,7 @@ class dmspritedef2:
 			return "no reader provided"
 
 		records = property(r, "CENTEROFFSET", 3)
-		self.centeroffset = float(records[1]), float(records[2]), float(records[3])
+		self.centeroffset = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "NUMVERTICES", 1)
 		numvertices = int(records[1])
 
@@ -108,7 +108,7 @@ class dmspritedef2:
 		for i in range(numvertices):
 			vxyzi = type(self).vxyz()
 			records = property(r, "VXYZ", 3)
-			vxyzi.vxyz = float(records[1]), float(records[2]), float(records[3])
+			vxyzi.vxyz = (float(records[1]), float(records[2]), float(records[3]))
 			self.vertices.append(vxyzi)
 		records = property(r, "NUMUVS", 1)
 		numuvs = int(records[1])
@@ -117,7 +117,7 @@ class dmspritedef2:
 		for i in range(numuvs):
 			uvi = type(self).uv()
 			records = property(r, "UV", 2)
-			uvi.uv = float(records[1]), float(records[2])
+			uvi.uv = (float(records[1]), float(records[2]))
 			self.uvs.append(uvi)
 		records = property(r, "NUMVERTEXNORMALS", 1)
 		numvertexnormals = int(records[1])
@@ -126,7 +126,7 @@ class dmspritedef2:
 		for i in range(numvertexnormals):
 			nxyzi = type(self).nxyz()
 			records = property(r, "NXYZ", 3)
-			nxyzi.nxyz = float(records[1]), float(records[2]), float(records[3])
+			nxyzi.nxyz = (float(records[1]), float(records[2]), float(records[3]))
 			self.vertexnormals.append(nxyzi)
 		records = property(r, "NUMVERTEXCOLORS", 1)
 		numvertexcolors = int(records[1])
@@ -135,7 +135,7 @@ class dmspritedef2:
 		for i in range(numvertexcolors):
 			rgbai = type(self).rgba()
 			records = property(r, "RGBA", 4)
-			rgbai.rgba = int(records[1]), int(records[2]), int(records[3]), int(records[4])
+			rgbai.rgba = (int(records[1]), int(records[2]), int(records[3]), int(records[4]))
 			self.vertexcolors.append(rgbai)
 		records = property(r, "SKINASSIGNMENTGROUPS", -1)
 		self.skinassignmentgroups = records[1:]
@@ -161,7 +161,7 @@ class dmspritedef2:
 			records = property(r, "PASSABLE", 1)
 			dmface2i.passable = int(records[1])
 			records = property(r, "TRIANGLE", 3)
-			dmface2i.triangle = int(records[1]), int(records[2]), int(records[3])
+			dmface2i.triangle = (int(records[1]), int(records[2]), int(records[3]))
 			self.face2s.append(dmface2i)
 		records = property(r, "NUMMESHOPS", 1)
 		nummeshops = int(records[1])
@@ -170,7 +170,7 @@ class dmspritedef2:
 		for i in range(nummeshops):
 			meshopi = type(self).meshop()
 			records = property(r, "MESHOP", 5)
-			meshopi.meshop = int(records[1]), int(records[2]), float(records[3]), int(records[4]), int(records[5])
+			meshopi.meshop = (int(records[1]), int(records[2]), float(records[3]), int(records[4]), int(records[5]))
 			self.meshops.append(meshopi)
 		records = property(r, "FACEMATERIALGROUPS", -1)
 		self.facematerialgroups = records[1:]
@@ -179,11 +179,11 @@ class dmspritedef2:
 		self.vertexmaterialgroups = records[1:]
 
 		records = property(r, "PARAMS2", 3)
-		self.params2 = float(records[1]), float(records[2]), float(records[3])
+		self.params2 = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BOUNDINGBOXMIN", 3)
-		self.boundingboxmin = float(records[1]), float(records[2]), float(records[3])
+		self.boundingboxmin = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BOUNDINGBOXMAX", 3)
-		self.boundingboxmax = float(records[1]), float(records[2]), float(records[3])
+		self.boundingboxmax = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BOUNDINGRADIUS", 1)
 		self.boundingradius = float(records[1])
 		records = property(r, "FPSCALE", 1)
@@ -204,20 +204,20 @@ class dmspritedef2:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tCENTEROFFSET \"{self.centeroffset}\"\n")
+		w.write(f"\tCENTEROFFSET {self.centeroffset[0]} {self.centeroffset[1]} {self.centeroffset[2]}\n")
 		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
 		for vxyzi in self.vertices:
-			w.write(f"\t\tVXYZ \"{vxyzi.vxyz}\"\n")
+			w.write(f"\t\tVXYZ {vxyzi.vxyz[0]} {vxyzi.vxyz[1]} {vxyzi.vxyz[2]}\n")
 		w.write(f"\tNUMUVS \"{len(self.uvs)}\"\n")
 		for uvi in self.uvs:
-			w.write(f"\t\tUV \"{uvi.uv}\"\n")
+			w.write(f"\t\tUV {uvi.uv[0]} {uvi.uv[1]}\n")
 		w.write(f"\tNUMVERTEXNORMALS \"{len(self.vertexnormals)}\"\n")
 		for nxyzi in self.vertexnormals:
-			w.write(f"\t\tNXYZ \"{nxyzi.nxyz}\"\n")
+			w.write(f"\t\tNXYZ {nxyzi.nxyz[0]} {nxyzi.nxyz[1]} {nxyzi.nxyz[2]}\n")
 		w.write(f"\tNUMVERTEXCOLORS \"{len(self.vertexcolors)}\"\n")
 		for rgbai in self.vertexcolors:
-			w.write(f"\t\tRGBA \"{rgbai.rgba}\"\n")
-		w.write(f"\tSKINASSIGNMENTGROUPS \"{self.skinassignmentgroups}\"\n")
+			w.write(f"\t\tRGBA {rgbai.rgba[0]} {rgbai.rgba[1]} {rgbai.rgba[2]} {rgbai.rgba[3]}\n")
+		w.write(f"\tSKINASSIGNMENTGROUPS {self.skinassignmentgroups[0]} {self.skinassignmentgroups[1]}\n")
 		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
 		w.write(f"\tDMTRACKINST \"{self.dmtrackinst}\"\n")
 		w.write(f"\tDMRGBTRACK \"{self.dmrgbtrack}\"\n")
@@ -226,23 +226,23 @@ class dmspritedef2:
 		w.write(f"\tNUMFACE2S \"{len(self.face2s)}\"\n")
 		for dmface2i in self.face2s:
 			w.write(f"\t\tDMFACE2\n")
-			w.write(f"\t\tPASSABLE \"{dmface2i.passable}\"\n")
-			w.write(f"\t\tTRIANGLE \"{dmface2i.triangle}\"\n")
+			w.write(f"\t\tPASSABLE {dmface2i.passable}\n")
+			w.write(f"\t\tTRIANGLE {dmface2i.triangle[0]} {dmface2i.triangle[1]} {dmface2i.triangle[2]}\n")
 		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
 		for meshopi in self.meshops:
-			w.write(f"\t\tMESHOP \"{meshopi.meshop}\"\n")
-		w.write(f"\tFACEMATERIALGROUPS \"{self.facematerialgroups}\"\n")
-		w.write(f"\tVERTEXMATERIALGROUPS \"{self.vertexmaterialgroups}\"\n")
-		w.write(f"\tPARAMS2 \"{self.params2}\"\n")
-		w.write(f"\tBOUNDINGBOXMIN \"{self.boundingboxmin}\"\n")
-		w.write(f"\tBOUNDINGBOXMAX \"{self.boundingboxmax}\"\n")
-		w.write(f"\tBOUNDINGRADIUS \"{self.boundingradius}\"\n")
-		w.write(f"\tFPSCALE \"{self.fpscale}\"\n")
-		w.write(f"\tUSECENTEROFFSET \"{self.usecenteroffset}\"\n")
-		w.write(f"\tUSEBOUNDINGRADIUS \"{self.useboundingradius}\"\n")
-		w.write(f"\tUSEPARAMS2 \"{self.useparams2}\"\n")
-		w.write(f"\tUSEBOUNDINGBOX \"{self.useboundingbox}\"\n")
-		w.write(f"\tUSEVERTEXCOLORALPHA \"{self.usevertexcoloralpha}\"\n")
-		w.write(f"\tSPRITEDEFPOLYHEDRON \"{self.spritedefpolyhedron}\"\n")
+			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {meshopi.meshop[2]} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
+		w.write(f"\tFACEMATERIALGROUPS {self.facematerialgroups}\n")
+		w.write(f"\tVERTEXMATERIALGROUPS {self.vertexmaterialgroups}\n")
+		w.write(f"\tPARAMS2 {self.params2[0]} {self.params2[1]} {self.params2[2]}\n")
+		w.write(f"\tBOUNDINGBOXMIN {self.boundingboxmin[0]} {self.boundingboxmin[1]} {self.boundingboxmin[2]}\n")
+		w.write(f"\tBOUNDINGBOXMAX {self.boundingboxmax[0]} {self.boundingboxmax[1]} {self.boundingboxmax[2]}\n")
+		w.write(f"\tBOUNDINGRADIUS {self.boundingradius}\n")
+		w.write(f"\tFPSCALE {self.fpscale}\n")
+		w.write(f"\tUSECENTEROFFSET {self.usecenteroffset}\n")
+		w.write(f"\tUSEBOUNDINGRADIUS {self.useboundingradius}\n")
+		w.write(f"\tUSEPARAMS2 {self.useparams2}\n")
+		w.write(f"\tUSEBOUNDINGBOX {self.useboundingbox}\n")
+		w.write(f"\tUSEVERTEXCOLORALPHA {self.usevertexcoloralpha}\n")
+		w.write(f"\tSPRITEDEFPOLYHEDRON {self.spritedefpolyhedron}\n")
 		return ""
 

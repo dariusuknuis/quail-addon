@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from .context import Context
 from ..common.armature import ensure_pivot, apply_pivot_shapes
+from ..common.s3dobject import attach_collision_volume, create_bounding_radius_empty
 from ..wce.hierarchicalspritedef import hierarchicalspritedef
 from .dmspritedef2 import decode_dmspritedef2
 from .track import get_track
@@ -236,5 +237,21 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             arm_mod.object = arm_obj
 
     apply_pivot_shapes(arm_obj)
+
+    create_bounding_radius_empty(
+        parent_obj=arm_obj,
+        radius=bounding_radius,
+        collection=ctx.collection
+    )
+
+    # ------------------------------------------------
+    # Attach collision volume (polyhedron)
+    # ------------------------------------------------
+
+    if sprite.sprite:
+        attach_collision_volume(
+            parent_obj=arm_obj,
+            poly_tag=sprite.sprite
+        )
 
     return ""

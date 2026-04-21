@@ -35,6 +35,6 @@ class blitspritedef:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		w.write(f"\tRENDERMETHOD \"{self.rendermethod}\"\n")
-		w.write(f"\tTRANSPARENT \"{self.transparent}\"\n")
+		w.write(f"\tTRANSPARENT {self.transparent}\n")
 		return ""
 

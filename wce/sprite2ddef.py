@@ -10,23 +10,23 @@ class sprite2ddef:
 	tag:str
 	scale:tuple[float, float]
 	spherelisttag:str
-	depthscale:tuple[float, None]
-	centeroffset:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-	boundingradius:tuple[float, None]
-	currentframeref:tuple[int, None]
-	sleep:tuple[int, None]
+	depthscale:float | None
+	centeroffset:tuple[float, float, float] | None
+	boundingradius:float | None
+	currentframeref:int | None
+	sleep:int | None
 	rendermethod:str
 	hextenflag:int
 
 	def __init__(self):
 		self.tag = ""
-		self.scale = tuple[float, float] #2
+		self.scale = (0.0, 0.0) #2
 		self.spherelisttag = "" #2
-		self.depthscale = tuple[float, None] #2
-		self.centeroffset = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #2
-		self.boundingradius = tuple[float, None] #2
-		self.currentframeref = tuple[int, None] #2
-		self.sleep = tuple[int, None] #2
+		self.depthscale = None #2
+		self.centeroffset = None #2
+		self.boundingradius = None #2
+		self.currentframeref = None #2
+		self.sleep = None #2
 		self.rendermethod = "" #2
 		self.hextenflag = 0 #2
 		self.pitches = []
@@ -62,23 +62,23 @@ class sprite2ddef:
 						self.file = "" #6
 
 	class renderinfo:
-		pen:tuple[int, None]
-		brightness:tuple[float, None]
-		scaledambient:tuple[float, None]
-		sprite:tuple[str, None]
-		uvorigin:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-		uaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
-		vaxis:tuple[tuple[float, None], tuple[float, None], tuple[float, None]]
+		pen:int | None
+		brightness:float | None
+		scaledambient:float | None
+		sprite:str | None
+		uvorigin:tuple[float, float, float] | None
+		uaxis:tuple[float, float, float] | None
+		vaxis:tuple[float, float, float] | None
 		twosided:int
 
 		def __init__(self):
-			self.pen = tuple[int, None] #3
-			self.brightness = tuple[float, None] #3
-			self.scaledambient = tuple[float, None] #3
-			self.sprite = tuple[str, None] #3
-			self.uvorigin = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #3
-			self.uaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #3
-			self.vaxis = tuple[tuple[float, None], tuple[float, None], tuple[float, None]] #3
+			self.pen = None #3
+			self.brightness = None #3
+			self.scaledambient = None #3
+			self.sprite = None #3
+			self.uvorigin = None #3
+			self.uaxis = None #3
+			self.vaxis = None #3
 			self.twosided = 0 #3
 			self.uvcount = []
 
@@ -86,7 +86,7 @@ class sprite2ddef:
 			uv:tuple[float, float]
 
 			def __init__(self):
-				self.uv = tuple[float, float] #4
+				self.uv = (0.0, 0.0) #4
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -94,19 +94,19 @@ class sprite2ddef:
 			return "no reader provided"
 
 		records = property(r, "SCALE", 2)
-		self.scale = float(records[1]), float(records[2])
+		self.scale = (float(records[1]), float(records[2]))
 		records = property(r, "SPHERELISTTAG", 1)
 		self.spherelisttag = str(records[1])
 		records = property(r, "DEPTHSCALE?", 1)
-		self.depthscale = (float(records[1]) if records[1] != "NULL" else None)
+		self.depthscale = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "CENTEROFFSET?", 3)
-		self.centeroffset = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
+		self.centeroffset = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BOUNDINGRADIUS?", 1)
-		self.boundingradius = (float(records[1]) if records[1] != "NULL" else None)
+		self.boundingradius = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "CURRENTFRAMEREF?", 1)
-		self.currentframeref = (int(records[1]) if records[1] != "NULL" else None)
+		self.currentframeref = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SLEEP?", 1)
-		self.sleep = (int(records[1]) if records[1] != "NULL" else None)
+		self.sleep = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "NUMPITCHES", 1)
 		numpitches = int(records[1])
 
@@ -154,19 +154,19 @@ class sprite2ddef:
 		property(r, "RENDERINFO", 0)
 
 		records = property(r, "PEN?", 1)
-		self.renderinfo.pen = (int(records[1]) if records[1] != "NULL" else None)
+		self.renderinfo.pen = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "BRIGHTNESS?", 1)
-		self.renderinfo.brightness = (float(records[1]) if records[1] != "NULL" else None)
+		self.renderinfo.brightness = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SCALEDAMBIENT?", 1)
-		self.renderinfo.scaledambient = (float(records[1]) if records[1] != "NULL" else None)
+		self.renderinfo.scaledambient = float(records[1]) if records[1] != "NULL" else None
 		records = property(r, "SPRITE?", 1)
-		self.renderinfo.sprite = (str(records[1]) if records[1] != "NULL" else None)
+		self.renderinfo.sprite = str(records[1]) if records[1] != "NULL" else None
 		records = property(r, "UVORIGIN?", 3)
-		self.renderinfo.uvorigin = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
+		self.renderinfo.uvorigin = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "UAXIS?", 3)
-		self.renderinfo.uaxis = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
+		self.renderinfo.uaxis = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "VAXIS?", 3)
-		self.renderinfo.vaxis = (float(records[1]) if records[1] != "NULL" else None), (float(records[2]) if records[2] != "NULL" else None), (float(records[3]) if records[3] != "NULL" else None)
+		self.renderinfo.vaxis = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "UVCOUNT", 1)
 		uvcount = int(records[1])
 
@@ -174,7 +174,7 @@ class sprite2ddef:
 		for i in range(uvcount):
 			uvi = type(self.renderinfo).uv()
 			records = property(r, "UV", 2)
-			uvi.uv = float(records[1]), float(records[2])
+			uvi.uv = (float(records[1]), float(records[2]))
 			self.renderinfo.uvcount.append(uvi)
 		records = property(r, "TWOSIDED", 1)
 		self.renderinfo.twosided = int(records[1])
@@ -184,22 +184,22 @@ class sprite2ddef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tSCALE \"{self.scale}\"\n")
+		w.write(f"\tSCALE {self.scale[0]} {self.scale[1]}\n")
 		w.write(f"\tSPHERELISTTAG \"{self.spherelisttag}\"\n")
-		w.write(f"\tDEPTHSCALE? \"{self.depthscale}\"\n")
-		w.write(f"\tCENTEROFFSET? \"{self.centeroffset}\"\n")
-		w.write(f"\tBOUNDINGRADIUS? \"{self.boundingradius}\"\n")
-		w.write(f"\tCURRENTFRAMEREF? \"{self.currentframeref}\"\n")
-		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
+		w.write(f"\tDEPTHSCALE? {('NULL' if self.depthscale is None else self.depthscale)}\n")
+		w.write(f"\tCENTEROFFSET? {('NULL' if self.centeroffset is None else self.centeroffset[0])} {('NULL' if self.centeroffset is None else self.centeroffset[1])} {('NULL' if self.centeroffset is None else self.centeroffset[2])}\n")
+		w.write(f"\tBOUNDINGRADIUS? {('NULL' if self.boundingradius is None else self.boundingradius)}\n")
+		w.write(f"\tCURRENTFRAMEREF? {('NULL' if self.currentframeref is None else self.currentframeref)}\n")
+		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
 		w.write(f"\tNUMPITCHES \"{len(self.pitches)}\"\n")
 		for pitchi in self.pitches:
 			w.write(f"\t\tPITCH\n")
-			w.write(f"\t\tPITCHCAP \"{pitchi.pitchcap}\"\n")
-			w.write(f"\t\tTOPORBOTTOMVIEW \"{pitchi.toporbottomview}\"\n")
+			w.write(f"\t\tPITCHCAP {pitchi.pitchcap}\n")
+			w.write(f"\t\tTOPORBOTTOMVIEW {pitchi.toporbottomview}\n")
 			w.write(f"\t\tNUMHEADINGS \"{len(pitchi.headings)}\"\n")
 			for headingj in pitchi.headings:
 				w.write(f"\t\t\tHEADING\n")
-				w.write(f"\t\t\tHEADINGCAP \"{headingj.headingcap}\"\n")
+				w.write(f"\t\t\tHEADINGCAP {headingj.headingcap}\n")
 				w.write(f"\t\t\tNUMFRAMES \"{len(headingj.frames)}\"\n")
 				for framek in headingj.frames:
 					w.write(f"\t\t\t\tFRAME \"{framek.frame}\"\n")
@@ -208,17 +208,17 @@ class sprite2ddef:
 						w.write(f"\t\t\t\t\tFILE \"{filel.file}\"\n")
 		w.write(f"\tRENDERMETHOD \"{self.rendermethod}\"\n")
 		w.write(f"\tRENDERINFO\n")
-		w.write(f"\t\tPEN? \"{self.renderinfo.pen}\"\n")
-		w.write(f"\t\tBRIGHTNESS? \"{self.renderinfo.brightness}\"\n")
-		w.write(f"\t\tSCALEDAMBIENT? \"{self.renderinfo.scaledambient}\"\n")
+		w.write(f"\t\tPEN? {('NULL' if self.renderinfo.pen is None else self.renderinfo.pen)}\n")
+		w.write(f"\t\tBRIGHTNESS? {('NULL' if self.renderinfo.brightness is None else self.renderinfo.brightness)}\n")
+		w.write(f"\t\tSCALEDAMBIENT? {('NULL' if self.renderinfo.scaledambient is None else self.renderinfo.scaledambient)}\n")
 		w.write(f"\t\tSPRITE? \"{self.renderinfo.sprite}\"\n")
-		w.write(f"\t\tUVORIGIN? \"{self.renderinfo.uvorigin}\"\n")
-		w.write(f"\t\tUAXIS? \"{self.renderinfo.uaxis}\"\n")
-		w.write(f"\t\tVAXIS? \"{self.renderinfo.vaxis}\"\n")
+		w.write(f"\t\tUVORIGIN? {('NULL' if self.renderinfo.uvorigin is None else self.renderinfo.uvorigin[0])} {('NULL' if self.renderinfo.uvorigin is None else self.renderinfo.uvorigin[1])} {('NULL' if self.renderinfo.uvorigin is None else self.renderinfo.uvorigin[2])}\n")
+		w.write(f"\t\tUAXIS? {('NULL' if self.renderinfo.uaxis is None else self.renderinfo.uaxis[0])} {('NULL' if self.renderinfo.uaxis is None else self.renderinfo.uaxis[1])} {('NULL' if self.renderinfo.uaxis is None else self.renderinfo.uaxis[2])}\n")
+		w.write(f"\t\tVAXIS? {('NULL' if self.renderinfo.vaxis is None else self.renderinfo.vaxis[0])} {('NULL' if self.renderinfo.vaxis is None else self.renderinfo.vaxis[1])} {('NULL' if self.renderinfo.vaxis is None else self.renderinfo.vaxis[2])}\n")
 		w.write(f"\t\tUVCOUNT \"{len(self.renderinfo.uvcount)}\"\n")
 		for uvi in self.renderinfo.uvcount:
-			w.write(f"\t\t\tUV \"{uvi.uv}\"\n")
-		w.write(f"\t\tTWOSIDED \"{self.renderinfo.twosided}\"\n")
-		w.write(f"\tHEXTENFLAG \"{self.hextenflag}\"\n")
+			w.write(f"\t\t\tUV {uvi.uv[0]} {uvi.uv[1]}\n")
+		w.write(f"\t\tTWOSIDED {self.renderinfo.twosided}\n")
+		w.write(f"\tHEXTENFLAG {self.hextenflag}\n")
 		return ""
 

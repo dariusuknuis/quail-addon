@@ -89,21 +89,21 @@ class eqgparticlerenderdef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tVERSION \"{self.version}\"\n")
+		w.write(f"\tVERSION {self.version}\n")
 		w.write(f"\tNUMRENDERS \"{len(self.renders)}\"\n")
 		for renderi in self.renders:
-			w.write(f"\t\tRENDER \"{renderi.render}\"\n")
-			w.write(f"\t\tID2 \"{renderi.id2}\"\n")
+			w.write(f"\t\tRENDER {renderi.render}\n")
+			w.write(f"\t\tID2 {renderi.id2}\n")
 			w.write(f"\t\tPARTICLEPOINT \"{renderi.particlepoint}\"\n")
 			w.write(f"\t\tPARTICLESUFFIX \"{renderi.particlesuffix}\"\n")
-			w.write(f"\t\tUNKNOWNA1 \"{renderi.unknowna1}\"\n")
-			w.write(f"\t\tUNKNOWNA2 \"{renderi.unknowna2}\"\n")
-			w.write(f"\t\tUNKNOWNA3 \"{renderi.unknowna3}\"\n")
-			w.write(f"\t\tUNKNOWNA4 \"{renderi.unknowna4}\"\n")
-			w.write(f"\t\tUNKNOWNA5 \"{renderi.unknowna5}\"\n")
-			w.write(f"\t\tDURATION \"{renderi.duration}\"\n")
-			w.write(f"\t\tUNKNOWNB \"{renderi.unknownb}\"\n")
-			w.write(f"\t\tUNKNOWNFFFFFFFF \"{renderi.unknownffffffff}\"\n")
-			w.write(f"\t\tUNKNOWNC \"{renderi.unknownc}\"\n")
+			w.write(f"\t\tUNKNOWNA1 {renderi.unknowna1}\n")
+			w.write(f"\t\tUNKNOWNA2 {renderi.unknowna2}\n")
+			w.write(f"\t\tUNKNOWNA3 {renderi.unknowna3}\n")
+			w.write(f"\t\tUNKNOWNA4 {renderi.unknowna4}\n")
+			w.write(f"\t\tUNKNOWNA5 {renderi.unknowna5}\n")
+			w.write(f"\t\tDURATION {renderi.duration}\n")
+			w.write(f"\t\tUNKNOWNB {renderi.unknownb}\n")
+			w.write(f"\t\tUNKNOWNFFFFFFFF {renderi.unknownffffffff}\n")
+			w.write(f"\t\tUNKNOWNC {renderi.unknownc}\n")
 		return ""
 

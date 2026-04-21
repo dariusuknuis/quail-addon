@@ -10,15 +10,15 @@ class simplespritedef:
 	tag:str
 	variation:int
 	skipframes:int
-	sleep:tuple[int, None]
-	currentframe:tuple[int, None]
+	sleep:int | None
+	currentframe:int | None
 
 	def __init__(self):
 		self.tag = ""
 		self.variation = 0 #2
 		self.skipframes = 0 #2
-		self.sleep = tuple[int, None] #2
-		self.currentframe = tuple[int, None] #2
+		self.sleep = None #2
+		self.currentframe = None #2
 		self.frames = []
 
 	class frame:
@@ -44,9 +44,9 @@ class simplespritedef:
 		records = property(r, "SKIPFRAMES", 1)
 		self.skipframes = int(records[1])
 		records = property(r, "SLEEP?", 1)
-		self.sleep = (int(records[1]) if records[1] != "NULL" else None)
+		self.sleep = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "CURRENTFRAME?", 1)
-		self.currentframe = (int(records[1]) if records[1] != "NULL" else None)
+		self.currentframe = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "NUMFRAMES", 1)
 		numframes = int(records[1])
 
@@ -69,10 +69,10 @@ class simplespritedef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tVARIATION \"{self.variation}\"\n")
-		w.write(f"\tSKIPFRAMES \"{self.skipframes}\"\n")
-		w.write(f"\tSLEEP? \"{self.sleep}\"\n")
-		w.write(f"\tCURRENTFRAME? \"{self.currentframe}\"\n")
+		w.write(f"\tVARIATION {self.variation}\n")
+		w.write(f"\tSKIPFRAMES {self.skipframes}\n")
+		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
+		w.write(f"\tCURRENTFRAME? {('NULL' if self.currentframe is None else self.currentframe)}\n")
 		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
 		for framei in self.frames:
 			w.write(f"\t\tFRAME \"{framei.frame}\"\n")

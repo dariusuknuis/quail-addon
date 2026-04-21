@@ -28,7 +28,7 @@ class rgbdeformationtrackdef:
 			rgba:tuple[int, int, int, int]
 
 			def __init__(self):
-				self.rgba = tuple[int, int, int, int] #4
+				self.rgba = (0, 0, 0, 0) #4
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -54,20 +54,20 @@ class rgbdeformationtrackdef:
 			for j in range(numrgbas):
 				rgbaj = type(numrgbasi).rgba()
 				records = property(r, "RGBA", 4)
-				rgbaj.rgba = int(records[1]), int(records[2]), int(records[3]), int(records[4])
+				rgbaj.rgba = (int(records[1]), int(records[2]), int(records[3]), int(records[4]))
 				numrgbasi.rgbas.append(rgbaj)
 			self.rgbdeformationframes.append(numrgbasi)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tSLEEP \"{self.sleep}\"\n")
-		w.write(f"\tDATA4 \"{self.data4}\"\n")
-		w.write(f"\tUSEALPHA \"{self.usealpha}\"\n")
+		w.write(f"\tSLEEP {self.sleep}\n")
+		w.write(f"\tDATA4 {self.data4}\n")
+		w.write(f"\tUSEALPHA {self.usealpha}\n")
 		w.write(f"\tNUMRGBDEFORMATIONFRAMES \"{len(self.rgbdeformationframes)}\"\n")
 		for numrgbasi in self.rgbdeformationframes:
 			w.write(f"\t\tNUMRGBAS \"{len(numrgbasi.rgbas)}\"\n")
 			for rgbaj in numrgbasi.rgbas:
-				w.write(f"\t\t\tRGBA \"{rgbaj.rgba}\"\n")
+				w.write(f"\t\t\tRGBA {rgbaj.rgba[0]} {rgbaj.rgba[1]} {rgbaj.rgba[2]} {rgbaj.rgba[3]}\n")
 		return ""
 

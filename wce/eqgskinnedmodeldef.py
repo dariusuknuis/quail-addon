@@ -35,7 +35,7 @@ class eqgskinnedmodeldef:
 			property:tuple[str, int, str]
 
 			def __init__(self):
-				self.property = tuple[str, int, str] #4
+				self.property = ("", 0, "") #4
 
 		class texture:
 			texture:str
@@ -57,9 +57,9 @@ class eqgskinnedmodeldef:
 			self.next = 0 #3
 			self.children = 0 #3
 			self.childindex = 0 #3
-			self.pivot = tuple[float, float, float] #3
-			self.quaternion = tuple[float, float, float, float] #3
-			self.scale = tuple[float, float, float] #3
+			self.pivot = (0.0, 0.0, 0.0) #3
+			self.quaternion = (0.0, 0.0, 0.0, 0.0) #3
+			self.scale = (0.0, 0.0, 0.0) #3
 
 	class model:
 		model:str
@@ -79,18 +79,18 @@ class eqgskinnedmodeldef:
 			tint:tuple[int, int, int, int]
 
 			def __init__(self):
-				self.xyz = tuple[float, float, float] #4
-				self.uv = tuple[float, float] #4
-				self.uv2 = tuple[float, float] #4
-				self.normal = tuple[float, float, float] #4
-				self.tint = tuple[int, int, int, int] #4
+				self.xyz = (0.0, 0.0, 0.0) #4
+				self.uv = (0.0, 0.0) #4
+				self.uv2 = (0.0, 0.0) #4
+				self.normal = (0.0, 0.0, 0.0) #4
+				self.tint = (0, 0, 0, 0) #4
 				self.weights = []
 
 			class weight:
 				weight:tuple[int, float]
 
 				def __init__(self):
-					self.weight = tuple[int, float] #5
+					self.weight = (0, 0.0) #5
 
 		class face:
 			triangle:tuple[int, int, int]
@@ -102,7 +102,7 @@ class eqgskinnedmodeldef:
 			degenerate:int
 
 			def __init__(self):
-				self.triangle = tuple[int, int, int] #4
+				self.triangle = (0, 0, 0) #4
 				self.material = "" #4
 				self.passable = 0 #4
 				self.transparent = 0 #4
@@ -136,7 +136,7 @@ class eqgskinnedmodeldef:
 			for j in range(numproperties):
 				propertyj = type(materialtagi).property()
 				records = property(r, "PROPERTY", 3)
-				propertyj.property = str(records[1]), int(records[2]), str(records[3])
+				propertyj.property = (str(records[1]), int(records[2]), str(records[3]))
 				materialtagi.properties.append(propertyj)
 			records = property(r, "ANIMSLEEP", 1)
 			materialtagi.animsleep = int(records[1])
@@ -165,11 +165,11 @@ class eqgskinnedmodeldef:
 			records = property(r, "CHILDINDEX", 1)
 			bonei.childindex = int(records[1])
 			records = property(r, "PIVOT", 3)
-			bonei.pivot = float(records[1]), float(records[2]), float(records[3])
+			bonei.pivot = (float(records[1]), float(records[2]), float(records[3]))
 			records = property(r, "QUATERNION", 4)
-			bonei.quaternion = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+			bonei.quaternion = (float(records[1]), float(records[2]), float(records[3]), float(records[4]))
 			records = property(r, "SCALE", 3)
-			bonei.scale = float(records[1]), float(records[2]), float(records[3])
+			bonei.scale = (float(records[1]), float(records[2]), float(records[3]))
 			self.bones.append(bonei)
 		records = property(r, "NUMMODELS", 1)
 		nummodels = int(records[1])
@@ -190,15 +190,15 @@ class eqgskinnedmodeldef:
 				property(r, "VERTEX", 0)
 
 				records = property(r, "XYZ", 3)
-				vertexj.xyz = float(records[1]), float(records[2]), float(records[3])
+				vertexj.xyz = (float(records[1]), float(records[2]), float(records[3]))
 				records = property(r, "UV", 2)
-				vertexj.uv = float(records[1]), float(records[2])
+				vertexj.uv = (float(records[1]), float(records[2]))
 				records = property(r, "UV2", 2)
-				vertexj.uv2 = float(records[1]), float(records[2])
+				vertexj.uv2 = (float(records[1]), float(records[2]))
 				records = property(r, "NORMAL", 3)
-				vertexj.normal = float(records[1]), float(records[2]), float(records[3])
+				vertexj.normal = (float(records[1]), float(records[2]), float(records[3]))
 				records = property(r, "TINT", 4)
-				vertexj.tint = int(records[1]), int(records[2]), int(records[3]), int(records[4])
+				vertexj.tint = (int(records[1]), int(records[2]), int(records[3]), int(records[4]))
 				records = property(r, "NUMWEIGHTS", 1)
 				numweights = int(records[1])
 
@@ -206,7 +206,7 @@ class eqgskinnedmodeldef:
 				for k in range(numweights):
 					weightk = type(vertexj).weight()
 					records = property(r, "WEIGHT", 2)
-					weightk.weight = int(records[1]), float(records[2])
+					weightk.weight = (int(records[1]), float(records[2]))
 					vertexj.weights.append(weightk)
 				modeli.vertices.append(vertexj)
 			records = property(r, "NUMFACES", 1)
@@ -218,7 +218,7 @@ class eqgskinnedmodeldef:
 				property(r, "FACE", 0)
 
 				records = property(r, "TRIANGLE", 3)
-				facej.triangle = int(records[1]), int(records[2]), int(records[3])
+				facej.triangle = (int(records[1]), int(records[2]), int(records[3]))
 				records = property(r, "MATERIAL", 1)
 				facej.material = str(records[1])
 				records = property(r, "PASSABLE", 1)
@@ -237,52 +237,52 @@ class eqgskinnedmodeldef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tVERSION \"{self.version}\"\n")
+		w.write(f"\tVERSION {self.version}\n")
 		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
 		for materialtagi in self.materials:
 			w.write(f"\t\tMATERIALTAG \"{materialtagi.materialtag}\"\n")
 			w.write(f"\t\tSHADERTAG \"{materialtagi.shadertag}\"\n")
-			w.write(f"\t\tHEXONEFLAG \"{materialtagi.hexoneflag}\"\n")
+			w.write(f"\t\tHEXONEFLAG {materialtagi.hexoneflag}\n")
 			w.write(f"\t\tNUMPROPERTIES \"{len(materialtagi.properties)}\"\n")
 			for propertyj in materialtagi.properties:
-				w.write(f"\t\t\tPROPERTY \"{propertyj.property}\"\n")
-			w.write(f"\t\tANIMSLEEP \"{materialtagi.animsleep}\"\n")
+				w.write(f"\t\t\tPROPERTY {propertyj.property[0]} {propertyj.property[1]} {propertyj.property[2]}\n")
+			w.write(f"\t\tANIMSLEEP {materialtagi.animsleep}\n")
 			w.write(f"\t\tNUMANIMTEXTURES \"{len(materialtagi.animtextures)}\"\n")
 			for texturej in materialtagi.animtextures:
 				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
 		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
 		for bonei in self.bones:
 			w.write(f"\t\tBONE \"{bonei.bone}\"\n")
-			w.write(f"\t\tNEXT \"{bonei.next}\"\n")
-			w.write(f"\t\tCHILDREN \"{bonei.children}\"\n")
-			w.write(f"\t\tCHILDINDEX \"{bonei.childindex}\"\n")
-			w.write(f"\t\tPIVOT \"{bonei.pivot}\"\n")
-			w.write(f"\t\tQUATERNION \"{bonei.quaternion}\"\n")
-			w.write(f"\t\tSCALE \"{bonei.scale}\"\n")
+			w.write(f"\t\tNEXT {bonei.next}\n")
+			w.write(f"\t\tCHILDREN {bonei.children}\n")
+			w.write(f"\t\tCHILDINDEX {bonei.childindex}\n")
+			w.write(f"\t\tPIVOT {bonei.pivot[0]} {bonei.pivot[1]} {bonei.pivot[2]}\n")
+			w.write(f"\t\tQUATERNION {bonei.quaternion[0]} {bonei.quaternion[1]} {bonei.quaternion[2]} {bonei.quaternion[3]}\n")
+			w.write(f"\t\tSCALE {bonei.scale[0]} {bonei.scale[1]} {bonei.scale[2]}\n")
 		w.write(f"\tNUMMODELS \"{len(self.models)}\"\n")
 		for modeli in self.models:
 			w.write(f"\t\tMODEL \"{modeli.model}\"\n")
-			w.write(f"\t\tMAINPIECE \"{modeli.mainpiece}\"\n")
+			w.write(f"\t\tMAINPIECE {modeli.mainpiece}\n")
 			w.write(f"\t\tNUMVERTICES \"{len(modeli.vertices)}\"\n")
 			for vertexj in modeli.vertices:
 				w.write(f"\t\t\tVERTEX\n")
-				w.write(f"\t\t\tXYZ \"{vertexj.xyz}\"\n")
-				w.write(f"\t\t\tUV \"{vertexj.uv}\"\n")
-				w.write(f"\t\t\tUV2 \"{vertexj.uv2}\"\n")
-				w.write(f"\t\t\tNORMAL \"{vertexj.normal}\"\n")
-				w.write(f"\t\t\tTINT \"{vertexj.tint}\"\n")
+				w.write(f"\t\t\tXYZ {vertexj.xyz[0]} {vertexj.xyz[1]} {vertexj.xyz[2]}\n")
+				w.write(f"\t\t\tUV {vertexj.uv[0]} {vertexj.uv[1]}\n")
+				w.write(f"\t\t\tUV2 {vertexj.uv2[0]} {vertexj.uv2[1]}\n")
+				w.write(f"\t\t\tNORMAL {vertexj.normal[0]} {vertexj.normal[1]} {vertexj.normal[2]}\n")
+				w.write(f"\t\t\tTINT {vertexj.tint[0]} {vertexj.tint[1]} {vertexj.tint[2]} {vertexj.tint[3]}\n")
 				w.write(f"\t\t\tNUMWEIGHTS \"{len(vertexj.weights)}\"\n")
 				for weightk in vertexj.weights:
-					w.write(f"\t\t\t\tWEIGHT \"{weightk.weight}\"\n")
+					w.write(f"\t\t\t\tWEIGHT {weightk.weight[0]} {weightk.weight[1]}\n")
 			w.write(f"\t\tNUMFACES \"{len(modeli.faces)}\"\n")
 			for facej in modeli.faces:
 				w.write(f"\t\t\tFACE\n")
-				w.write(f"\t\t\tTRIANGLE \"{facej.triangle}\"\n")
+				w.write(f"\t\t\tTRIANGLE {facej.triangle[0]} {facej.triangle[1]} {facej.triangle[2]}\n")
 				w.write(f"\t\t\tMATERIAL \"{facej.material}\"\n")
-				w.write(f"\t\t\tPASSABLE \"{facej.passable}\"\n")
-				w.write(f"\t\t\tTRANSPARENT \"{facej.transparent}\"\n")
-				w.write(f"\t\t\tCOLLISIONREQUIRED \"{facej.collisionrequired}\"\n")
-				w.write(f"\t\t\tCULLED \"{facej.culled}\"\n")
-				w.write(f"\t\t\tDEGENERATE \"{facej.degenerate}\"\n")
+				w.write(f"\t\t\tPASSABLE {facej.passable}\n")
+				w.write(f"\t\t\tTRANSPARENT {facej.transparent}\n")
+				w.write(f"\t\t\tCOLLISIONREQUIRED {facej.collisionrequired}\n")
+				w.write(f"\t\t\tCULLED {facej.culled}\n")
+				w.write(f"\t\t\tDEGENERATE {facej.degenerate}\n")
 		return ""
 

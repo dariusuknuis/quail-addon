@@ -32,9 +32,9 @@ class eqganidef:
 
 			def __init__(self):
 				self.milliseconds = 0 #4
-				self.translation = tuple[float, float, float] #4
-				self.rotation = tuple[float, float, float, float] #4
-				self.scale = tuple[float, float, float] #4
+				self.translation = (0.0, 0.0, 0.0) #4
+				self.rotation = (0.0, 0.0, 0.0, 0.0) #4
+				self.scale = (0.0, 0.0, 0.0) #4
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -64,28 +64,28 @@ class eqganidef:
 				records = property(r, "MILLISECONDS", 1)
 				framej.milliseconds = int(records[1])
 				records = property(r, "TRANSLATION", 3)
-				framej.translation = float(records[1]), float(records[2]), float(records[3])
+				framej.translation = (float(records[1]), float(records[2]), float(records[3]))
 				records = property(r, "ROTATION", 4)
-				framej.rotation = float(records[1]), float(records[2]), float(records[3]), float(records[4])
+				framej.rotation = (float(records[1]), float(records[2]), float(records[3]), float(records[4]))
 				records = property(r, "SCALE", 3)
-				framej.scale = float(records[1]), float(records[2]), float(records[3])
+				framej.scale = (float(records[1]), float(records[2]), float(records[3]))
 				bonei.frames.append(framej)
 			self.bones.append(bonei)
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tVERSION \"{self.version}\"\n")
-		w.write(f"\tSTRICT \"{self.strict}\"\n")
+		w.write(f"\tVERSION {self.version}\n")
+		w.write(f"\tSTRICT {self.strict}\n")
 		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
 		for bonei in self.bones:
 			w.write(f"\t\tBONE \"{bonei.bone}\"\n")
 			w.write(f"\t\tNUMFRAMES \"{len(bonei.frames)}\"\n")
 			for framej in bonei.frames:
 				w.write(f"\t\t\tFRAME\n")
-				w.write(f"\t\t\tMILLISECONDS \"{framej.milliseconds}\"\n")
-				w.write(f"\t\t\tTRANSLATION \"{framej.translation}\"\n")
-				w.write(f"\t\t\tROTATION \"{framej.rotation}\"\n")
-				w.write(f"\t\t\tSCALE \"{framej.scale}\"\n")
+				w.write(f"\t\t\tMILLISECONDS {framej.milliseconds}\n")
+				w.write(f"\t\t\tTRANSLATION {framej.translation[0]} {framej.translation[1]} {framej.translation[2]}\n")
+				w.write(f"\t\t\tROTATION {framej.rotation[0]} {framej.rotation[1]} {framej.rotation[2]} {framej.rotation[3]}\n")
+				w.write(f"\t\t\tSCALE {framej.scale[0]} {framej.scale[1]} {framej.scale[2]}\n")
 		return ""
 
