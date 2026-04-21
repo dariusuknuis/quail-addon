@@ -3,12 +3,16 @@
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
 from ...common import state
+from ...common.armature import attach_object_to_dag
 
 # =========================================================
 # UPDATE HELPERS
 # =========================================================
 
 def update_dag_sprite(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
 
     obj = context.object
     if not obj or obj.get("quaildef") != "hierarchicalspritedef":
@@ -28,7 +32,6 @@ def update_dag_sprite(self, context):
         prev_obj = bpy.data.objects.get(prev_name)
 
         if prev_obj:
-            # Remove only this DAG's constraint
             for c in prev_obj.constraints:
                 if (
                     c.type == 'CHILD_OF' and
@@ -46,26 +49,9 @@ def update_dag_sprite(self, context):
         self["_prev_sprite_name"] = ""
         return
 
-    # Parent to armature object (not bone)
-    new_obj.parent = arm
+    attach_object_to_dag(new_obj, arm, dag_tag)
 
-    # Remove any existing constraint for THIS DAG
-    for c in new_obj.constraints:
-        if (
-            c.type == 'CHILD_OF' and
-            c.target == arm and
-            c.subtarget == dag_tag
-        ):
-            new_obj.constraints.remove(c)
-
-    # Create constraint
-    con = new_obj.constraints.new('CHILD_OF')
-    con.name = f"HS_{dag_tag}"
-    con.target = arm
-    con.subtarget = dag_tag
-    con.inverse_matrix.identity()
-
-    # Prevent snapping
+    # Prevent snapping (keep this)
     bpy.context.view_layer.update()
 
     bpy.context.view_layer.objects.active = new_obj
@@ -124,6 +110,10 @@ def update_numattachedskins(self, context):
 
 
 def update_attachedskin_sprite(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
     obj = context.object
     if not obj or obj.get("quaildef") != "hierarchicalspritedef":
         return

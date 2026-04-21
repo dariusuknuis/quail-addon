@@ -857,7 +857,7 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         'ShaderNodeTree'
     )
     simplesprite_node['quaildef'] = 'simplespritedef'
-    state.QUAIL_UPDATING = True
+    # state.QUAIL_UPDATING = True
 
     props = simplesprite_node.quail_simplesprite
 
@@ -996,6 +996,6 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
     if props.has_sleep:
         add_texture_animation(simplesprite_node)
 
-    state.QUAIL_UPDATING = False
+    # state.QUAIL_UPDATING = False
 
     return ""

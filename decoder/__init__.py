@@ -17,6 +17,7 @@ from .eqgterdef import decode_eqgterdef
 from .eqganidef import decode_eqganidef
 from ..logger.error import error
 from .context import Context
+from ..common import state
 import os
 
 def find_assets_root(start_path: str) -> str | None:
@@ -40,6 +41,8 @@ def find_assets_root(start_path: str) -> str | None:
         current = parent
 
 def wce_decode(path: str):
+
+    state.QUAIL_UPDATING = True
 
     if os.path.isfile(path) and path.lower().endswith(".wce"):
         # Single WCE file
@@ -168,3 +171,5 @@ def wce_decode(path: str):
         err = decode_eqganidef(ctx, eqgani)
         if err:
             error(err)
+
+    state.QUAIL_UPDATING = False

@@ -37,6 +37,7 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
     if hsprite:
         obj["hsprite"] = hsprite.tag
+        print(obj.name, "->", obj.get("hsprite"))
 
     center = sprite.center or (0.0, 0.0, 0.0)
     obj.location = mathutils.Vector(center)

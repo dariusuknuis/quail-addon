@@ -3,7 +3,7 @@
 import bpy
 import mathutils
 from .context import Context
-from ..common.armature import ensure_pivot, apply_pivot_shapes
+from ..common.armature import ensure_pivot, apply_pivot_shapes, attach_object_to_dag
 from ..common.s3dobject import attach_collision_volume, create_bounding_radius_empty
 from ..wce.hierarchicalspritedef import hierarchicalspritedef
 from .dmspritedef2 import decode_dmspritedef2
@@ -235,6 +235,18 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             mesh_obj.parent = arm_obj
             arm_mod = mesh_obj.modifiers.new(name="Armature", type='ARMATURE')
             arm_mod.object = arm_obj
+
+    bpy.context.view_layer.update()
+
+    for dag in sprite.dags:
+        if not dag.spritetag:
+            continue
+
+        obj = bpy.data.objects.get(dag.spritetag)
+        if not obj:
+            continue
+
+        attach_object_to_dag(obj, arm_obj, dag.tag)
 
     apply_pivot_shapes(arm_obj)
 

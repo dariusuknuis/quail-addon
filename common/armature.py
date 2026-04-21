@@ -130,3 +130,28 @@ def apply_pivot_shapes(arm_obj):
 
             pb.custom_shape_rotation_euler = (0, 0, 0)
             pb.custom_shape_scale_xyz = (0.15, 0.15, 0.15)
+
+def attach_object_to_dag(obj, arm, dag_tag):
+    if not obj or not arm or not dag_tag:
+        return
+
+    # Parent to armature object
+    obj.parent = arm
+
+    # Remove existing constraint for this DAG
+    for c in obj.constraints:
+        if (
+            c.type == 'CHILD_OF' and
+            c.target == arm and
+            c.subtarget == dag_tag
+        ):
+            obj.constraints.remove(c)
+
+    # Create constraint
+    con = obj.constraints.new('CHILD_OF')
+    con.name = f"HS_{dag_tag}"
+    con.target = arm
+    con.subtarget = dag_tag
+
+    # IMPORTANT: do NOT leave stale inverse
+    con.inverse_matrix.identity()
