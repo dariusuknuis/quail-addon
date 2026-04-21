@@ -33,7 +33,11 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         d = props.dags.add()
 
         d.tag = dag.tag
-        d.spritetag = dag.spritetag or ""
+        obj = bpy.data.objects.get(dag.spritetag)
+        if obj:
+            d.spritetag = obj
+        else:
+            d.spritetag = None
         d.track = dag.track or ""
 
         while len(d.subdags) > 0:

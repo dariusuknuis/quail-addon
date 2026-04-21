@@ -7,6 +7,7 @@ from typing import Optional
 from .actordef import decode_actordef
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
+from .polyhedrondefinition import decode_polyhedrondefinition
 from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
 from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations
@@ -83,6 +84,14 @@ def wce_decode(path: str):
         ctx.parent = base_parent
 
         err = decode_materialdefinition(ctx, materialdef)
+        if err:
+            error(err)
+
+    for _, polyhdef in parser.polyhedrondefinitions.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_polyhedrondefinition(ctx, polyhdef)
         if err:
             error(err)
 

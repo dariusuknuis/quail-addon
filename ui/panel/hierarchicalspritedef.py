@@ -2,12 +2,84 @@
 
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
+from ...common import state
 
 # =========================================================
 # UPDATE HELPERS
 # =========================================================
 
+def update_dag_sprite(self, context):
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+        return
+
+    arm = obj
+    props = obj.quail_hierarchicalspritedef
+
+    dag_tag = self.tag
+
+    # ----------------------------------------
+    # Remove previous object from THIS DAG only
+    # ----------------------------------------
+    prev_name = self.get("_prev_sprite_name")
+
+    if prev_name:
+        prev_obj = bpy.data.objects.get(prev_name)
+
+        if prev_obj:
+            # Remove only this DAG's constraint
+            for c in prev_obj.constraints:
+                if (
+                    c.type == 'CHILD_OF' and
+                    c.target == arm and
+                    c.subtarget == dag_tag
+                ):
+                    prev_obj.constraints.remove(c)
+
+    # ----------------------------------------
+    # Assign new object
+    # ----------------------------------------
+    new_obj = self.spritetag
+
+    if not new_obj:
+        self["_prev_sprite_name"] = ""
+        return
+
+    # Parent to armature object (not bone)
+    new_obj.parent = arm
+
+    # Remove any existing constraint for THIS DAG
+    for c in new_obj.constraints:
+        if (
+            c.type == 'CHILD_OF' and
+            c.target == arm and
+            c.subtarget == dag_tag
+        ):
+            new_obj.constraints.remove(c)
+
+    # Create constraint
+    con = new_obj.constraints.new('CHILD_OF')
+    con.name = f"HS_{dag_tag}"
+    con.target = arm
+    con.subtarget = dag_tag
+    con.inverse_matrix.identity()
+
+    # Prevent snapping
+    bpy.context.view_layer.update()
+
+    bpy.context.view_layer.objects.active = new_obj
+    bpy.ops.object.select_all(action='DESELECT')
+    new_obj.select_set(True)
+
+    # Store for cleanup next time
+    self["_prev_sprite_name"] = new_obj.name
+
 def update_dag_parenting(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
     obj = context.object
     if not obj or obj.get("quaildef") != "hierarchicalspritedef":
         return
@@ -87,7 +159,18 @@ class QuailSubDAGItem(bpy.types.PropertyGroup):
     )
 class QuailDAGProperties(bpy.types.PropertyGroup):
     tag: StringProperty(name="Tag")
-    spritetag: StringProperty(name="Sprite Tag")
+    def sprite_poll(self, obj):
+        return obj.get("quaildef") in {
+            "dmspritedef2",
+            "dmspritedefinition"
+        }
+
+    spritetag: PointerProperty(
+        name="Sprite",
+        type=bpy.types.Object,
+        poll=sprite_poll,
+        update=lambda self, context: update_dag_sprite(self, context)
+    )
     track: StringProperty(name="Track")
     subdags: CollectionProperty(type=QuailSubDAGItem)
 

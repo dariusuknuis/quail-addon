@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from . import auto_load
+from .handlers import QuailHandlers
 
 bl_info = {
     "name": "Quail-Addon",
@@ -24,7 +25,9 @@ auto_load.init()
 
 def register():
     auto_load.register()
+    QuailHandlers.register()
 
 
 def unregister():
     auto_load.unregister()
+    QuailHandlers.unregister()
