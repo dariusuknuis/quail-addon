@@ -201,7 +201,7 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
     polyhedron: PointerProperty(
         name="Polyhedron",
         type=bpy.types.Object,
-        poll=lambda self, obj: obj.get("quaildef") == "polyhedrondef"
+        poll=lambda self, obj: obj.get("quaildef") == "polyhedrondefinition"
     )
 
     # Center offset

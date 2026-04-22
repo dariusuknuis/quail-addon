@@ -6,7 +6,6 @@ from .context import Context
 from ..common.armature import ensure_pivot, apply_pivot_shapes, attach_object_to_dag
 from ..common.s3dobject import attach_collision_volume, create_bounding_radius_empty
 from ..wce.hierarchicalspritedef import hierarchicalspritedef
-from .dmspritedef2 import decode_dmspritedef2
 from .track import get_track
 
 
@@ -54,7 +53,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     props.haveattachedskins = bool(sprite.haveattachedskins)
 
-    # IMPORTANT: set count BEFORE filling (triggers update)
     props.numattachedskins = len(sprite.attachedskins)
 
     while len(props.attachedskins) > 0:
@@ -73,22 +71,17 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     props.dagcollisions = bool(sprite.dagcollisions)
 
-    if sprite.centeroffset:
-        values = [
-            v[0] if isinstance(v, tuple) else v
-            for v in sprite.centeroffset
-        ]
+    if sprite.centeroffset is not None:
+        props.has_centeroffset = True
 
-        if all(v is None for v in values):
-            props.has_centeroffset = False
-        else:
-            props.has_centeroffset = True
-
-            props.center_x = float(values[0] or 0.0)
-            props.center_y = float(values[1] or 0.0)
-            props.center_z = float(values[2] or 0.0)
+        x, y, z = sprite.centeroffset
+        props.center_x = x
+        props.center_y = y
+        props.center_z = z
     else:
         props.has_centeroffset = False
+
+    props.polyhedron = bpy.data.objects.get(sprite.sprite)
 
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode='EDIT')
@@ -98,7 +91,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     bounding_radius = sprite.boundingradius if sprite.boundingradius is not None else 1.0
     tail_len = round(bounding_radius / 10, 2)
-    # tail_len = 0.0001
 
     # ------------------------------------------------
     # Remove Blender default bone
