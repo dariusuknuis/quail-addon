@@ -98,26 +98,24 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                     sprite.uvs[vertex].uv[1]
                 )
 
-    if len(sprite.vertexnormals) == 0:
-        return f"{sprite.tag} has no normals assigned"
-
-    normal_attr = mesh.attributes.new(
-        name="vertex_normals",
-        type='FLOAT_VECTOR',
-        domain='POINT'
-    )
-
-    for i in range(len(sprite.vertexnormals)):
-        normal_attr.data[i].vector = (
-            sprite.vertexnormals[i].nxyz[0],
-            sprite.vertexnormals[i].nxyz[1],
-            sprite.vertexnormals[i].nxyz[2]
+    if len(sprite.vertexnormals) > 0:
+        normal_attr = mesh.attributes.new(
+            name="vertex_normals",
+            type='FLOAT_VECTOR',
+            domain='POINT'
         )
 
-    nodegroup = get_vertex_normal_nodegroup()
+        for i in range(len(sprite.vertexnormals)):
+            normal_attr.data[i].vector = (
+                sprite.vertexnormals[i].nxyz[0],
+                sprite.vertexnormals[i].nxyz[1],
+                sprite.vertexnormals[i].nxyz[2]
+            )
 
-    mod = obj.modifiers.new("VertexNormals", 'NODES')
-    mod.node_group = nodegroup
+        nodegroup = get_vertex_normal_nodegroup()
+
+        mod = obj.modifiers.new("VertexNormals", 'NODES')
+        mod.node_group = nodegroup
 
     if len(sprite.vertexcolors) > 0:
         color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
@@ -132,22 +130,20 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                 color.rgba[3] / 255.0
             )
 
-    if len(sprite.vertexmaterialgroups) == 0:
-        return f"{sprite.tag} has no vertex material groups"
-
-    vertex_material_attribute = mesh.attributes.new(name="Vertex_Material_Index", type='INT', domain='POINT')
-    vertex_index = 0
-    count = 0
-    for i, vmg in enumerate(sprite.vertexmaterialgroups):
-        if i % 2 == 0:
-            count = int(vmg)
-            continue
-        mat_index = int(vmg)
-        for _ in range(count):
-            if vertex_index >= len(vertex_material_attribute.data):
-                break
-            vertex_material_attribute.data[vertex_index].value = mat_index  # type: ignore
-            vertex_index += 1
+    if len(sprite.vertexmaterialgroups) > 0:
+        vertex_material_attribute = mesh.attributes.new(name="Vertex_Material_Index", type='INT', domain='POINT')
+        vertex_index = 0
+        count = 0
+        for i, vmg in enumerate(sprite.vertexmaterialgroups):
+            if i % 2 == 0:
+                count = int(vmg)
+                continue
+            mat_index = int(vmg)
+            for _ in range(count):
+                if vertex_index >= len(vertex_material_attribute.data):
+                    break
+                vertex_material_attribute.data[vertex_index].value = mat_index  # type: ignore
+                vertex_index += 1
 
     if len(sprite.facematerialgroups) > 0:
 

@@ -186,7 +186,7 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
     selected_dag_index: IntProperty(name="DAG Index", default=0, min=0)
 
     # Attached skins
-    haveattachedskins: BoolProperty(name="Have Attached Skins", default=False)
+    haveattachedskins: BoolProperty(name="Attached Skins", default=False)
 
     numattachedskins: IntProperty(
         name="Num Attached Skins",
@@ -205,7 +205,7 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
     )
 
     # Center offset
-    has_centeroffset: BoolProperty(name="Has Center Offset", default=False)
+    has_centeroffset: BoolProperty(name="Center Offset", default=False)
     center_x: FloatProperty(name="X", default=0.0)
     center_y: FloatProperty(name="Y", default=0.0)
     center_z: FloatProperty(name="Z", default=0.0)

@@ -11,8 +11,9 @@ def create_bounding_radius_empty(parent_obj: bpy.types.Object, radius: float, co
     sphere.empty_display_size = radius
     collection.objects.link(sphere)
     sphere.parent = parent_obj
-    sphere.hide_viewport = True
-    sphere.hide_render = True
+    # sphere.hide_viewport = True
+    # sphere.hide_render = True
+    sphere.hide_set(True)
 
     return sphere
 
