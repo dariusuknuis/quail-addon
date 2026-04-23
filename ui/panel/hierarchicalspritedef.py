@@ -5,9 +5,28 @@ from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProper
 from ...common import state
 from ...common.armature import attach_object_to_dag
 
-# =========================================================
-# UPDATE HELPERS
-# =========================================================
+def update_bounding_radius(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+        return
+
+    radius = self.boundingradius
+
+    # Expected empty name
+    empty_name = f"{obj.name}_BOUNDINGRADIUS"
+    empty = bpy.data.objects.get(empty_name)
+
+    if not empty:
+        return  # or optionally create it
+
+    # ----------------------------------------
+    # Update scale (assuming sphere-like empty)
+    # ----------------------------------------
+    empty.empty_display_size = radius
 
 def update_dag_sprite(self, context):
 
@@ -61,42 +80,50 @@ def update_dag_sprite(self, context):
     # Store for cleanup next time
     self["_prev_sprite_name"] = new_obj.name
 
-def update_dag_parenting(self, context):
+def update_dag_tag(self, context):
 
     if state.QUAIL_UPDATING:
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+    if not obj or obj.type != 'ARMATURE':
         return
 
-    props = obj.quail_hierarchicalspritedef
+    arm_obj = obj
+    arm = arm_obj.data
+    props = arm_obj.quail_hierarchicalspritedef
 
-    bpy.ops.object.mode_set(mode='EDIT')
+    new_name = self.tag
 
-    arm = obj.data
-
-    # Clear all parenting first
-    for bone in arm.edit_bones:
-        bone.parent = None
-
+    # ----------------------------------------
+    # Find THIS dag's index
+    # ----------------------------------------
+    dag_index = None
     for i, dag in enumerate(props.dags):
-        parent_bone = arm.edit_bones.get(dag.tag)
-        if not parent_bone:
-            continue
+        if dag == self:
+            dag_index = i
+            break
 
-        for sub in dag.subdags:
-            if sub.dag_index >= len(props.dags):
-                continue
+    if dag_index is None:
+        return
 
-            child_dag = props.dags[sub.dag_index]
-            child_bone = arm.edit_bones.get(child_dag.tag)
+    # ----------------------------------------
+    # Get the bone by index (NOT name)
+    # ----------------------------------------
+    if dag_index >= len(arm.bones):
+        return
 
-            if child_bone:
-                child_bone.parent = parent_bone
-                child_bone.use_connect = False
+    bone = arm.bones[dag_index]
 
-    bpy.ops.object.mode_set(mode='OBJECT')
+    old_name = bone.name
+
+    if old_name == new_name:
+        return
+
+    # ----------------------------------------
+    # Rename
+    # ----------------------------------------
+    bone.name = new_name
 
 def update_numattachedskins(self, context):
     skins = self.attachedskins
@@ -144,11 +171,10 @@ def update_attachedskin_sprite(self, context):
 # =========================================================
 class QuailSubDAGItem(bpy.types.PropertyGroup):
     dag_index: IntProperty(
-        name="DAG Index",
-        update=lambda self, context: update_dag_parenting(self, context)
+        name="DAG Index"
     )
 class QuailDAGProperties(bpy.types.PropertyGroup):
-    tag: StringProperty(name="Tag")
+    tag: StringProperty(name="Tag", update=lambda self, context: update_dag_tag(self, context))
     def sprite_poll(self, obj):
         return obj.get("quaildef") in {
             "dmspritedef2",
@@ -211,7 +237,7 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
     center_z: FloatProperty(name="Z", default=0.0)
 
     # Flags
-    boundingradius: FloatProperty(name="Bounding Radius", default=0.0)
+    boundingradius: FloatProperty(name="Bounding Radius", default=1.0, update=update_bounding_radius)
     dagcollisions: BoolProperty(name="DAG Collisions", default=False)
 
 
@@ -251,7 +277,7 @@ def draw_hierarchicalspritedef_in_transform(self, context):
         for sub in dag.subdags:
             row = dag_box.row(align=True)
 
-            row.prop(sub, "dag_index", text="")
+            row.label(text=str(sub.dag_index))
 
             if sub.dag_index < len(props.dags):
                 row.label(text=props.dags[sub.dag_index].tag)

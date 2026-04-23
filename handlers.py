@@ -23,70 +23,51 @@ def sync_panel_from_armature(obj):
         bones = obj.data.bones
 
         # ----------------------------------------
-        # STEP 1: map existing DAGs by tag
+        # STEP 1: Ensure DAG count matches bones
         # ----------------------------------------
-        existing = {d.tag: d for d in props.dags}
+        while len(props.dags) < len(bones):
+            props.dags.add()
+
+        while len(props.dags) > len(bones):
+            props.dags.remove(len(props.dags) - 1)
 
         # ----------------------------------------
-        # STEP 2: rebuild DAG list WITHOUT losing data
+        # STEP 2: Update tags from bones (preserve data)
         # ----------------------------------------
-        new_dags = []
+        for i, bone in enumerate(bones):
+            dag = props.dags[i]
 
-        for bone in bones:
-            if bone.name in existing:
-                d = existing[bone.name]  # reuse existing
-            else:
-                d = props.dags.add()
-                d.tag = bone.name
-                d.spritetag = ""
-                d.track = ""
-
-            new_dags.append(d)
+            if dag.tag != bone.name:
+                dag.tag = bone.name
 
         # ----------------------------------------
-        # STEP 3: remove DAGs that no longer exist
-        # ----------------------------------------
-        bone_names = {b.name for b in bones}
-
-        i = 0
-        while i < len(props.dags):
-            if props.dags[i].tag not in bone_names:
-                props.dags.remove(i)
-            else:
-                i += 1
-
-        # ----------------------------------------
-        # STEP 4: rebuild lookup
-        # ----------------------------------------
-        tag_to_index = {d.tag: i for i, d in enumerate(props.dags)}
-
-        # ----------------------------------------
-        # STEP 5: clear subdags
+        # STEP 3: Clear subdags
         # ----------------------------------------
         for dag in props.dags:
             while len(dag.subdags) > 0:
                 dag.subdags.remove(0)
 
         # ----------------------------------------
-        # STEP 6: rebuild relationships
+        # STEP 4: Build index lookup
         # ----------------------------------------
-        for bone in bones:
+        name_to_index = {bone.name: i for i, bone in enumerate(bones)}
+
+        # ----------------------------------------
+        # STEP 5: Rebuild relationships
+        # ----------------------------------------
+        for i, bone in enumerate(bones):
             if not bone.parent:
                 continue
 
-            parent = bone.parent.name
-            child = bone.name
+            parent_name = bone.parent.name
 
-            if parent not in tag_to_index or child not in tag_to_index:
+            if parent_name not in name_to_index:
                 continue
 
-            p_idx = tag_to_index[parent]
-            c_idx = tag_to_index[child]
+            parent_index = name_to_index[parent_name]
 
-            item = props.dags[p_idx].subdags.add()
-            item.dag_index = c_idx
-
-        print("[HS SYNC] Panel updated (preserving data)")
+            item = props.dags[parent_index].subdags.add()
+            item.dag_index = i
 
     finally:
         state.QUAIL_UPDATING = False
@@ -97,6 +78,7 @@ class QuailHandlers:
     @bpy.app.handlers.persistent
     def load_handler(_):
         pass
+    @staticmethod
     def depsgraph_handler(scene, depsgraph):
 
         obj = bpy.context.object
@@ -109,13 +91,15 @@ class QuailHandlers:
         if obj.get("quaildef") != "hierarchicalspritedef":
             return
 
-        current_mode = obj.mode
+        arm = obj.data
 
-        # 🔥 ONLY when exiting edit mode
-        if QuailHandlers._last_mode == 'EDIT' and current_mode == 'OBJECT':
+        for update in depsgraph.updates:
+
+            if update.id.original not in {obj, arm}:
+                continue
+
             sync_panel_from_armature(obj)
-
-        QuailHandlers._last_mode = current_mode
+            break
 
 
     @staticmethod
