@@ -95,6 +95,24 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
                     sprite.texcoords[vertex].uv[1]
                 )
 
+    # ----------------------------------------
+    # Vertex UVs (POINT domain) for loose verts
+    # ----------------------------------------
+    if len(sprite.texcoords) > 0:
+        uv_attr = mesh.attributes.new(
+            name="vertex_uvs",
+            type='FLOAT2',
+            domain='POINT'
+        )
+
+        for i, uv in enumerate(sprite.texcoords):
+            if i >= len(uv_attr.data):
+                break
+            uv_attr.data[i].value = (
+                uv.uv[0],
+                uv.uv[1]
+            )
+
     if len(sprite.normals) > 0:
         normal_attr = mesh.attributes.new(
             name="vertex_normals",

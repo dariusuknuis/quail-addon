@@ -38,6 +38,26 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     obj.parent = ctx.parent
 
+    # ------------------------------------------------
+    # Populate properties for panel
+    # ------------------------------------------------
+
+    # props = obj.quail_dmspritedef2
+
+    # props.usecenteroffset = bool(sprite.usecenteroffset)
+
+    # x, y, z = sprite.centeroffset
+    # props.center_x = x
+    # props.center_y = y
+    # props.center_z = z
+
+
+
+
+
+
+
+
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
     if hsprite:
         obj["hsprite"] = hsprite.tag
@@ -97,6 +117,24 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                     sprite.uvs[vertex].uv[0],
                     sprite.uvs[vertex].uv[1]
                 )
+
+    # ----------------------------------------
+    # Vertex UVs (POINT domain) for loose verts
+    # ----------------------------------------
+    if len(sprite.uvs) > 0:
+        uv_attr = mesh.attributes.new(
+            name="vertex_uvs",
+            type='FLOAT2',
+            domain='POINT'
+        )
+
+        for i, uv in enumerate(sprite.uvs):
+            if i >= len(uv_attr.data):
+                break
+            uv_attr.data[i].vector = (
+                uv.uv[0],
+                uv.uv[1]
+            )
 
     if len(sprite.vertexnormals) > 0:
         normal_attr = mesh.attributes.new(

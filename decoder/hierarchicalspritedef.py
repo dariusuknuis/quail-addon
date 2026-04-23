@@ -11,6 +11,10 @@ from .track import get_track
 
 def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) -> str:
 
+    # -----------------------------------------------------------
+    # Create pivot for making nice bones or get if already exists
+    # -----------------------------------------------------------
+
     ensure_pivot()
 
     # ------------------------------------------------
@@ -23,6 +27,10 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     arm_obj.parent = ctx.parent
     ctx.collection.objects.link(arm_obj)
     arm_obj['quaildef'] = 'hierarchicalspritedef'
+
+    # ------------------------------------------------
+    # Populate properties for panel
+    # ------------------------------------------------
 
     props = arm_obj.quail_hierarchicalspritedef
 
@@ -67,10 +75,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         if obj:
             s.dmsprite = obj
 
-    props.boundingradius = sprite.boundingradius or 0.0
-
-    props.dagcollisions = bool(sprite.dagcollisions)
-
     if sprite.centeroffset is not None:
         props.has_centeroffset = True
 
@@ -81,7 +85,20 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     else:
         props.has_centeroffset = False
 
+    if sprite.boundingradius is not None:
+        props.has_boundingradius = True
+        props.boundingradius = sprite.boundingradius
+    else:
+        props.has_centeroffset = False
+        props.boundingradius = 1.0
+
     props.polyhedron = bpy.data.objects.get(sprite.sprite)
+
+    props.dagcollisions = bool(sprite.dagcollisions)
+
+    # ------------------------------------------------
+    # Initialize dictionaries
+    # ------------------------------------------------
 
     bpy.context.view_layer.objects.active = arm_obj
     bpy.ops.object.mode_set(mode='EDIT')
@@ -190,9 +207,9 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    # ------------------------------------------------
-    # Decode skins and parent to bones
-    # ------------------------------------------------
+    # -------------------------------------------------------------
+    # Get attachedskins and variations of those and apply transforms
+    # -------------------------------------------------------------
 
     for mesh_obj in bpy.data.objects:
 
@@ -213,6 +230,8 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             if not vg:
                 continue
 
+            rot_mat = bone_matrix.to_3x3()
+
             # get vertices belonging to this group
             for v in mesh.vertices:
 
@@ -220,6 +239,16 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
                     if g.group == vg.index:
 
                         v.co = bone_matrix @ v.co
+
+                         # Transform normal (if exists)
+                        if "vertex_normals" in mesh.attributes:
+                            normal_attr = mesh.attributes["vertex_normals"]
+                            n = mathutils.Vector(normal_attr.data[v.index].vector)
+
+                            n = rot_mat @ n
+                            # n.normalize()
+
+                            normal_attr.data[v.index].vector = n
                         break
 
         if mesh_obj:
@@ -228,7 +257,15 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
             arm_mod = mesh_obj.modifiers.new(name="Armature", type='ARMATURE')
             arm_mod.object = arm_obj
 
+            bpy.context.view_layer.objects.active = mesh_obj
+            for _ in range(len(mesh_obj.modifiers)):
+                bpy.ops.object.modifier_move_up(modifier=arm_mod.name)
+
     bpy.context.view_layer.update()
+
+    # ----------------------------------------------------------
+    # Get objects attached to DAGs and add "Child Of" constraint
+    # ----------------------------------------------------------
 
     for dag in sprite.dags:
         if not dag.spritetag:
@@ -240,7 +277,15 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
         attach_object_to_dag(obj, arm_obj, dag.tag)
 
+    # ------------------------------------------------
+    # Build fake bones to look nice
+    # ------------------------------------------------
+
     apply_pivot_shapes(arm_obj)
+
+    # ------------------------------------------------
+    # Add bouding radius empty
+    # ------------------------------------------------
 
     create_bounding_radius_empty(
         parent_obj=arm_obj,
