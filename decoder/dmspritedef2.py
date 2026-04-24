@@ -80,6 +80,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     props.boundingradius = sprite.boundingradius
 
     props.fpscale = sprite.fpscale
+    props.fpscale_prev = sprite.fpscale
 
     props.usevertexcoloralpha = bool(sprite.usevertexcoloralpha)
 

@@ -5,6 +5,34 @@ from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProper
 from ...common import state
 from ...common.armature import attach_object_to_dag
 
+def update_polyhedron(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+        return
+
+    arm = obj
+
+    # ----------------------------------------
+    # Remove ALL polyhedrondefinition children
+    # ----------------------------------------
+    for child in list(arm.children):
+        if child.get("quaildef") == "polyhedrondefinition":
+            child.parent = None
+
+    # ----------------------------------------
+    # Assign new polyhedron (if any)
+    # ----------------------------------------
+    new_obj = self.polyhedron
+
+    if not new_obj:
+        return
+
+    new_obj.parent = arm
+
 def update_bounding_radius(self, context):
 
     if state.QUAIL_UPDATING:
@@ -56,26 +84,43 @@ def update_dag_sprite(self, context):
         return
 
     arm = obj
-    props = obj.quail_hierarchicalspritedef
-
     dag_tag = self.tag
+
+    # ----------------------------------------
+    # Initialize previous sprite if missing
+    # ----------------------------------------
+    if "_prev_sprite_name" not in self:
+        for obj_child in bpy.data.objects:
+            if obj_child.get("quaildef") in {"dmspritedef2", "dmspritedefinition"}:
+                for c in obj_child.constraints:
+                    if (
+                        c.type == 'CHILD_OF' and
+                        c.target == arm and
+                        c.subtarget == dag_tag
+                    ):
+                        self["_prev_sprite_name"] = obj_child.name
+                        break
 
     # ----------------------------------------
     # Remove previous object from THIS DAG only
     # ----------------------------------------
-    prev_name = self.get("_prev_sprite_name")
+    prev_obj = None
 
-    if prev_name:
-        prev_obj = bpy.data.objects.get(prev_name)
+    if self.spritetag:
+        prev_obj = self.spritetag
+    else:
+        prev_name = self.get("_prev_sprite_name")
+        if prev_name:
+            prev_obj = bpy.data.objects.get(prev_name)
 
-        if prev_obj:
-            for c in prev_obj.constraints:
-                if (
-                    c.type == 'CHILD_OF' and
-                    c.target == arm and
-                    c.subtarget == dag_tag
-                ):
-                    prev_obj.constraints.remove(c)
+    if prev_obj:
+        for c in list(prev_obj.constraints):
+            if (
+                c.type == 'CHILD_OF' and
+                c.target == arm and
+                c.subtarget == dag_tag
+            ):
+                prev_obj.constraints.remove(c)
 
     # ----------------------------------------
     # Assign new object
@@ -88,14 +133,13 @@ def update_dag_sprite(self, context):
 
     attach_object_to_dag(new_obj, arm, dag_tag)
 
-    # Prevent snapping (keep this)
     bpy.context.view_layer.update()
 
     bpy.context.view_layer.objects.active = new_obj
     bpy.ops.object.select_all(action='DESELECT')
     new_obj.select_set(True)
 
-    # Store for cleanup next time
+    # Store for next time
     self["_prev_sprite_name"] = new_obj.name
 
 def update_dag_tag(self, context):
@@ -240,7 +284,8 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
     polyhedron: PointerProperty(
         name="Polyhedron",
         type=bpy.types.Object,
-        poll=lambda self, obj: obj.get("quaildef") == "polyhedrondefinition"
+        poll=lambda self, obj: obj.get("quaildef") == "polyhedrondefinition",
+        update=update_polyhedron
     )
 
     has_centeroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)

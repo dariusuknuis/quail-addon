@@ -108,7 +108,7 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
         for i, uv in enumerate(sprite.texcoords):
             if i >= len(uv_attr.data):
                 break
-            uv_attr.data[i].value = (
+            uv_attr.data[i].vector = (
                 uv.uv[0],
                 uv.uv[1]
             )

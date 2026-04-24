@@ -5,50 +5,13 @@ from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProper
 from ...common import state
 from ...common.s3dobject import create_bounding_box
 
-def update_fpscale(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
-        return
-
-    mesh = obj.data
-    if not mesh:
-        return
-
-    old_scale = self.fpscale_prev
-    new_scale = self.fpscale
-
-    if old_scale == new_scale:
-        return
-
-    # ----------------------------------------
-    # Compute scale factor
-    # ----------------------------------------
-    scale_factor = 2 ** (old_scale - new_scale)
-
-    # ----------------------------------------
-    # Apply to vertices
-    # ----------------------------------------
-    for v in mesh.vertices:
-        v.co *= scale_factor
-
-    mesh.update()
-
-    # ----------------------------------------
-    # Store new as previous
-    # ----------------------------------------
-    self.fpscale_prev = new_scale
-
 def update_bounding_radius(self, context):
 
     if state.QUAIL_UPDATING:
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
+    if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
     empty_name = f"{obj.name}_BOUNDINGRADIUS"
@@ -69,7 +32,7 @@ def update_bounding_box(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
+    if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
     bb_name = f"{obj.name}_BOUNDINGBOX"
@@ -97,7 +60,7 @@ def update_polyhedron(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
+    if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
     dmsprite = obj
@@ -125,7 +88,7 @@ def update_materialpalette(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
+    if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
     palette_obj = self.materialpalette
@@ -148,7 +111,7 @@ def update_centeroffset(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedef2":
+    if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
     arm = obj
@@ -165,7 +128,7 @@ def update_centeroffset(self, context):
 # =========================================================
 # PROPERTY GROUPS
 # =========================================================
-class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
+class QuailDMSpriteDefinitionProperties(bpy.types.PropertyGroup):
 
     usecenteroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
     center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
@@ -214,9 +177,6 @@ class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
         update=update_bounding_radius
     )
 
-    fpscale: IntProperty(update=lambda self, context: update_fpscale(self, context))
-    fpscale_prev: IntProperty(default=1)
-
     # Flags
     usevertexcoloralpha: BoolProperty(name="Vertex Color Alpha", default=False)
     spritedefpolyhedron: BoolProperty(name="Sprite Def Polyhedron", default=False)
@@ -226,16 +186,16 @@ class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
 # PANEL
 # =========================================================
 
-def draw_dmspritedef2_in_transform(self, context):
+def draw_dmspritedefinition_in_transform(self, context):
     obj = context.object
-    if not obj or obj.get('quaildef') != 'dmspritedef2':
+    if not obj or obj.get('quaildef') != 'dmspritedefinition':
         return
 
     props = obj.quail_dmspritedef2
     layout = self.layout
 
     box = layout.box()
-    box.label(text="DMSPRITEDEF2")
+    box.label(text="DMSPRITEDEFINITION")
 
     box.prop(props, "usecenteroffset")
     row = box.row(align=True)
@@ -283,9 +243,9 @@ def draw_dmspritedef2_in_transform(self, context):
 
 def register():
 
-    bpy.types.Object.quail_dmspritedef2 = PointerProperty(type=QuailDMSpriteDef2Properties)
-    bpy.types.OBJECT_PT_transform.prepend(draw_dmspritedef2_in_transform)
+    bpy.types.Object.quail_dmspritedefinition = PointerProperty(type=QuailDMSpriteDefinitionProperties)
+    bpy.types.OBJECT_PT_transform.prepend(draw_dmspritedefinition_in_transform)
 
 def unregister():
-    del bpy.types.Object.quail_dmspritedef2
-    bpy.types.OBJECT_PT_transform.remove(draw_dmspritedef2_in_transform)
+    del bpy.types.Object.quail_dmspritedefinition
+    bpy.types.OBJECT_PT_transform.remove(draw_dmspritedefinition_in_transform)
