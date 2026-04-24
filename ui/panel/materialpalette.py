@@ -6,7 +6,6 @@ from ...common import state
 
 def update_mesh_materials_from_palette(palette_obj):
 
-    palette_name = palette_obj.name
     props = palette_obj.quail_materialpalette
 
     for obj in bpy.data.objects:
@@ -17,9 +16,10 @@ def update_mesh_materials_from_palette(palette_obj):
         if obj.get("quaildef") not in {"dmspritedef2", "dmspritedefinition"}:
             continue
 
-        # 🔹 This assumes you stored palette reference like:
-        # obj["materialpalette"] = palette_name
-        if obj.get("materialpalette") != palette_name:
+        if not hasattr(obj, "quail_dmspritedef2"):
+            continue
+
+        if obj.quail_dmspritedef2.materialpalette != palette_obj:
             continue
 
         mesh = obj.data
@@ -27,11 +27,20 @@ def update_mesh_materials_from_palette(palette_obj):
         # ----------------------------------------
         # Rebuild material slots
         # ----------------------------------------
-        mesh.materials.clear()
+        materials = mesh.materials
+        palette_mats = [item.material for item in props.materials if item.material]
 
-        for item in props.materials:
-            if item.material:
-                mesh.materials.append(item.material)
+        # Expand slots if needed
+        while len(materials) < len(palette_mats):
+            materials.append(None)
+
+        # Assign in-place (preserves indices)
+        for i, mat in enumerate(palette_mats):
+            materials[i] = mat
+
+        # Trim extra slots if palette shrank
+        while len(materials) > len(palette_mats):
+            materials.pop(index=len(materials) - 1)
 
 # =========================================================
 # PROPERTY GROUPS

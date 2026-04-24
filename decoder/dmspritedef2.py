@@ -4,7 +4,7 @@ import bpy
 import mathutils
 from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
-from ..common.s3dobject import create_bounding_radius_empty, attach_collision_volume
+from ..common.s3dobject import create_bounding_radius_empty, attach_collision_volume, create_bounding_box
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
@@ -42,21 +42,52 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     # Populate properties for panel
     # ------------------------------------------------
 
-    # props = obj.quail_dmspritedef2
+    props = obj.quail_dmspritedef2
 
-    # props.usecenteroffset = bool(sprite.usecenteroffset)
+    props.usecenteroffset = bool(sprite.usecenteroffset)
 
-    # x, y, z = sprite.centeroffset
-    # props.center_x = x
-    # props.center_y = y
-    # props.center_z = z
+    x, y, z = sprite.centeroffset
+    props.center_x = x
+    props.center_y = y
+    props.center_z = z
 
+    props.materialpalette = bpy.data.objects.get(sprite.materialpalette)
 
+    props.dmtrack = sprite.dmtrackinst
 
+    props.dmrgbtrack = sprite.dmrgbtrack
 
+    props.polyhedron = bpy.data.objects.get(sprite.sprite)
 
+    props.useparams2 = bool(sprite.useparams2)
+    px, py, pz = sprite.params2
+    props.params2_x = px
+    props.params2_y = py
+    props.params2_z = pz
 
+    props.useboundingbox = bool(sprite.useboundingbox)
+    min_x, min_y, min_z = sprite.boundingboxmin
+    props.b_box_min_x = min_x
+    props.b_box_min_y = min_y
+    props.b_box_min_z = min_z
 
+    max_x, max_y, max_z = sprite.boundingboxmax
+    props.b_box_max_x = max_x
+    props.b_box_max_y = max_y
+    props.b_box_max_z = max_z
+
+    props.useboundingradius = bool(sprite.useboundingradius)
+    props.boundingradius = sprite.boundingradius
+
+    props.fpscale = sprite.fpscale
+
+    props.usevertexcoloralpha = bool(sprite.usevertexcoloralpha)
+
+    props.spritedefpolyhedron = bool(sprite.spritedefpolyhedron)
+
+    # ------------------------------------------------
+    # Build mesh
+    # ------------------------------------------------
 
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
     if hsprite:
@@ -250,6 +281,31 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                 vg.add([vertex_index], 1.0, 'REPLACE')
 
             vertex_index += 1
+
+    bounds = (
+        sprite.boundingboxmin,
+        sprite.boundingboxmax,
+    )
+
+    # ------------------------------------------------
+    # Create Bounding Box
+    # ------------------------------------------------
+
+    create_bounding_box(obj, bounds)
+
+    # ------------------------------------------------
+    # Add bouding radius empty
+    # ------------------------------------------------
+
+    create_bounding_radius_empty(
+        parent_obj=obj,
+        radius=sprite.boundingradius,
+        collection=ctx.collection
+    )
+
+    # ------------------------------------------------
+    # Attach collision volume (polyhedron)
+    # ------------------------------------------------
 
     if sprite.sprite:
         attach_collision_volume(

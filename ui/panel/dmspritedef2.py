@@ -3,7 +3,7 @@
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
 from ...common import state
-from ...common.armature import attach_object_to_dag
+from ...common.s3dobject import create_bounding_box
 
 def update_bounding_radius(self, context):
 
@@ -11,7 +11,7 @@ def update_bounding_radius(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+    if not obj or obj.get("quaildef") != "dmspritedef2":
         return
 
     empty_name = f"{obj.name}_BOUNDINGRADIUS"
@@ -20,11 +20,62 @@ def update_bounding_radius(self, context):
     if not empty:
         return
 
-    if self.has_boundingradius:
+    if self.useboundingradius:
         empty.empty_display_size = self.boundingradius
     else:
         # Default fallback
         empty.empty_display_size = 1.0
+
+def update_bounding_box(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "dmspritedef2":
+        return
+
+    bb_name = f"{obj.name}_BOUNDINGBOX"
+    existing = bpy.data.objects.get(bb_name)
+
+    if not self.useboundingbox:
+        if existing:
+            bpy.data.objects.remove(existing, do_unlink=True)
+        return
+
+    bounds = (
+        (self.b_box_min_x, self.b_box_min_y, self.b_box_min_z),
+        (self.b_box_max_x, self.b_box_max_y, self.b_box_max_z),
+    )
+
+    # Remove old
+    if existing:
+        bpy.data.objects.remove(existing, do_unlink=True)
+
+    create_bounding_box(obj, bounds)
+
+def update_materialpalette(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "dmspritedef2":
+        return
+
+    palette_obj = self.materialpalette
+
+    mesh = obj.data
+    mesh.materials.clear()
+
+    if not palette_obj:
+        return
+
+    palette_props = palette_obj.quail_materialpalette
+
+    for item in palette_props.materials:
+        if item.material:
+            mesh.materials.append(item.material)
 
 def update_centeroffset(self, context):
 
@@ -32,12 +83,12 @@ def update_centeroffset(self, context):
         return
 
     obj = context.object
-    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+    if not obj or obj.get("quaildef") != "dmspritedef2":
         return
 
     arm = obj
 
-    if self.has_centeroffset:
+    if self.usecenteroffset:
         arm.location[0] = self.center_x
         arm.location[1] = self.center_y
         arm.location[2] = self.center_z
@@ -46,196 +97,26 @@ def update_centeroffset(self, context):
         arm.location[1] = 0.0
         arm.location[2] = 0.0
 
-def update_dag_sprite(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
-        return
-
-    arm = obj
-    props = obj.quail_hierarchicalspritedef
-
-    dag_tag = self.tag
-
-    # ----------------------------------------
-    # Remove previous object from THIS DAG only
-    # ----------------------------------------
-    prev_name = self.get("_prev_sprite_name")
-
-    if prev_name:
-        prev_obj = bpy.data.objects.get(prev_name)
-
-        if prev_obj:
-            for c in prev_obj.constraints:
-                if (
-                    c.type == 'CHILD_OF' and
-                    c.target == arm and
-                    c.subtarget == dag_tag
-                ):
-                    prev_obj.constraints.remove(c)
-
-    # ----------------------------------------
-    # Assign new object
-    # ----------------------------------------
-    new_obj = self.spritetag
-
-    if not new_obj:
-        self["_prev_sprite_name"] = ""
-        return
-
-    attach_object_to_dag(new_obj, arm, dag_tag)
-
-    # Prevent snapping (keep this)
-    bpy.context.view_layer.update()
-
-    bpy.context.view_layer.objects.active = new_obj
-    bpy.ops.object.select_all(action='DESELECT')
-    new_obj.select_set(True)
-
-    # Store for cleanup next time
-    self["_prev_sprite_name"] = new_obj.name
-
-def update_dag_tag(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.type != 'ARMATURE':
-        return
-
-    arm_obj = obj
-    arm = arm_obj.data
-    props = arm_obj.quail_hierarchicalspritedef
-
-    new_name = self.tag
-
-    # ----------------------------------------
-    # Find THIS dag's index
-    # ----------------------------------------
-    dag_index = None
-    for i, dag in enumerate(props.dags):
-        if dag == self:
-            dag_index = i
-            break
-
-    if dag_index is None:
-        return
-
-    # ----------------------------------------
-    # Get the bone by index (NOT name)
-    # ----------------------------------------
-    if dag_index >= len(arm.bones):
-        return
-
-    bone = arm.bones[dag_index]
-
-    old_name = bone.name
-
-    if old_name == new_name:
-        return
-
-    # ----------------------------------------
-    # Rename
-    # ----------------------------------------
-    bone.name = new_name
-
-def update_numattachedskins(self, context):
-    skins = self.attachedskins
-
-    if len(skins) < self.numattachedskins:
-        for _ in range(self.numattachedskins - len(skins)):
-            skins.add()
-    elif len(skins) > self.numattachedskins:
-        for _ in range(len(skins) - self.numattachedskins):
-            skins.remove(len(skins) - 1)
-
-
-def update_attachedskin_sprite(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
-        return
-
-    tag = obj.name
-
-    prev_name = self.get("_prev_dmsprite_name")
-    if prev_name:
-        prev_obj = bpy.data.objects.get(prev_name)
-        if prev_obj and prev_obj.get("hsprite") == tag:
-            del prev_obj["hsprite"]
-            if prev_obj.parent == obj:
-                prev_obj.parent = None
-
-    new_obj = self.dmsprite
-    if new_obj:
-        new_obj["hsprite"] = tag
-        new_obj.parent = obj
-
-        # store for next update
-        self["_prev_dmsprite_name"] = new_obj.name
-    else:
-        self["_prev_dmsprite_name"] = ""
-
-
 # =========================================================
 # PROPERTY GROUPS
 # =========================================================
-class QuailSubDAGItem(bpy.types.PropertyGroup):
-    dag_index: IntProperty(
-        name="DAG Index"
-    )
-class QuailDAGProperties(bpy.types.PropertyGroup):
-    tag: StringProperty(name="Tag", update=lambda self, context: update_dag_tag(self, context))
-    def sprite_poll(self, obj):
-        return obj.get("quaildef") in {
-            "dmspritedef2",
-            "dmspritedefinition"
-        }
+class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
 
-    spritetag: PointerProperty(
-        name="Sprite",
+    usecenteroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
+    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
+    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
+    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+
+    materialpalette: PointerProperty(
+        name="Material Palette",
         type=bpy.types.Object,
-        poll=sprite_poll,
-        update=lambda self, context: update_dag_sprite(self, context)
-    )
-    track: StringProperty(name="Track")
-    subdags: CollectionProperty(type=QuailSubDAGItem)
-
-
-class QuailAttachedSkinProperties(bpy.types.PropertyGroup):
-    dmsprite: PointerProperty(
-        name="DMSprite",
-        type=bpy.types.Object,
-        poll=lambda self, obj: obj.get("quaildef") in {
-            "dmspritedef2",
-            "dmspritedefinition"
-        },
-        update=update_attachedskin_sprite
+        poll=lambda self, obj: obj.get("quaildef") == "materialpalette",
+        update=update_materialpalette
     )
 
-    linkdagindex: IntProperty(name="Link DAG Index", default=2)
+    dmtrack: StringProperty()
 
-
-class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
-
-    dags: CollectionProperty(type=QuailDAGProperties)
-    selected_dag_index: IntProperty(name="DAG Index", default=0, min=0)
-
-    haveattachedskins: BoolProperty(name="Attached Skins", default=False)
-    numattachedskins: IntProperty(
-        name="Num Attached Skins",
-        default=0,
-        min=0,
-        update=update_numattachedskins
-    )
-    attachedskins: CollectionProperty(type=QuailAttachedSkinProperties)
+    dmrgbtrack: StringProperty()
 
     polyhedron: PointerProperty(
         name="Polyhedron",
@@ -243,12 +124,20 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
         poll=lambda self, obj: obj.get("quaildef") == "polyhedrondefinition"
     )
 
-    has_centeroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
-    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
-    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
-    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+    useparams2: BoolProperty(name="Params2", default=False)
+    params2_x: FloatProperty(name="X", default=0.0)
+    params2_y: FloatProperty(name="Y", default=0.0)
+    params2_z: FloatProperty(name="Z", default=0.0)
 
-    has_boundingradius: BoolProperty(
+    useboundingbox: BoolProperty(name="Bounding Box", default=False, update=update_bounding_box)
+    b_box_min_x: FloatProperty(name="Min X", default=0.0, update=update_bounding_box)
+    b_box_min_y: FloatProperty(name="Min Y", default=0.0, update=update_bounding_box)
+    b_box_min_z: FloatProperty(name="Min Z", default=0.0, update=update_bounding_box)
+    b_box_max_x: FloatProperty(name="Max X", default=0.0, update=update_bounding_box)
+    b_box_max_y: FloatProperty(name="Max Y", default=0.0, update=update_bounding_box)
+    b_box_max_z: FloatProperty(name="Max Z", default=0.0, update=update_bounding_box)
+
+    useboundingradius: BoolProperty(
         name="Bounding Radius",
         default=False,
         update=update_bounding_radius
@@ -259,84 +148,67 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
         update=update_bounding_radius
     )
 
+    fpscale: IntProperty()
+
     # Flags
-    dagcollisions: BoolProperty(name="DAG Collisions", default=False)
+    usevertexcoloralpha: BoolProperty(name="Vertex Color Alpha", default=False)
+    spritedefpolyhedron: BoolProperty(name="Sprite Def Polyhedron", default=False)
 
 
 # =========================================================
 # PANEL
 # =========================================================
 
-def draw_hierarchicalspritedef_in_transform(self, context):
+def draw_dmspritedef2_in_transform(self, context):
     obj = context.object
-    if not obj or obj.get('quaildef') != 'hierarchicalspritedef':
+    if not obj or obj.get('quaildef') != 'dmspritedef2':
         return
 
-    props = obj.quail_hierarchicalspritedef
+    props = obj.quail_dmspritedef2
     layout = self.layout
 
     box = layout.box()
-    box.label(text="HIERARCHICALSPRITEDEF")
+    box.label(text="DMSPRITEDEF2")
 
-    # -------------------------
-    # DAG SECTION
-    # -------------------------
-    box.label(text=f"Num DAGs: {len(props.dags)}")
-    box.prop(props, "selected_dag_index")
+    box.prop(props, "usecenteroffset")
+    row = box.row(align=True)
+    row.prop(props, "center_x")
+    row.prop(props, "center_y")
+    row.prop(props, "center_z")
 
-    if props.dags and props.selected_dag_index < len(props.dags):
-        dag = props.dags[props.selected_dag_index]
+    box.prop(props, "materialpalette")
 
-        dag_box = box.box()
-        dag_box.label(text=f"DAG {props.selected_dag_index + 1}")
+    box.prop(props, "dmtrack")
 
-        dag_box.prop(dag, "tag")
-        dag_box.prop(dag, "spritetag")
-        dag_box.prop(dag, "track")
+    box.prop(props, "dmrgbtrack")
 
-        dag_box.label(text="SubDAGs:")
-
-        for sub in dag.subdags:
-            row = dag_box.row(align=True)
-
-            row.label(text=str(sub.dag_index))
-
-            if sub.dag_index < len(props.dags):
-                row.label(text=props.dags[sub.dag_index].tag)
-    # -------------------------
-    # ATTACHED SKINS
-    # -------------------------
-    box.prop(props, "haveattachedskins")
-
-    if props.haveattachedskins:
-        box.prop(props, "numattachedskins")
-
-        for i, skin in enumerate(props.attachedskins):
-            skin_box = box.box()
-            skin_box.label(text=f"Skin {i+1}")
-
-            skin_box.prop(skin, "dmsprite")
-            skin_box.prop(skin, "linkdagindex")
-
-    # -------------------------
-    # OTHER PROPERTIES
-    # -------------------------
     box.prop(props, "polyhedron")
 
-    box.prop(props, "has_centeroffset")
-    if props.has_centeroffset:
-        row = box.row(align=True)
-        row.prop(props, "center_x")
-        row.prop(props, "center_y")
-        row.prop(props, "center_z")
+    box.prop(props, "useparams2")
+    row = box.row(align=True)
+    row.prop(props, "params2_x")
+    row.prop(props, "params2_y")
+    row.prop(props, "params2_z")
 
-    box.prop(props, "has_boundingradius")
-    if props.has_boundingradius:
-        row = box.row(align=True)
-        row.prop(props, "boundingradius")
+    box.prop(props, "useboundingbox")
+    row = box.row(align=True)
+    row.prop(props, "b_box_min_x")
+    row.prop(props, "b_box_min_y")
+    row.prop(props, "b_box_min_z")
+    row = box.row(align=True)
+    row.prop(props, "b_box_max_x")
+    row.prop(props, "b_box_max_y")
+    row.prop(props, "b_box_max_z")
 
-    box.prop(props, "dagcollisions")
+    box.prop(props, "useboundingradius")
+    row = box.row(align=True)
+    row.prop(props, "boundingradius")
 
+    box.prop(props, "fpscale")
+
+    box.prop(props, "usevertexcoloralpha")
+
+    box.prop(props, "spritedefpolyhedron")
 
 # =========================================================
 # REGISTER
@@ -344,9 +216,9 @@ def draw_hierarchicalspritedef_in_transform(self, context):
 
 def register():
 
-    bpy.types.Object.quail_hierarchicalspritedef = PointerProperty(type=QuailHierarchicalSpriteProperties)
-    bpy.types.OBJECT_PT_transform.prepend(draw_hierarchicalspritedef_in_transform)
+    bpy.types.Object.quail_dmspritedef2 = PointerProperty(type=QuailDMSpriteDef2Properties)
+    bpy.types.OBJECT_PT_transform.prepend(draw_dmspritedef2_in_transform)
 
 def unregister():
-    del bpy.types.Object.quail_hierarchicalspritedef
-    bpy.types.OBJECT_PT_transform.remove(draw_hierarchicalspritedef_in_transform)
+    del bpy.types.Object.quail_dmspritedef2
+    bpy.types.OBJECT_PT_transform.remove(draw_dmspritedef2_in_transform)

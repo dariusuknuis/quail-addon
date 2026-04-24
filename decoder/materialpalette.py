@@ -10,7 +10,6 @@ def decode_materialpalette(ctx: Context, mat_palette: materialpalette) -> str:
     palette_obj = bpy.data.objects.get(mat_palette.tag)
 
     if palette_obj and palette_obj.get("quaildef") == "materialpalette":
-        # ✅ Reuse existing, DO NOT overwrite
         return ""
 
     # ------------------------------------------------
