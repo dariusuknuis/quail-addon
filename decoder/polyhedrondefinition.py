@@ -16,17 +16,32 @@ def decode_polyhedrondefinition(ctx:Context, volume:polyhedrondefinition) -> str
 
     obj.parent = ctx.parent
 
-    # -------------------------
+    # ------------------------------------------------
+    # Populate properties for panel
+    # ------------------------------------------------
+
+    props = obj.quail_polyhedrondefinition
+
+    props.boundingradius = volume.boundingradius
+
+    if volume.scalefactor is not None:
+        props.has_scalefactor = True
+        props.scalefactor = volume.scalefactor
+    else:
+        props.has_scalefactor = False
+        props.scalefactor = 1.0
+
+    # ------------------------------------------------
+    # Build Volume
+    # ------------------------------------------------
+
     # Vertices
-    # -------------------------
     vertices = [
         mathutils.Vector(v.xyz)
         for v in volume.vertices
     ]
 
-    # -------------------------
-    # Faces (NGONS, untouched)
-    # -------------------------
+    # Faces
     faces = []
     for face in volume.faces:
         raw = [int(i) for i in face.vertexlist]
@@ -36,9 +51,7 @@ def decode_polyhedrondefinition(ctx:Context, volume:polyhedrondefinition) -> str
 
         faces.append(tuple(indices))
 
-    # -------------------------
     # Build mesh
-    # -------------------------
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
 
@@ -49,15 +62,11 @@ def decode_polyhedrondefinition(ctx:Context, volume:polyhedrondefinition) -> str
     else:
         obj.data.materials.append(mat)
 
-    # -------------------------
     # Apply scale factor
-    # -------------------------
     scale = volume.scalefactor if volume.scalefactor is not None else 1.0
     obj.scale = (scale, scale, scale)
 
-    # -------------------------
     # Create bounding radius empty
-    # -------------------------
     create_bounding_radius_empty(
         parent_obj=obj,
         radius=volume.boundingradius,

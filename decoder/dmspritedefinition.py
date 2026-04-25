@@ -34,6 +34,44 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
 
     obj.parent = ctx.parent
 
+    # ------------------------------------------------
+    # Populate properties for panel
+    # ------------------------------------------------
+
+    props = obj.quail_dmspritedefinition
+
+    props.fragment1 = sprite.fragment1
+    props.fragment3 = sprite.fragment3
+
+    props.materialpalette = bpy.data.objects.get(sprite.materialpalette)
+
+    # CENTER
+    if sprite.center:
+        props.hascenter = True
+        props.center_x, props.center_y, props.center_z = sprite.center
+    else:
+        props.hascenter = False
+
+    # PARAMS1
+    if sprite.params1:
+        props.hasparams1 = True
+        props.params1_x, props.params1_y, props.params1_z = sprite.params1
+    else:
+        props.hasparams1 = False
+
+    # PARAMS2
+    if sprite.params2:
+        props.hasparams2 = True
+        props.params2_x, props.params2_y, props.params2_z = sprite.params2
+    else:
+        props.hasparams2 = False
+
+    props.data8 = sprite.data8
+
+    # ------------------------------------------------
+    # Build mesh
+    # ------------------------------------------------
+
     hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
     if hsprite:
         obj["hsprite"] = hsprite.tag

@@ -3,84 +3,6 @@
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
 from ...common import state
-from ...common.s3dobject import create_bounding_box
-
-def update_bounding_radius(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedefinition":
-        return
-
-    empty_name = f"{obj.name}_BOUNDINGRADIUS"
-    empty = bpy.data.objects.get(empty_name)
-
-    if not empty:
-        return
-
-    if self.useboundingradius:
-        empty.empty_display_size = self.boundingradius
-    else:
-        # Default fallback
-        empty.empty_display_size = 1.0
-
-def update_bounding_box(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedefinition":
-        return
-
-    bb_name = f"{obj.name}_BOUNDINGBOX"
-    existing = bpy.data.objects.get(bb_name)
-
-    if not self.useboundingbox:
-        if existing:
-            bpy.data.objects.remove(existing, do_unlink=True)
-        return
-
-    bounds = (
-        (self.b_box_min_x, self.b_box_min_y, self.b_box_min_z),
-        (self.b_box_max_x, self.b_box_max_y, self.b_box_max_z),
-    )
-
-    # Remove old
-    if existing:
-        bpy.data.objects.remove(existing, do_unlink=True)
-
-    create_bounding_box(obj, bounds)
-
-def update_polyhedron(self, context):
-
-    if state.QUAIL_UPDATING:
-        return
-
-    obj = context.object
-    if not obj or obj.get("quaildef") != "dmspritedefinition":
-        return
-
-    dmsprite = obj
-
-    # ----------------------------------------
-    # Remove ALL polyhedrondefinition children
-    # ----------------------------------------
-    for child in list(dmsprite.children):
-        if child.get("quaildef") == "polyhedrondefinition":
-            child.parent = None
-
-    # ----------------------------------------
-    # Assign new polyhedron (if any)
-    # ----------------------------------------
-    new_obj = self.polyhedron
-
-    if not new_obj:
-        return
-
-    new_obj.parent = dmsprite
 
 def update_materialpalette(self, context):
 
@@ -116,7 +38,7 @@ def update_centeroffset(self, context):
 
     arm = obj
 
-    if self.usecenteroffset:
+    if self.hascenter:
         arm.location[0] = self.center_x
         arm.location[1] = self.center_y
         arm.location[2] = self.center_z
@@ -130,10 +52,7 @@ def update_centeroffset(self, context):
 # =========================================================
 class QuailDMSpriteDefinitionProperties(bpy.types.PropertyGroup):
 
-    usecenteroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
-    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
-    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
-    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+    fragment1: IntProperty(name="Fragment1")
 
     materialpalette: PointerProperty(
         name="Material Palette",
@@ -142,45 +61,24 @@ class QuailDMSpriteDefinitionProperties(bpy.types.PropertyGroup):
         update=update_materialpalette
     )
 
-    dmtrack: StringProperty()
+    fragment3: IntProperty(name="Fragment3")
 
-    dmrgbtrack: StringProperty()
+    hascenter: BoolProperty(name="Center", default=False, update=update_centeroffset)
+    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
+    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
+    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
 
-    polyhedron: PointerProperty(
-        name="Polyhedron",
-        type=bpy.types.Object,
-        poll=lambda self, obj: obj.get("quaildef") == "polyhedrondefinition",
-        update=update_polyhedron
-    )
+    hasparams1: BoolProperty(name="Params1", default=False)
+    params1_x: FloatProperty(name="X", default=0.0)
+    params1_y: FloatProperty(name="Y", default=0.0)
+    params1_z: FloatProperty(name="Z", default=0.0)
 
-    useparams2: BoolProperty(name="Params2", default=False)
+    data8: IntProperty(name="Data8")
+
+    hasparams2: BoolProperty(name="Params2", default=False)
     params2_x: FloatProperty(name="X", default=0.0)
     params2_y: FloatProperty(name="Y", default=0.0)
     params2_z: FloatProperty(name="Z", default=0.0)
-
-    useboundingbox: BoolProperty(name="Bounding Box", default=False, update=update_bounding_box)
-    b_box_min_x: FloatProperty(name="Min X", default=0.0, update=update_bounding_box)
-    b_box_min_y: FloatProperty(name="Min Y", default=0.0, update=update_bounding_box)
-    b_box_min_z: FloatProperty(name="Min Z", default=0.0, update=update_bounding_box)
-    b_box_max_x: FloatProperty(name="Max X", default=0.0, update=update_bounding_box)
-    b_box_max_y: FloatProperty(name="Max Y", default=0.0, update=update_bounding_box)
-    b_box_max_z: FloatProperty(name="Max Z", default=0.0, update=update_bounding_box)
-
-    useboundingradius: BoolProperty(
-        name="Bounding Radius",
-        default=False,
-        update=update_bounding_radius
-    )
-    boundingradius: FloatProperty(
-        name="Radius",
-        default=1.0,
-        update=update_bounding_radius
-    )
-
-    # Flags
-    usevertexcoloralpha: BoolProperty(name="Vertex Color Alpha", default=False)
-    spritedefpolyhedron: BoolProperty(name="Sprite Def Polyhedron", default=False)
-
 
 # =========================================================
 # PANEL
@@ -191,51 +89,40 @@ def draw_dmspritedefinition_in_transform(self, context):
     if not obj or obj.get('quaildef') != 'dmspritedefinition':
         return
 
-    props = obj.quail_dmspritedef2
+    props = obj.quail_dmspritedefinition
     layout = self.layout
 
     box = layout.box()
     box.label(text="DMSPRITEDEFINITION")
 
-    box.prop(props, "usecenteroffset")
-    row = box.row(align=True)
-    row.prop(props, "center_x")
-    row.prop(props, "center_y")
-    row.prop(props, "center_z")
+    box.prop(props, "fragment1")
 
     box.prop(props, "materialpalette")
 
-    box.prop(props, "dmtrack")
+    box.prop(props, "fragment3")
 
-    box.prop(props, "dmrgbtrack")
+    box.prop(props, "hascenter")
+    if props.hascenter:
+        row = box.row(align=True)
+        row.prop(props, "center_x")
+        row.prop(props, "center_y")
+        row.prop(props, "center_z")
 
-    box.prop(props, "polyhedron")
+    box.prop(props, "hasparams1")
+    if props.hasparams1:
+        row = box.row(align=True)
+        row.prop(props, "params1_x")
+        row.prop(props, "params1_y")
+        row.prop(props, "params1_z")
 
-    box.prop(props, "useparams2")
-    row = box.row(align=True)
-    row.prop(props, "params2_x")
-    row.prop(props, "params2_y")
-    row.prop(props, "params2_z")
+    box.prop(props, "data8")
 
-    box.prop(props, "useboundingbox")
-    row = box.row(align=True)
-    row.prop(props, "b_box_min_x")
-    row.prop(props, "b_box_min_y")
-    row.prop(props, "b_box_min_z")
-    row = box.row(align=True)
-    row.prop(props, "b_box_max_x")
-    row.prop(props, "b_box_max_y")
-    row.prop(props, "b_box_max_z")
-
-    box.prop(props, "useboundingradius")
-    row = box.row(align=True)
-    row.prop(props, "boundingradius")
-
-    box.prop(props, "fpscale")
-
-    box.prop(props, "usevertexcoloralpha")
-
-    box.prop(props, "spritedefpolyhedron")
+    box.prop(props, "hasparams2")
+    if props.hasparams2:
+        row = box.row(align=True)
+        row.prop(props, "params2_x")
+        row.prop(props, "params2_y")
+        row.prop(props, "params2_z")
 
 # =========================================================
 # REGISTER

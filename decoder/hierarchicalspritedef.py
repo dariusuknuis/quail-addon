@@ -89,7 +89,7 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
         props.has_boundingradius = True
         props.boundingradius = sprite.boundingradius
     else:
-        props.has_centeroffset = False
+        props.has_boundingradius = False
         props.boundingradius = 1.0
 
     props.polyhedron = bpy.data.objects.get(sprite.sprite)

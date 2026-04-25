@@ -145,7 +145,6 @@ def create_rendermethod_nodegroup():
     blend_effect.location = (419, 10)
     blend_effect.inputs[2].default_value = 1
     links.new(inp["AlphaBlend"], blend_effect.inputs["Factor"])
-    links.new(blend_alpha.outputs[0], blend_effect.inputs[3])
 
     # ------------------------------------------------
     # FinalAlpha = MaskAlpha * BlendEffective
@@ -165,7 +164,7 @@ def create_rendermethod_nodegroup():
     texture0.name = 'Texture Index 0'
     texture0.label = 'Texture0'
     texture0.operation = 'COMPARE'
-    texture0.location = (-1019, -490)
+    texture0.location = (-921, -605)
     texture0.inputs[1].default_value = 0.0
     texture0.inputs[2].default_value = 0.0
     links.new(inp["TextureIndex"], texture0.inputs[0])
@@ -188,7 +187,7 @@ def create_rendermethod_nodegroup():
     draw0.name = 'Drawstyle 0'
     draw0.label = 'Draw0'
     draw0.operation = 'COMPARE'
-    draw0.location = (-1018, -266)
+    draw0.location = (-920, -381)
     draw0.inputs[1].default_value = 0.0
     draw0.inputs[2].default_value = 0.0
     links.new(inp["Drawstyle"], draw0.inputs[0])
@@ -197,7 +196,7 @@ def create_rendermethod_nodegroup():
     trans_effective.name = 'Transparent Effective'
     trans_effective.label = 'TransparentEffective'
     trans_effective.operation = 'MULTIPLY'
-    trans_effective.location = (-720, -540)
+    trans_effective.location = (-539, -611)
     links.new(draw0.outputs[0], trans_effective.inputs[0])
     links.new(texture0.outputs[0], trans_effective.inputs[1])
 
@@ -215,6 +214,12 @@ def create_rendermethod_nodegroup():
     # Additive Toggle nodes
     # ------------------------------------------------
 
+    rgb_to_bw = nodes.new("ShaderNodeRGBToBW")
+    rgb_to_bw.name = 'RGB to BW'
+    rgb_to_bw.label = 'RGBtoBW'
+    rgb_to_bw.location = (-939, -94)
+    links.new(inp["sRGB Texture"], rgb_to_bw.inputs[0])
+
     # EmissionStrength = Additive * FinalAlpha * 0.75
     add_effective = nodes.new("ShaderNodeMath")
     add_effective.name = 'Additive Effective'
@@ -223,6 +228,24 @@ def create_rendermethod_nodegroup():
     add_effective.location = (-707, -233)
     links.new(inp["AlphaBlend"], add_effective.inputs[0])
     links.new(inp["Additive"], add_effective.inputs[1])
+
+    additive_enabled = nodes.new('ShaderNodeMix')
+    additive_enabled.name = 'Additive Mask Enabled'
+    additive_enabled.label = 'AdditiveMaskEnabled'
+    additive_enabled.data_type = 'FLOAT'
+    additive_enabled.location = (-619, -288)
+    additive_enabled.inputs[2].default_value = 1
+    links.new(add_effective.outputs[0], additive_enabled.inputs["Factor"])
+    links.new(rgb_to_bw.outputs[0], additive_enabled.inputs[3])
+
+    additive_blend = nodes.new("ShaderNodeMath")
+    additive_blend.name = 'Additive Blend'
+    additive_blend.label = 'AdditiveBlend'
+    additive_blend.operation = 'MULTIPLY'
+    additive_blend.location = (62, 79)
+    links.new(additive_enabled.outputs[0], additive_blend.inputs[0])
+    links.new(blend_alpha.outputs[0], additive_blend.inputs[1])
+    links.new(additive_blend.outputs[0], blend_effect.inputs[3])
 
     glow_strength = nodes.new("ShaderNodeMath")
     glow_strength.name = 'Glow Strength'
