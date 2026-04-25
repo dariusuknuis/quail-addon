@@ -72,26 +72,28 @@ def decode_actordef(ctx: Context, actordef: actordef) -> str:
 
     for action in actordef.actions:
         act = props.actions.add()
+        a = action.action
 
         # unk1 (may or may not exist depending on parser)
-        act.unk1 = bool(getattr(action, "unk1", 0))
+        act.unk1 = bool(getattr(a, "unk1", 0))
 
-        act.numlods = len(action.levelsofdetails)
+        act.numlods = len(a.levelsofdetails)
 
         # Clear LODs
         while len(act.lods) > 0:
             act.lods.remove(0)
 
-        for lod in action.levelsofdetails:
+        for lod in a.levelsofdetails:
             l = act.lods.add()
+            ldef = lod.levelofdetail
 
-            tag = lod.sprite
+            tag = ldef.sprite
             sprite_obj = bpy.data.objects.get(tag)
 
             if sprite_obj:
                 l.sprite = sprite_obj
 
-            l.mindistance = lod.mindistance
+            l.mindistance = ldef.mindistance
 
     # -------------------------
     obj.parent = ctx.parent
@@ -102,9 +104,11 @@ def decode_actordef(ctx: Context, actordef: actordef) -> str:
     # Attach sprites (unchanged logic)
     # -------------------------
     for action in actordef.actions:
-        for lod in action.levelsofdetails:
+        a = action.action
+        for lod in a.levelsofdetails:
+            ldef = lod.levelofdetail
 
-            tag = lod.sprite
+            tag = ldef.sprite
             sprite_obj = bpy.data.objects.get(tag)
 
             if sprite_obj:

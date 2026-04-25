@@ -69,10 +69,10 @@ class dmtrackdef2:
 		w.write(f"\tPARAM2 {self.param2}\n")
 		w.write(f"\tFPSCALE {self.fpscale}\n")
 		w.write(f"\tSIZE6 {self.size6}\n")
-		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"\tNUMFRAMES {len(self.frames)}\n")
 		for numverticesi in self.frames:
-			w.write(f"\t\tNUMVERTICES \"{len(numverticesi.vertices)}\"\n")
+			w.write(f"\t\tNUMVERTICES {len(numverticesi.vertices)}\n")
 			for xyzj in numverticesi.vertices:
-				w.write(f"\t\t\tXYZ {xyzj.xyz[0]} {xyzj.xyz[1]} {xyzj.xyz[2]}\n")
+				w.write(f"\t\t\tXYZ {format(xyzj.xyz[0], '.8e')} {format(xyzj.xyz[1], '.8e')} {format(xyzj.xyz[2], '.8e')}\n")
 		return ""
 

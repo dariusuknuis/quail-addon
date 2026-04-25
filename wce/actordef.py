@@ -28,19 +28,29 @@ class actordef:
 		self.actions = []
 
 	class action:
-		unk1:int
 
 		def __init__(self):
-			self.unk1 = 0 #3
-			self.levelsofdetails = []
+			self.action = self.action()
 
-		class levelofdetail:
-			sprite:str
-			mindistance:float
+		class action:
+			unk1:int
 
 			def __init__(self):
-				self.sprite = "" #4
-				self.mindistance = 0.0 #4
+				self.unk1 = 0 #4
+				self.levelsofdetails = []
+
+			class levelofdetail:
+
+				def __init__(self):
+					self.levelofdetail = self.levelofdetail()
+
+				class levelofdetail:
+					sprite:str
+					mindistance:float
+
+					def __init__(self):
+						self.sprite = "" #6
+						self.mindistance = 0.0 #6
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -66,20 +76,20 @@ class actordef:
 			property(r, "ACTION", 0)
 
 			records = property(r, "UNK1", 1)
-			actioni.unk1 = int(records[1])
+			actioni.action.unk1 = int(records[1])
 			records = property(r, "NUMLEVELSOFDETAILS", 1)
 			numlevelsofdetails = int(records[1])
 
-			actioni.levelsofdetails = []
+			actioni.action.levelsofdetails = []
 			for j in range(numlevelsofdetails):
-				levelofdetailj = type(actioni).levelofdetail()
+				levelofdetailj = type(actioni.action).levelofdetail()
 				property(r, "LEVELOFDETAIL", 0)
 
 				records = property(r, "SPRITE", 1)
-				levelofdetailj.sprite = str(records[1])
+				levelofdetailj.levelofdetail.sprite = str(records[1])
 				records = property(r, "MINDISTANCE", 1)
-				levelofdetailj.mindistance = float(records[1])
-				actioni.levelsofdetails.append(levelofdetailj)
+				levelofdetailj.levelofdetail.mindistance = float(records[1])
+				actioni.action.levelsofdetails.append(levelofdetailj)
 			self.actions.append(actioni)
 		records = property(r, "SPRITEVOLUMEONLY", 1)
 		self.spritevolumeonly = int(records[1])
@@ -93,16 +103,17 @@ class actordef:
 		w.write(f"\tBOUNDSREF {self.boundsref}\n")
 		w.write(f"\tCURRENTACTION? {('NULL' if self.currentaction is None else self.currentaction)}\n")
 		w.write(f"\tLOCATION? {('NULL' if self.location is None else self.location[0])} {('NULL' if self.location is None else self.location[1])} {('NULL' if self.location is None else self.location[2])} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
-		w.write(f"\tACTIVEGEOMETRY? \"{self.activegeometry}\"\n")
-		w.write(f"\tNUMACTIONS \"{len(self.actions)}\"\n")
+		if self.activegeometry is None: w.write("\tACTIVEGEOMETRY? NULL\n")
+		else: w.write(f"\tACTIVEGEOMETRY? \"{self.activegeometry}\"\n")
+		w.write(f"\tNUMACTIONS {len(self.actions)}\n")
 		for actioni in self.actions:
 			w.write(f"\t\tACTION\n")
-			w.write(f"\t\tUNK1 {actioni.unk1}\n")
-			w.write(f"\t\tNUMLEVELSOFDETAILS \"{len(actioni.levelsofdetails)}\"\n")
-			for levelofdetailj in actioni.levelsofdetails:
-				w.write(f"\t\t\tLEVELOFDETAIL\n")
-				w.write(f"\t\t\tSPRITE \"{levelofdetailj.sprite}\"\n")
-				w.write(f"\t\t\tMINDISTANCE {levelofdetailj.mindistance}\n")
+			w.write(f"\t\t\tUNK1 {actioni.action.unk1}\n")
+			w.write(f"\t\t\tNUMLEVELSOFDETAILS {len(actioni.action.levelsofdetails)}\n")
+			for levelofdetailj in actioni.action.levelsofdetails:
+				w.write(f"\t\t\t\tLEVELOFDETAIL\n")
+				w.write(f"\t\t\t\t\tSPRITE \"{levelofdetailj.levelofdetail.sprite}\"\n")
+				w.write(f"\t\t\t\t\tMINDISTANCE {format(levelofdetailj.levelofdetail.mindistance, '.8e')}\n")
 		w.write(f"\tSPRITEVOLUMEONLY {self.spritevolumeonly}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		return ""

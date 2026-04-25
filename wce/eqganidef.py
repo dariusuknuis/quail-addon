@@ -77,15 +77,15 @@ class eqganidef:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
 		w.write(f"\tSTRICT {self.strict}\n")
-		w.write(f"\tNUMBONES \"{len(self.bones)}\"\n")
+		w.write(f"\tNUMBONES {len(self.bones)}\n")
 		for bonei in self.bones:
 			w.write(f"\t\tBONE \"{bonei.bone}\"\n")
-			w.write(f"\t\tNUMFRAMES \"{len(bonei.frames)}\"\n")
+			w.write(f"\t\tNUMFRAMES {len(bonei.frames)}\n")
 			for framej in bonei.frames:
 				w.write(f"\t\t\tFRAME\n")
 				w.write(f"\t\t\tMILLISECONDS {framej.milliseconds}\n")
-				w.write(f"\t\t\tTRANSLATION {framej.translation[0]} {framej.translation[1]} {framej.translation[2]}\n")
-				w.write(f"\t\t\tROTATION {framej.rotation[0]} {framej.rotation[1]} {framej.rotation[2]} {framej.rotation[3]}\n")
-				w.write(f"\t\t\tSCALE {framej.scale[0]} {framej.scale[1]} {framej.scale[2]}\n")
+				w.write(f"\t\t\tTRANSLATION {format(framej.translation[0], '.8e')} {format(framej.translation[1], '.8e')} {format(framej.translation[2], '.8e')}\n")
+				w.write(f"\t\t\tROTATION {format(framej.rotation[0], '.8e')} {format(framej.rotation[1], '.8e')} {format(framej.rotation[2], '.8e')} {format(framej.rotation[3], '.8e')}\n")
+				w.write(f"\t\t\tSCALE {format(framej.scale[0], '.8e')} {format(framej.scale[1], '.8e')} {format(framej.scale[2], '.8e')}\n")
 		return ""
 

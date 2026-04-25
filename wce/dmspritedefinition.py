@@ -175,27 +175,27 @@ class dmspritedefinition:
 		w.write(f"\tFRAGMENT3 {self.fragment3}\n")
 		w.write(f"\tCENTER? {('NULL' if self.center is None else self.center[0])} {('NULL' if self.center is None else self.center[1])} {('NULL' if self.center is None else self.center[2])}\n")
 		w.write(f"\tPARAMS1? {('NULL' if self.params1 is None else self.params1[0])} {('NULL' if self.params1 is None else self.params1[1])} {('NULL' if self.params1 is None else self.params1[2])}\n")
-		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
+		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for vxyzi in self.vertices:
-			w.write(f"\t\tVXYZ {vxyzi.vxyz[0]} {vxyzi.vxyz[1]} {vxyzi.vxyz[2]}\n")
-		w.write(f"\tNUMTEXCOORDS \"{len(self.texcoords)}\"\n")
+			w.write(f"\t\tVXYZ {format(vxyzi.vxyz[0], '.8e')} {format(vxyzi.vxyz[1], '.8e')} {format(vxyzi.vxyz[2], '.8e')}\n")
+		w.write(f"\tNUMTEXCOORDS {len(self.texcoords)}\n")
 		for uvi in self.texcoords:
-			w.write(f"\t\tUV {uvi.uv[0]} {uvi.uv[1]}\n")
-		w.write(f"\tNUMNORMALS \"{len(self.normals)}\"\n")
+			w.write(f"\t\tUV {format(uvi.uv[0], '.8e')} {format(uvi.uv[1], '.8e')}\n")
+		w.write(f"\tNUMNORMALS {len(self.normals)}\n")
 		for nxyzi in self.normals:
-			w.write(f"\t\tNXYZ {nxyzi.nxyz[0]} {nxyzi.nxyz[1]} {nxyzi.nxyz[2]}\n")
-		w.write(f"\tNUMCOLORS \"{len(self.colors)}\"\n")
+			w.write(f"\t\tNXYZ {format(nxyzi.nxyz[0], '.8e')} {format(nxyzi.nxyz[1], '.8e')} {format(nxyzi.nxyz[2], '.8e')}\n")
+		w.write(f"\tNUMCOLORS {len(self.colors)}\n")
 		for rgbai in self.colors:
 			w.write(f"\t\tRGBA {rgbai.rgba[0]} {rgbai.rgba[1]} {rgbai.rgba[2]} {rgbai.rgba[3]}\n")
-		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
+		w.write(f"\tNUMFACES {len(self.faces)}\n")
 		for dmfacei in self.faces:
 			w.write(f"\t\tDMFACE\n")
 			w.write(f"\t\tFLAG {dmfacei.flag}\n")
 			w.write(f"\t\tDATA {dmfacei.data[0]} {dmfacei.data[1]} {dmfacei.data[2]} {dmfacei.data[3]}\n")
 			w.write(f"\t\tTRIANGLE {dmfacei.triangle[0]} {dmfacei.triangle[1]} {dmfacei.triangle[2]}\n")
-		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
+		w.write(f"\tNUMMESHOPS {len(self.meshops)}\n")
 		for meshopi in self.meshops:
-			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {meshopi.meshop[2]} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
+			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {format(meshopi.meshop[2], '.8e')} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
 		w.write(f"\tSKINASSIGNMENTGROUPS {self.skinassignmentgroups[0]} {self.skinassignmentgroups[1]}\n")
 		w.write(f"\tDATA8 {self.data8}\n")
 		w.write(f"\tFACEMATERIALGROUPS {self.facematerialgroups}\n")

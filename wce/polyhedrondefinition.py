@@ -62,12 +62,12 @@ class polyhedrondefinition:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tBOUNDINGRADIUS {self.boundingradius}\n")
-		w.write(f"\tSCALEFACTOR? {('NULL' if self.scalefactor is None else self.scalefactor)}\n")
-		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
+		w.write(f"\tBOUNDINGRADIUS {format(self.boundingradius, '.8e')}\n")
+		w.write(f"\tSCALEFACTOR? {('NULL' if self.scalefactor is None else format(self.scalefactor, '.8e'))}\n")
+		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for xyzi in self.vertices:
-			w.write(f"\t\tXYZ {xyzi.xyz[0]} {xyzi.xyz[1]} {xyzi.xyz[2]}\n")
-		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
+			w.write(f"\t\tXYZ {format(xyzi.xyz[0], '.8e')} {format(xyzi.xyz[1], '.8e')} {format(xyzi.xyz[2], '.8e')}\n")
+		w.write(f"\tNUMFACES {len(self.faces)}\n")
 		for vertexlisti in self.faces:
 			w.write(f"\t\tVERTEXLIST {vertexlisti.vertexlist}\n")
 		return ""

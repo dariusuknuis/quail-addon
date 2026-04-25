@@ -64,9 +64,9 @@ class rgbdeformationtrackdef:
 		w.write(f"\tSLEEP {self.sleep}\n")
 		w.write(f"\tDATA4 {self.data4}\n")
 		w.write(f"\tUSEALPHA {self.usealpha}\n")
-		w.write(f"\tNUMRGBDEFORMATIONFRAMES \"{len(self.rgbdeformationframes)}\"\n")
+		w.write(f"\tNUMRGBDEFORMATIONFRAMES {len(self.rgbdeformationframes)}\n")
 		for numrgbasi in self.rgbdeformationframes:
-			w.write(f"\t\tNUMRGBAS \"{len(numrgbasi.rgbas)}\"\n")
+			w.write(f"\t\tNUMRGBAS {len(numrgbasi.rgbas)}\n")
 			for rgbaj in numrgbasi.rgbas:
 				w.write(f"\t\t\tRGBA {rgbaj.rgba[0]} {rgbaj.rgba[1]} {rgbaj.rgba[2]} {rgbaj.rgba[3]}\n")
 		return ""

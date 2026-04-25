@@ -242,52 +242,52 @@ class region:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tREVERBVOLUME {self.reverbvolume}\n")
+		w.write(f"\tREVERBVOLUME {format(self.reverbvolume, '.8e')}\n")
 		w.write(f"\tREVERBOFFSET {self.reverboffset}\n")
 		w.write(f"\tREGIONFOG {self.regionfog}\n")
 		w.write(f"\tGOURAND2 {self.gourand2}\n")
 		w.write(f"\tENCODEDVISIBILITY {self.encodedvisibility}\n")
 		w.write(f"\tVISLISTBYTES {self.vislistbytes}\n")
-		w.write(f"\tNUMREGIONVERTEXS \"{len(self.regionvertexs)}\"\n")
+		w.write(f"\tNUMREGIONVERTEXS {len(self.regionvertexs)}\n")
 		for xyzi in self.regionvertexs:
-			w.write(f"\t\tXYZ {xyzi.xyz[0]} {xyzi.xyz[1]} {xyzi.xyz[2]}\n")
-		w.write(f"\tNUMRENDERVERTICES \"{len(self.rendervertices)}\"\n")
+			w.write(f"\t\tXYZ {format(xyzi.xyz[0], '.8e')} {format(xyzi.xyz[1], '.8e')} {format(xyzi.xyz[2], '.8e')}\n")
+		w.write(f"\tNUMRENDERVERTICES {len(self.rendervertices)}\n")
 		for vxyzi in self.rendervertices:
-			w.write(f"\t\tVXYZ {vxyzi.vxyz[0]} {vxyzi.vxyz[1]} {vxyzi.vxyz[2]}\n")
-		w.write(f"\tNUMWALLS \"{len(self.walls)}\"\n")
+			w.write(f"\t\tVXYZ {format(vxyzi.vxyz[0], '.8e')} {format(vxyzi.vxyz[1], '.8e')} {format(vxyzi.vxyz[2], '.8e')}\n")
+		w.write(f"\tNUMWALLS {len(self.walls)}\n")
 		for walli in self.walls:
 			w.write(f"\t\tWALL\n")
-			w.write(f"\t\tNORMALABCD {walli.normalabcd[0]} {walli.normalabcd[1]} {walli.normalabcd[2]} {walli.normalabcd[3]}\n")
-			w.write(f"\t\tNUMVERTICES \"{len(walli.vertices)}\"\n")
+			w.write(f"\t\tNORMALABCD {format(walli.normalabcd[0], '.8e')} {format(walli.normalabcd[1], '.8e')} {format(walli.normalabcd[2], '.8e')} {format(walli.normalabcd[3], '.8e')}\n")
+			w.write(f"\t\tNUMVERTICES {len(walli.vertices)}\n")
 			for wxyzj in walli.vertices:
-				w.write(f"\t\t\tWXYZ {wxyzj.wxyz[0]} {wxyzj.wxyz[1]} {wxyzj.wxyz[2]}\n")
-		w.write(f"\tNUMOBSTACLES \"{len(self.obstacles)}\"\n")
+				w.write(f"\t\t\tWXYZ {format(wxyzj.wxyz[0], '.8e')} {format(wxyzj.wxyz[1], '.8e')} {format(wxyzj.wxyz[2], '.8e')}\n")
+		w.write(f"\tNUMOBSTACLES {len(self.obstacles)}\n")
 		for obstaclei in self.obstacles:
 			w.write(f"\t\tOBSTACLE\n")
-			w.write(f"\t\tONORMALABCD {obstaclei.onormalabcd[0]} {obstaclei.onormalabcd[1]} {obstaclei.onormalabcd[2]} {obstaclei.onormalabcd[3]}\n")
-			w.write(f"\t\tNUMOVERTICES \"{len(obstaclei.overtices)}\"\n")
+			w.write(f"\t\tONORMALABCD {format(obstaclei.onormalabcd[0], '.8e')} {format(obstaclei.onormalabcd[1], '.8e')} {format(obstaclei.onormalabcd[2], '.8e')} {format(obstaclei.onormalabcd[3], '.8e')}\n")
+			w.write(f"\t\tNUMOVERTICES {len(obstaclei.overtices)}\n")
 			for oxyzj in obstaclei.overtices:
-				w.write(f"\t\t\tOXYZ {oxyzj.oxyz[0]} {oxyzj.oxyz[1]} {oxyzj.oxyz[2]}\n")
-		w.write(f"\tNUMCUTTINGOBSTACLES \"{len(self.cuttingobstacles)}\"\n")
+				w.write(f"\t\t\tOXYZ {format(oxyzj.oxyz[0], '.8e')} {format(oxyzj.oxyz[1], '.8e')} {format(oxyzj.oxyz[2], '.8e')}\n")
+		w.write(f"\tNUMCUTTINGOBSTACLES {len(self.cuttingobstacles)}\n")
 		for cuttingobstaclei in self.cuttingobstacles:
 			w.write(f"\t\tCUTTINGOBSTACLE\n")
-			w.write(f"\t\tCNORMALABCD {cuttingobstaclei.cnormalabcd[0]} {cuttingobstaclei.cnormalabcd[1]} {cuttingobstaclei.cnormalabcd[2]} {cuttingobstaclei.cnormalabcd[3]}\n")
-			w.write(f"\t\tNUMCVERTICES \"{len(cuttingobstaclei.cvertices)}\"\n")
+			w.write(f"\t\tCNORMALABCD {format(cuttingobstaclei.cnormalabcd[0], '.8e')} {format(cuttingobstaclei.cnormalabcd[1], '.8e')} {format(cuttingobstaclei.cnormalabcd[2], '.8e')} {format(cuttingobstaclei.cnormalabcd[3], '.8e')}\n")
+			w.write(f"\t\tNUMCVERTICES {len(cuttingobstaclei.cvertices)}\n")
 			for cxyzj in cuttingobstaclei.cvertices:
-				w.write(f"\t\t\tCXYZ {cxyzj.cxyz[0]} {cxyzj.cxyz[1]} {cxyzj.cxyz[2]}\n")
+				w.write(f"\t\t\tCXYZ {format(cxyzj.cxyz[0], '.8e')} {format(cxyzj.cxyz[1], '.8e')} {format(cxyzj.cxyz[2], '.8e')}\n")
 		w.write(f"\tVISTREE\n")
-		w.write(f"\tNUMVISNODES \"{len(self.visnodes)}\"\n")
+		w.write(f"\tNUMVISNODES {len(self.visnodes)}\n")
 		for visnodei in self.visnodes:
 			w.write(f"\t\tVISNODE\n")
-			w.write(f"\t\tVNORMALABCD {visnodei.vnormalabcd[0]} {visnodei.vnormalabcd[1]} {visnodei.vnormalabcd[2]} {visnodei.vnormalabcd[3]}\n")
+			w.write(f"\t\tVNORMALABCD {format(visnodei.vnormalabcd[0], '.8e')} {format(visnodei.vnormalabcd[1], '.8e')} {format(visnodei.vnormalabcd[2], '.8e')} {format(visnodei.vnormalabcd[3], '.8e')}\n")
 			w.write(f"\t\tVISLISTINDEX {visnodei.vislistindex}\n")
 			w.write(f"\t\tFRONTTREE {visnodei.fronttree}\n")
 			w.write(f"\t\tBACKTREE {visnodei.backtree}\n")
-		w.write(f"\tNUMVISIBLELISTS \"{len(self.visiblelists)}\"\n")
+		w.write(f"\tNUMVISIBLELISTS {len(self.visiblelists)}\n")
 		for vislisti in self.visiblelists:
 			w.write(f"\t\tVISLIST\n")
 			w.write(f"\t\tRANGE {vislisti.range}\n")
-		w.write(f"\tSPHERE {self.sphere[0]} {self.sphere[1]} {self.sphere[2]} {self.sphere[3]}\n")
+		w.write(f"\tSPHERE {format(self.sphere[0], '.8e')} {format(self.sphere[1], '.8e')} {format(self.sphere[2], '.8e')} {format(self.sphere[3], '.8e')}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		return ""

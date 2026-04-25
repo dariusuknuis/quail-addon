@@ -162,27 +162,27 @@ class eqgterdef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
-		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
+		w.write(f"\tNUMMATERIALS {len(self.materials)}\n")
 		for materialtagi in self.materials:
 			w.write(f"\t\tMATERIALTAG \"{materialtagi.materialtag}\"\n")
 			w.write(f"\t\tSHADERTAG \"{materialtagi.shadertag}\"\n")
 			w.write(f"\t\tHEXONEFLAG {materialtagi.hexoneflag}\n")
-			w.write(f"\t\tNUMPROPERTIES \"{len(materialtagi.properties)}\"\n")
+			w.write(f"\t\tNUMPROPERTIES {len(materialtagi.properties)}\n")
 			for propertyj in materialtagi.properties:
 				w.write(f"\t\t\tPROPERTY {propertyj.property[0]} {propertyj.property[1]} {propertyj.property[2]}\n")
 			w.write(f"\t\tANIMSLEEP {materialtagi.animsleep}\n")
-			w.write(f"\t\tNUMANIMTEXTURES \"{len(materialtagi.animtextures)}\"\n")
+			w.write(f"\t\tNUMANIMTEXTURES {len(materialtagi.animtextures)}\n")
 			for texturej in materialtagi.animtextures:
 				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
-		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
+		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for vertexi in self.vertices:
 			w.write(f"\t\tVERTEX\n")
-			w.write(f"\t\tXYZ {vertexi.xyz[0]} {vertexi.xyz[1]} {vertexi.xyz[2]}\n")
-			w.write(f"\t\tUV {vertexi.uv[0]} {vertexi.uv[1]}\n")
-			w.write(f"\t\tUV2 {vertexi.uv2[0]} {vertexi.uv2[1]}\n")
-			w.write(f"\t\tNORMAL {vertexi.normal[0]} {vertexi.normal[1]} {vertexi.normal[2]}\n")
+			w.write(f"\t\tXYZ {format(vertexi.xyz[0], '.8e')} {format(vertexi.xyz[1], '.8e')} {format(vertexi.xyz[2], '.8e')}\n")
+			w.write(f"\t\tUV {format(vertexi.uv[0], '.8e')} {format(vertexi.uv[1], '.8e')}\n")
+			w.write(f"\t\tUV2 {format(vertexi.uv2[0], '.8e')} {format(vertexi.uv2[1], '.8e')}\n")
+			w.write(f"\t\tNORMAL {format(vertexi.normal[0], '.8e')} {format(vertexi.normal[1], '.8e')} {format(vertexi.normal[2], '.8e')}\n")
 			w.write(f"\t\tTINT {vertexi.tint[0]} {vertexi.tint[1]} {vertexi.tint[2]} {vertexi.tint[3]}\n")
-		w.write(f"\tNUMFACES \"{len(self.faces)}\"\n")
+		w.write(f"\tNUMFACES {len(self.faces)}\n")
 		for facei in self.faces:
 			w.write(f"\t\tFACE\n")
 			w.write(f"\t\tTRIANGLE {facei.triangle[0]} {facei.triangle[1]} {facei.triangle[2]}\n")

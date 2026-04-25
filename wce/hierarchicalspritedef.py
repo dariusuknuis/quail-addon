@@ -96,14 +96,14 @@ class hierarchicalspritedef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tNUMDAGS \"{len(self.dags)}\"\n")
+		w.write(f"\tNUMDAGS {len(self.dags)}\n")
 		for dagi in self.dags:
 			w.write(f"\t\tDAG\n")
 			w.write(f"\t\tTAG \"{dagi.tag}\"\n")
 			w.write(f"\t\tSPRITETAG \"{dagi.spritetag}\"\n")
 			w.write(f"\t\tTRACK \"{dagi.track}\"\n")
 			w.write(f"\t\tSUBDAGLIST {dagi.subdaglist}\n")
-		w.write(f"\tNUMATTACHEDSKINS \"{len(self.attachedskins)}\"\n")
+		w.write(f"\tNUMATTACHEDSKINS {len(self.attachedskins)}\n")
 		for attachedskini in self.attachedskins:
 			w.write(f"\t\tATTACHEDSKIN\n")
 			w.write(f"\t\tDMSPRITE \"{attachedskini.dmsprite}\"\n")
@@ -111,7 +111,7 @@ class hierarchicalspritedef:
 		w.write(f"\tPOLYHEDRON\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		w.write(f"\tCENTEROFFSET? {('NULL' if self.centeroffset is None else self.centeroffset[0])} {('NULL' if self.centeroffset is None else self.centeroffset[1])} {('NULL' if self.centeroffset is None else self.centeroffset[2])}\n")
-		w.write(f"\tBOUNDINGRADIUS? {('NULL' if self.boundingradius is None else self.boundingradius)}\n")
+		w.write(f"\tBOUNDINGRADIUS? {('NULL' if self.boundingradius is None else format(self.boundingradius, '.8e'))}\n")
 		w.write(f"\tHAVEATTACHEDSKINS {self.haveattachedskins}\n")
 		w.write(f"\tDAGCOLLISIONS {self.dagcollisions}\n")
 		return ""

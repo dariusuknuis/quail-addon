@@ -204,17 +204,17 @@ class dmspritedef2:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tCENTEROFFSET {self.centeroffset[0]} {self.centeroffset[1]} {self.centeroffset[2]}\n")
-		w.write(f"\tNUMVERTICES \"{len(self.vertices)}\"\n")
+		w.write(f"\tCENTEROFFSET {format(self.centeroffset[0], '.8e')} {format(self.centeroffset[1], '.8e')} {format(self.centeroffset[2], '.8e')}\n")
+		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for vxyzi in self.vertices:
-			w.write(f"\t\tVXYZ {vxyzi.vxyz[0]} {vxyzi.vxyz[1]} {vxyzi.vxyz[2]}\n")
-		w.write(f"\tNUMUVS \"{len(self.uvs)}\"\n")
+			w.write(f"\t\tVXYZ {format(vxyzi.vxyz[0], '.8e')} {format(vxyzi.vxyz[1], '.8e')} {format(vxyzi.vxyz[2], '.8e')}\n")
+		w.write(f"\tNUMUVS {len(self.uvs)}\n")
 		for uvi in self.uvs:
-			w.write(f"\t\tUV {uvi.uv[0]} {uvi.uv[1]}\n")
-		w.write(f"\tNUMVERTEXNORMALS \"{len(self.vertexnormals)}\"\n")
+			w.write(f"\t\tUV {format(uvi.uv[0], '.8e')} {format(uvi.uv[1], '.8e')}\n")
+		w.write(f"\tNUMVERTEXNORMALS {len(self.vertexnormals)}\n")
 		for nxyzi in self.vertexnormals:
-			w.write(f"\t\tNXYZ {nxyzi.nxyz[0]} {nxyzi.nxyz[1]} {nxyzi.nxyz[2]}\n")
-		w.write(f"\tNUMVERTEXCOLORS \"{len(self.vertexcolors)}\"\n")
+			w.write(f"\t\tNXYZ {format(nxyzi.nxyz[0], '.8e')} {format(nxyzi.nxyz[1], '.8e')} {format(nxyzi.nxyz[2], '.8e')}\n")
+		w.write(f"\tNUMVERTEXCOLORS {len(self.vertexcolors)}\n")
 		for rgbai in self.vertexcolors:
 			w.write(f"\t\tRGBA {rgbai.rgba[0]} {rgbai.rgba[1]} {rgbai.rgba[2]} {rgbai.rgba[3]}\n")
 		w.write(f"\tSKINASSIGNMENTGROUPS {self.skinassignmentgroups[0]} {self.skinassignmentgroups[1]}\n")
@@ -223,20 +223,20 @@ class dmspritedef2:
 		w.write(f"\tDMRGBTRACK \"{self.dmrgbtrack}\"\n")
 		w.write(f"\tPOLYHEDRON\n")
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
-		w.write(f"\tNUMFACE2S \"{len(self.face2s)}\"\n")
+		w.write(f"\tNUMFACE2S {len(self.face2s)}\n")
 		for dmface2i in self.face2s:
 			w.write(f"\t\tDMFACE2\n")
 			w.write(f"\t\tPASSABLE {dmface2i.passable}\n")
 			w.write(f"\t\tTRIANGLE {dmface2i.triangle[0]} {dmface2i.triangle[1]} {dmface2i.triangle[2]}\n")
-		w.write(f"\tNUMMESHOPS \"{len(self.meshops)}\"\n")
+		w.write(f"\tNUMMESHOPS {len(self.meshops)}\n")
 		for meshopi in self.meshops:
-			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {meshopi.meshop[2]} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
+			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {format(meshopi.meshop[2], '.8e')} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
 		w.write(f"\tFACEMATERIALGROUPS {self.facematerialgroups}\n")
 		w.write(f"\tVERTEXMATERIALGROUPS {self.vertexmaterialgroups}\n")
-		w.write(f"\tPARAMS2 {self.params2[0]} {self.params2[1]} {self.params2[2]}\n")
-		w.write(f"\tBOUNDINGBOXMIN {self.boundingboxmin[0]} {self.boundingboxmin[1]} {self.boundingboxmin[2]}\n")
-		w.write(f"\tBOUNDINGBOXMAX {self.boundingboxmax[0]} {self.boundingboxmax[1]} {self.boundingboxmax[2]}\n")
-		w.write(f"\tBOUNDINGRADIUS {self.boundingradius}\n")
+		w.write(f"\tPARAMS2 {format(self.params2[0], '.8e')} {format(self.params2[1], '.8e')} {format(self.params2[2], '.8e')}\n")
+		w.write(f"\tBOUNDINGBOXMIN {format(self.boundingboxmin[0], '.8e')} {format(self.boundingboxmin[1], '.8e')} {format(self.boundingboxmin[2], '.8e')}\n")
+		w.write(f"\tBOUNDINGBOXMAX {format(self.boundingboxmax[0], '.8e')} {format(self.boundingboxmax[1], '.8e')} {format(self.boundingboxmax[2], '.8e')}\n")
+		w.write(f"\tBOUNDINGRADIUS {format(self.boundingradius, '.8e')}\n")
 		w.write(f"\tFPSCALE {self.fpscale}\n")
 		w.write(f"\tUSECENTEROFFSET {self.usecenteroffset}\n")
 		w.write(f"\tUSEBOUNDINGRADIUS {self.useboundingradius}\n")

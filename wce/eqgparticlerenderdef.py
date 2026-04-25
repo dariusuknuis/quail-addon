@@ -90,7 +90,7 @@ class eqgparticlerenderdef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
-		w.write(f"\tNUMRENDERS \"{len(self.renders)}\"\n")
+		w.write(f"\tNUMRENDERS {len(self.renders)}\n")
 		for renderi in self.renders:
 			w.write(f"\t\tRENDER {renderi.render}\n")
 			w.write(f"\t\tID2 {renderi.id2}\n")

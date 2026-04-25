@@ -26,7 +26,6 @@ def update_numactions(self, context):
         for _ in range(self.numactions - len(actions)):
             act = actions.add()
 
-            act.numlods = 0
             act.numlods = 1
 
     elif len(actions) > self.numactions:

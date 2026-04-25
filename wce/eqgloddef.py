@@ -52,11 +52,11 @@ class eqgloddef:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tNUMLODS \"{len(self.lods)}\"\n")
+		w.write(f"\tNUMLODS {len(self.lods)}\n")
 		for lodi in self.lods:
 			w.write(f"\t\tLOD\n")
 			w.write(f"\t\t\tTAG \"{lodi.lod.tag}\"\n")
 			w.write(f"\t\t\tCATEGORY \"{lodi.lod.category}\"\n")
-			w.write(f"\t\t\tDISTANCE {lodi.lod.distance}\n")
+			w.write(f"\t\t\tDISTANCE {format(lodi.lod.distance, '.8e')}\n")
 		return ""
 

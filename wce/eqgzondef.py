@@ -146,30 +146,30 @@ class eqgzondef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
-		w.write(f"\tNUMMODELS \"{len(self.models)}\"\n")
+		w.write(f"\tNUMMODELS {len(self.models)}\n")
 		for modeli in self.models:
 			w.write(f"\t\tMODEL \"{modeli.model}\"\n")
-		w.write(f"\tNUMINSTANCES \"{len(self.instances)}\"\n")
+		w.write(f"\tNUMINSTANCES {len(self.instances)}\n")
 		for modeltagi in self.instances:
 			w.write(f"\t\tMODELTAG \"{modeltagi.modeltag}\"\n")
 			w.write(f"\t\tINSTANCETAG \"{modeltagi.instancetag}\"\n")
-			w.write(f"\t\tTRANSLATION {modeltagi.translation[0]} {modeltagi.translation[1]} {modeltagi.translation[2]}\n")
-			w.write(f"\t\tROTATION {modeltagi.rotation[0]} {modeltagi.rotation[1]} {modeltagi.rotation[2]}\n")
-			w.write(f"\t\tSCALE {modeltagi.scale}\n")
-			w.write(f"\t\tNUMLITS \"{len(modeltagi.lits)}\"\n")
+			w.write(f"\t\tTRANSLATION {format(modeltagi.translation[0], '.8e')} {format(modeltagi.translation[1], '.8e')} {format(modeltagi.translation[2], '.8e')}\n")
+			w.write(f"\t\tROTATION {format(modeltagi.rotation[0], '.8e')} {format(modeltagi.rotation[1], '.8e')} {format(modeltagi.rotation[2], '.8e')}\n")
+			w.write(f"\t\tSCALE {format(modeltagi.scale, '.8e')}\n")
+			w.write(f"\t\tNUMLITS {len(modeltagi.lits)}\n")
 			for litj in modeltagi.lits:
 				w.write(f"\t\t\tLIT {litj.lit}\n")
-		w.write(f"\tNUMAREAS \"{len(self.areas)}\"\n")
+		w.write(f"\tNUMAREAS {len(self.areas)}\n")
 		for areai in self.areas:
 			w.write(f"\t\tAREA \"{areai.area}\"\n")
-			w.write(f"\t\tPOSITION {areai.position[0]} {areai.position[1]} {areai.position[2]}\n")
-			w.write(f"\t\tCOLOR {areai.color[0]} {areai.color[1]} {areai.color[2]}\n")
-			w.write(f"\t\tEXTENTS {areai.extents[0]} {areai.extents[1]} {areai.extents[2]}\n")
-		w.write(f"\tNUMLIGHTS \"{len(self.lights)}\"\n")
+			w.write(f"\t\tPOSITION {format(areai.position[0], '.8e')} {format(areai.position[1], '.8e')} {format(areai.position[2], '.8e')}\n")
+			w.write(f"\t\tCOLOR {format(areai.color[0], '.8e')} {format(areai.color[1], '.8e')} {format(areai.color[2], '.8e')}\n")
+			w.write(f"\t\tEXTENTS {format(areai.extents[0], '.8e')} {format(areai.extents[1], '.8e')} {format(areai.extents[2], '.8e')}\n")
+		w.write(f"\tNUMLIGHTS {len(self.lights)}\n")
 		for lighti in self.lights:
 			w.write(f"\t\tLIGHT \"{lighti.light}\"\n")
-			w.write(f"\t\tLIGHTPOS {lighti.lightpos[0]} {lighti.lightpos[1]} {lighti.lightpos[2]}\n")
-			w.write(f"\t\tLIGHTCOLOR {lighti.lightcolor[0]} {lighti.lightcolor[1]} {lighti.lightcolor[2]}\n")
-			w.write(f"\t\tLIGHTRADIUS {lighti.lightradius}\n")
+			w.write(f"\t\tLIGHTPOS {format(lighti.lightpos[0], '.8e')} {format(lighti.lightpos[1], '.8e')} {format(lighti.lightpos[2], '.8e')}\n")
+			w.write(f"\t\tLIGHTCOLOR {format(lighti.lightcolor[0], '.8e')} {format(lighti.lightcolor[1], '.8e')} {format(lighti.lightcolor[2], '.8e')}\n")
+			w.write(f"\t\tLIGHTRADIUS {format(lighti.lightradius, '.8e')}\n")
 		return ""
 

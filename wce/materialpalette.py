@@ -37,7 +37,7 @@ class materialpalette:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tNUMMATERIALS \"{len(self.materials)}\"\n")
+		w.write(f"\tNUMMATERIALS {len(self.materials)}\n")
 		for materiali in self.materials:
 			w.write(f"\t\tMATERIAL \"{materiali.material}\"\n")
 		return ""

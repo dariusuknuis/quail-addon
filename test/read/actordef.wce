@@ -25,20 +25,20 @@ ACTORDEF "tag"
 	NUMACTIONS 1
 		// Action entry
 		ACTION
-		// Unknown entry 1
- 		 // Argument 1 (%d): value of unk1
-		UNK1 1
-		// Number of levels of detail
- 		 // Argument 1 (%d): Number of levels of detail
-		NUMLEVELSOFDETAILS 1
-			// Level of detail entry
-			LEVELOFDETAIL
-			// Sprite entry tag
- 			 // Argument 1 (%s): sprite tag
-			SPRITE "1"
-			// Minimum distance to render LOD
- 			 // Argument 1 (%0.8e): Minimum distance
-			MINDISTANCE 1.12345678
+			// Unknown entry 1
+ 			 // Argument 1 (%d): value of unk1
+			UNK1 1
+			// Number of levels of detail
+ 			 // Argument 1 (%d): Number of levels of detail
+			NUMLEVELSOFDETAILS 1
+				// Level of detail entry
+				LEVELOFDETAIL
+					// Sprite entry tag
+ 					 // Argument 1 (%s): sprite tag
+					SPRITE "1"
+					// Minimum distance to render LOD
+ 					 // Argument 1 (%0.8e): Minimum distance
+					MINDISTANCE 1.12345678
 	// Ignored in RoF2. 0x80 flag. This gets ignored if ActorInst doesn't have it. Likely need to use hierarchysprite flag for things like boats
  	 // Argument 1 (%d): 0: no, 1: yes
 	SPRITEVOLUMEONLY 1

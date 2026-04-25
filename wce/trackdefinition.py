@@ -53,11 +53,11 @@ class trackdefinition:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"\tNUMFRAMES {len(self.frames)}\n")
 		for framei in self.frames:
 			w.write(f"\t\tFRAME {framei.frame[0]} {framei.frame[1]} {framei.frame[2]} {framei.frame[3]} {framei.frame[4]} {framei.frame[5]} {framei.frame[6]} {framei.frame[7]}\n")
-		w.write(f"\tNUMLEGACYFRAMES \"{len(self.legacyframes)}\"\n")
+		w.write(f"\tNUMLEGACYFRAMES {len(self.legacyframes)}\n")
 		for legacyframei in self.legacyframes:
-			w.write(f"\t\tLEGACYFRAME {legacyframei.legacyframe[0]} {legacyframei.legacyframe[1]} {legacyframei.legacyframe[2]} {legacyframei.legacyframe[3]} {legacyframei.legacyframe[4]} {legacyframei.legacyframe[5]} {legacyframei.legacyframe[6]} {legacyframei.legacyframe[7]}\n")
+			w.write(f"\t\tLEGACYFRAME {legacyframei.legacyframe[0]} {legacyframei.legacyframe[1]} {legacyframei.legacyframe[2]} {legacyframei.legacyframe[3]} {format(legacyframei.legacyframe[4], '.8e')} {format(legacyframei.legacyframe[5], '.8e')} {format(legacyframei.legacyframe[6], '.8e')} {format(legacyframei.legacyframe[7], '.8e')}\n")
 		return ""
 

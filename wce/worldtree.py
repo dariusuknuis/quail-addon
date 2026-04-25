@@ -51,10 +51,10 @@ class worldtree:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tNUMWORLDNODES \"{len(self.worldnodes)}\"\n")
+		w.write(f"\tNUMWORLDNODES {len(self.worldnodes)}\n")
 		for worldnodei in self.worldnodes:
 			w.write(f"\t\tWORLDNODE\n")
-			w.write(f"\t\tNORMALABCD {worldnodei.normalabcd[0]} {worldnodei.normalabcd[1]} {worldnodei.normalabcd[2]} {worldnodei.normalabcd[3]}\n")
+			w.write(f"\t\tNORMALABCD {format(worldnodei.normalabcd[0], '.8e')} {format(worldnodei.normalabcd[1], '.8e')} {format(worldnodei.normalabcd[2], '.8e')} {format(worldnodei.normalabcd[3], '.8e')}\n")
 			w.write(f"\t\tWORLDREGIONTAG \"{worldnodei.worldregiontag}\"\n")
 			w.write(f"\t\tFRONTTREE {worldnodei.fronttree}\n")
 			w.write(f"\t\tBACKTREE {worldnodei.backtree}\n")

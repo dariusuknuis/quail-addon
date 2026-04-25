@@ -70,14 +70,14 @@ class lightdefinition:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tCURRENTFRAME? {('NULL' if self.currentframe is None else self.currentframe)}\n")
-		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"\tNUMFRAMES {len(self.frames)}\n")
 		for lightlevelsi in self.frames:
-			w.write(f"\t\tLIGHTLEVELS {lightlevelsi.lightlevels}\n")
+			w.write(f"\t\tLIGHTLEVELS {format(lightlevelsi.lightlevels, '.8e')}\n")
 		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
 		w.write(f"\tHAVESKIPFRAMES {self.haveskipframes}\n")
 		w.write(f"\tSKIPFRAMES {self.skipframes}\n")
-		w.write(f"\tNUMCOLORS \"{len(self.colors)}\"\n")
+		w.write(f"\tNUMCOLORS {len(self.colors)}\n")
 		for colori in self.colors:
-			w.write(f"\t\tCOLOR {colori.color[0]} {colori.color[1]} {colori.color[2]}\n")
+			w.write(f"\t\tCOLOR {format(colori.color[0], '.8e')} {format(colori.color[1], '.8e')} {format(colori.color[2], '.8e')}\n")
 		return ""
 

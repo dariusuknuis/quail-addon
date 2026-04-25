@@ -52,7 +52,7 @@ class eqglayerdef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
-		w.write(f"\tNUMLAYERS \"{len(self.layers)}\"\n")
+		w.write(f"\tNUMLAYERS {len(self.layers)}\n")
 		for layeri in self.layers:
 			w.write(f"\t\tLAYER\n")
 			w.write(f"\t\tMATERIAL \"{layeri.material}\"\n")

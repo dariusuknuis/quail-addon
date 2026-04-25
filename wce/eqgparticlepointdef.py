@@ -58,12 +58,12 @@ class eqgparticlepointdef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tVERSION {self.version}\n")
-		w.write(f"\tNUMPOINTS \"{len(self.points)}\"\n")
+		w.write(f"\tNUMPOINTS {len(self.points)}\n")
 		for pointi in self.points:
 			w.write(f"\t\tPOINT \"{pointi.point}\"\n")
 			w.write(f"\t\tBONENAME \"{pointi.bonename}\"\n")
-			w.write(f"\t\tTRANSLATION {pointi.translation[0]} {pointi.translation[1]} {pointi.translation[2]}\n")
-			w.write(f"\t\tROTATION {pointi.rotation[0]} {pointi.rotation[1]} {pointi.rotation[2]}\n")
-			w.write(f"\t\tSCALE {pointi.scale[0]} {pointi.scale[1]} {pointi.scale[2]}\n")
+			w.write(f"\t\tTRANSLATION {format(pointi.translation[0], '.8e')} {format(pointi.translation[1], '.8e')} {format(pointi.translation[2], '.8e')}\n")
+			w.write(f"\t\tROTATION {format(pointi.rotation[0], '.8e')} {format(pointi.rotation[1], '.8e')} {format(pointi.rotation[2], '.8e')}\n")
+			w.write(f"\t\tSCALE {format(pointi.scale[0], '.8e')} {format(pointi.scale[1], '.8e')} {format(pointi.scale[2], '.8e')}\n")
 		return ""
 

@@ -73,10 +73,10 @@ class simplespritedef:
 		w.write(f"\tSKIPFRAMES {self.skipframes}\n")
 		w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
 		w.write(f"\tCURRENTFRAME? {('NULL' if self.currentframe is None else self.currentframe)}\n")
-		w.write(f"\tNUMFRAMES \"{len(self.frames)}\"\n")
+		w.write(f"\tNUMFRAMES {len(self.frames)}\n")
 		for framei in self.frames:
 			w.write(f"\t\tFRAME \"{framei.frame}\"\n")
-			w.write(f"\t\tNUMFILES \"{len(framei.files)}\"\n")
+			w.write(f"\t\tNUMFILES {len(framei.files)}\n")
 			for filej in framei.files:
 				w.write(f"\t\t\tFILE \"{filej.file}\"\n")
 		return ""
