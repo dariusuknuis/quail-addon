@@ -69,6 +69,6 @@ class polyhedrondefinition:
 			w.write(f"\t\tXYZ {format(xyzi.xyz[0], '.8e')} {format(xyzi.xyz[1], '.8e')} {format(xyzi.xyz[2], '.8e')}\n")
 		w.write(f"\tNUMFACES {len(self.faces)}\n")
 		for vertexlisti in self.faces:
-			w.write(f"\t\tVERTEXLIST {vertexlisti.vertexlist}\n")
+			w.write(f"\t\tVERTEXLIST {' '.join(vertexlisti.vertexlist)}\n")
 		return ""
 

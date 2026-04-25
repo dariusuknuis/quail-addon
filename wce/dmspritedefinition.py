@@ -173,8 +173,8 @@ class dmspritedefinition:
 		w.write(f"\tFRAGMENT1 {self.fragment1}\n")
 		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
 		w.write(f"\tFRAGMENT3 {self.fragment3}\n")
-		w.write(f"\tCENTER? {('NULL' if self.center is None else self.center[0])} {('NULL' if self.center is None else self.center[1])} {('NULL' if self.center is None else self.center[2])}\n")
-		w.write(f"\tPARAMS1? {('NULL' if self.params1 is None else self.params1[0])} {('NULL' if self.params1 is None else self.params1[1])} {('NULL' if self.params1 is None else self.params1[2])}\n")
+		w.write(f"\tCENTER? {('NULL' if self.center is None else format(self.center[0], '.8e'))} {('NULL' if self.center is None else format(self.center[1], '.8e'))} {('NULL' if self.center is None else format(self.center[2], '.8e'))}\n")
+		w.write(f"\tPARAMS1? {('NULL' if self.params1 is None else format(self.params1[0], '.8e'))} {('NULL' if self.params1 is None else format(self.params1[1], '.8e'))} {('NULL' if self.params1 is None else format(self.params1[2], '.8e'))}\n")
 		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for vxyzi in self.vertices:
 			w.write(f"\t\tVXYZ {format(vxyzi.vxyz[0], '.8e')} {format(vxyzi.vxyz[1], '.8e')} {format(vxyzi.vxyz[2], '.8e')}\n")
@@ -198,8 +198,8 @@ class dmspritedefinition:
 			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {format(meshopi.meshop[2], '.8e')} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
 		w.write(f"\tSKINASSIGNMENTGROUPS {self.skinassignmentgroups[0]} {self.skinassignmentgroups[1]}\n")
 		w.write(f"\tDATA8 {self.data8}\n")
-		w.write(f"\tFACEMATERIALGROUPS {self.facematerialgroups}\n")
-		w.write(f"\tVERTEXMATERIALGROUPS {self.vertexmaterialgroups}\n")
-		w.write(f"\tPARAMS2? {('NULL' if self.params2 is None else self.params2[0])} {('NULL' if self.params2 is None else self.params2[1])} {('NULL' if self.params2 is None else self.params2[2])}\n")
+		w.write(f"\tFACEMATERIALGROUPS {' '.join(self.facematerialgroups)}\n")
+		w.write(f"\tVERTEXMATERIALGROUPS {' '.join(self.vertexmaterialgroups)}\n")
+		w.write(f"\tPARAMS2? {('NULL' if self.params2 is None else format(self.params2[0], '.8e'))} {('NULL' if self.params2 is None else format(self.params2[1], '.8e'))} {('NULL' if self.params2 is None else format(self.params2[2], '.8e'))}\n")
 		return ""
 

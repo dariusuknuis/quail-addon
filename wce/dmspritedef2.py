@@ -217,7 +217,7 @@ class dmspritedef2:
 		w.write(f"\tNUMVERTEXCOLORS {len(self.vertexcolors)}\n")
 		for rgbai in self.vertexcolors:
 			w.write(f"\t\tRGBA {rgbai.rgba[0]} {rgbai.rgba[1]} {rgbai.rgba[2]} {rgbai.rgba[3]}\n")
-		w.write(f"\tSKINASSIGNMENTGROUPS {self.skinassignmentgroups[0]} {self.skinassignmentgroups[1]}\n")
+		w.write(f"\tSKINASSIGNMENTGROUPS {' '.join(self.skinassignmentgroups)}\n")
 		w.write(f"\tMATERIALPALETTE \"{self.materialpalette}\"\n")
 		w.write(f"\tDMTRACKINST \"{self.dmtrackinst}\"\n")
 		w.write(f"\tDMRGBTRACK \"{self.dmrgbtrack}\"\n")
@@ -231,8 +231,8 @@ class dmspritedef2:
 		w.write(f"\tNUMMESHOPS {len(self.meshops)}\n")
 		for meshopi in self.meshops:
 			w.write(f"\t\tMESHOP {meshopi.meshop[0]} {meshopi.meshop[1]} {format(meshopi.meshop[2], '.8e')} {meshopi.meshop[3]} {meshopi.meshop[4]}\n")
-		w.write(f"\tFACEMATERIALGROUPS {self.facematerialgroups}\n")
-		w.write(f"\tVERTEXMATERIALGROUPS {self.vertexmaterialgroups}\n")
+		w.write(f"\tFACEMATERIALGROUPS {' '.join(self.facematerialgroups)}\n")
+		w.write(f"\tVERTEXMATERIALGROUPS {' '.join(self.vertexmaterialgroups)}\n")
 		w.write(f"\tPARAMS2 {format(self.params2[0], '.8e')} {format(self.params2[1], '.8e')} {format(self.params2[2], '.8e')}\n")
 		w.write(f"\tBOUNDINGBOXMIN {format(self.boundingboxmin[0], '.8e')} {format(self.boundingboxmin[1], '.8e')} {format(self.boundingboxmin[2], '.8e')}\n")
 		w.write(f"\tBOUNDINGBOXMAX {format(self.boundingboxmax[0], '.8e')} {format(self.boundingboxmax[1], '.8e')} {format(self.boundingboxmax[2], '.8e')}\n")

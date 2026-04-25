@@ -77,7 +77,7 @@ class materialdefinition:
 		w.write(f"\t\tSIMPLESPRITETAG \"{self.simplespriteinst.simplespritetag}\"\n")
 		w.write(f"\t\tSIMPLESPRITEHAVESKIPFRAMES {self.simplespriteinst.simplespritehaveskipframes}\n")
 		w.write(f"\t\tSIMPLESPRITESKIPFRAMES {self.simplespriteinst.simplespriteskipframes}\n")
-		w.write(f"\tUVSHIFTPERMS? {('NULL' if self.uvshiftperms is None else self.uvshiftperms[0])} {('NULL' if self.uvshiftperms is None else self.uvshiftperms[1])}\n")
+		w.write(f"\tUVSHIFTPERMS? {('NULL' if self.uvshiftperms is None else format(self.uvshiftperms[0], '.8e'))} {('NULL' if self.uvshiftperms is None else format(self.uvshiftperms[1], '.8e'))}\n")
 		w.write(f"\tTWOSIDED {self.twosided}\n")
 		return ""
 

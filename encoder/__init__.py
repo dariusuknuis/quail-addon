@@ -5,10 +5,41 @@ import mathutils
 from ..wce.wce import wce
 from typing import Optional
 from .actordef import encode_actordef
+from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .dmspritedef2 import encode_dmspritedef2
+from .polyhedrondefinition import encode_polyhedrondefinition
+from .materialpalette import encode_materialpalette
+from .materialdefinition import encode_materialdefinition
+from .simplespritedef import encode_simplespritedef
 from ..logger.error import error
 from .context import Context
 import os
+
+def write_materials_and_sprites(parser, w):
+
+    written_sprites = set()
+
+    for tag, mat in parser.materialdefinitions.items():
+
+        sprite_tag = mat.simplespriteinst.simplespritetag
+
+        # ----------------------------------------
+        # Write SimpleSprite FIRST (if needed)
+        # ----------------------------------------
+        if sprite_tag:
+
+            sprite = parser.simplespritedefs.get(sprite_tag)
+
+            if sprite and sprite_tag not in written_sprites:
+                sprite.write(w)
+                w.write("\n")
+                written_sprites.add(sprite_tag)
+
+        # ----------------------------------------
+        # Write MaterialDefinition
+        # ----------------------------------------
+        mat.write(w)
+        w.write("\n")
 
 def write_world_wce(root_path):
 
@@ -29,10 +60,8 @@ def write_quail_folder(parser, export_objects, root_path):
 
     os.makedirs(root_path, exist_ok=True)
 
-    # 👇 NEW
     write_world_wce(root_path)
 
-    # 👇 existing root writer
     root_file = os.path.join(root_path, "_root.wce")
 
     with open(root_file, "w") as w:
@@ -42,11 +71,27 @@ def write_quail_folder(parser, export_objects, root_path):
 
         w.write("INCLUDE \"WORLD.WCE\"\n\n")
 
+        write_materials_and_sprites(parser, w)
+
+        for tag, obj in parser.materialpalettes.items():
+            obj.write(w)
+            w.write("\n")
+
+        for tag, obj in parser.polyhedrondefinitions.items():
+            obj.write(w)
+            w.write("\n")
+
         for tag, obj in parser.dmspritedef2s.items():
             obj.write(w)
+            w.write("\n")
+
+        for tag, obj in parser.hierarchicalspritedefs.items():
+            obj.write(w)
+            w.write("\n")
 
         for tag, obj in parser.actordefs.items():
             obj.write(w)
+            w.write("\n")
 
     return ""
 
@@ -67,16 +112,20 @@ def gather_export_objects(root_objects):
         visited.add(obj)
 
         # ----------------------------------------
-        # Children
+        # Children (ONLY for Blender Objects)
         # ----------------------------------------
-        for child in obj.children:
-            add(child)
+        if isinstance(obj, bpy.types.Object):
+            for child in obj.children:
+                add(child)
 
         # ----------------------------------------
-        # References (your quail system)
+        # Safe quaildef access
         # ----------------------------------------
-        qdef = obj.get("quaildef")
+        qdef = obj.get("quaildef") if hasattr(obj, "get") else None
 
+        # ----------------------------------------
+        # DMSPRITE → MATERIALPALETTE
+        # ----------------------------------------
         if qdef == "dmspritedef2":
             props = obj.quail_dmspritedef2
             if props.materialpalette:
@@ -87,8 +136,43 @@ def gather_export_objects(root_objects):
             if props.materialpalette:
                 add(props.materialpalette)
 
-    return visited
+        # ----------------------------------------
+        # MATERIALPALETTE → MATERIALDEFINITION → SIMPLESPRITEDEF
+        # ----------------------------------------
+        elif qdef == "materialpalette":
+            props = obj.quail_materialpalette
 
+            for item in props.materials:
+                mat = item.material
+                if not mat:
+                    continue
+
+                # Add Blender Material
+                add(mat)
+
+                # ----------------------------------------
+                # MATERIALDEFINITION
+                # ----------------------------------------
+                if mat.get("quaildef") == "materialdefinition":
+
+                    mprops = mat.quail_materialdefinition
+                    sprite_tag = mprops.simplespritetag
+
+                    # ----------------------------------------
+                    # SIMPLESPRITEDEF (NodeTree)
+                    # ----------------------------------------
+                    if sprite_tag and sprite_tag != "NONE":
+                        sprite = bpy.data.node_groups.get(sprite_tag)
+
+                        if sprite:
+                            add(sprite)
+                        else:
+                            print(
+                                f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' "
+                                f"for material '{mat.name}'"
+                            )
+
+    return visited
 
 def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
@@ -180,10 +264,10 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-    # for obj in hierarchicalsprites:
-    #     err = encode_hierarchicalspritedef(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in hierarchicalsprites:
+        err = encode_hierarchicalspritedef(parser, obj)
+        if err:
+            errors.append(err)
 
     # for obj in dmsprite_defs:
     #     err = encode_dmspritedefinition(parser, obj)
@@ -195,25 +279,25 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-    # for obj in polyhedrons:
-    #     err = encode_polyhedrondefinition(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in polyhedrons:
+        err = encode_polyhedrondefinition(parser, obj)
+        if err:
+            errors.append(err)
 
-    # for obj in materialpalettes:
-    #     err = encode_materialpalette(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in materialpalettes:
+        err = encode_materialpalette(parser, obj)
+        if err:
+            errors.append(err)
 
-    # for obj in materialdefs:
-    #     err = encode_materialdefinition(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in materialdefs:
+        err = encode_materialdefinition(parser, obj)
+        if err:
+            errors.append(err)
 
-    # for obj in simplesprites:
-    #     err = encode_simplespritedef(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in simplesprites:
+        err = encode_simplespritedef(parser, obj)
+        if err:
+            errors.append(err)
 
     # for obj in eqgters:
     #     err = encode_eqgterdef(parser, obj)

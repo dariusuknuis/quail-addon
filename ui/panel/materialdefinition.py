@@ -257,13 +257,17 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         default=True
     )
 
-    uvshiftperms: FloatVectorProperty(
+    has_uvshiftperms: BoolProperty(
         name="UV Shift / ms",
         description="UV shift per millisecond (U, V)",
+        default=True
+    )
+
+    uvshiftperms: FloatVectorProperty(
         size=2,
         subtype='NONE',  # keep numeric, not color
         default=(0.0, 0.0),
-        precision=4
+        precision=8
     )
 
     twosided: BoolProperty(
@@ -415,7 +419,10 @@ def draw_materialdefinition_in_transform(self, context):
     line.alignment = 'CENTER'
     line.label(text="────────────────────────────")
 
-    box.prop(props, "uvshiftperms")
+    box.prop(props, "has_uvshiftperms")
+    if props.has_uvshiftperms:
+        row = box.row(align=True)
+        row.prop(props, "uvshiftperms")
     box.prop(props, "twosided")
 
 # Register classes

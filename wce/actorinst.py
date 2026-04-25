@@ -76,7 +76,7 @@ class actorinst:
 		w.write(f"\tSPRITE \"{self.sprite}\"\n")
 		if self.currentaction is None: w.write("\tCURRENTACTION? NULL\n")
 		else: w.write(f"\tCURRENTACTION? \"{self.currentaction}\"\n")
-		w.write(f"\tLOCATION? {('NULL' if self.location is None else self.location[0])} {('NULL' if self.location is None else self.location[1])} {('NULL' if self.location is None else self.location[2])} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
+		w.write(f"\tLOCATION? {('NULL' if self.location is None else format(self.location[0], '.8e'))} {('NULL' if self.location is None else format(self.location[1], '.8e'))} {('NULL' if self.location is None else format(self.location[2], '.8e'))} {('NULL' if self.location is None else format(self.location[3], '.8e'))} {('NULL' if self.location is None else format(self.location[4], '.8e'))} {('NULL' if self.location is None else format(self.location[5], '.8e'))}\n")
 		w.write(f"\tBOUNDINGRADIUS? {('NULL' if self.boundingradius is None else format(self.boundingradius, '.8e'))}\n")
 		w.write(f"\tSCALEFACTOR? {('NULL' if self.scalefactor is None else format(self.scalefactor, '.8e'))}\n")
 		if self.sound is None: w.write("\tSOUND? NULL\n")

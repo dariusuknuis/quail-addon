@@ -30,7 +30,7 @@ class zone:
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tREGIONLIST {self.regionlist}\n")
+		w.write(f"\tREGIONLIST {' '.join(self.regionlist)}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
 		return ""
 

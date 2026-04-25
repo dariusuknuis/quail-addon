@@ -175,15 +175,15 @@ class sprite3ddef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
 		w.write(f"\tENABLEGOURAUD2 {self.enablegouraud2}\n")
-		w.write(f"\tCENTEROFFSET? {('NULL' if self.centeroffset is None else self.centeroffset[0])} {('NULL' if self.centeroffset is None else self.centeroffset[1])} {('NULL' if self.centeroffset is None else self.centeroffset[2])}\n")
+		w.write(f"\tCENTEROFFSET? {('NULL' if self.centeroffset is None else format(self.centeroffset[0], '.8e'))} {('NULL' if self.centeroffset is None else format(self.centeroffset[1], '.8e'))} {('NULL' if self.centeroffset is None else format(self.centeroffset[2], '.8e'))}\n")
 		w.write(f"\tNUMVERTICES {len(self.vertices)}\n")
 		for xyzi in self.vertices:
 			w.write(f"\t\tXYZ {format(xyzi.xyz[0], '.8e')} {format(xyzi.xyz[1], '.8e')} {format(xyzi.xyz[2], '.8e')}\n")
 		w.write(f"\tNUMBSPNODES {len(self.bspnodes)}\n")
 		for bspnodei in self.bspnodes:
 			w.write(f"\t\tBSPNODE\n")
-			w.write(f"\t\t\tNORMALABCD? {('NULL' if bspnodei.bspnode.normalabcd is None else bspnodei.bspnode.normalabcd[0])} {('NULL' if bspnodei.bspnode.normalabcd is None else bspnodei.bspnode.normalabcd[1])} {('NULL' if bspnodei.bspnode.normalabcd is None else bspnodei.bspnode.normalabcd[2])} {('NULL' if bspnodei.bspnode.normalabcd is None else bspnodei.bspnode.normalabcd[3])}\n")
-			w.write(f"\t\t\tVERTEXLIST {bspnodei.bspnode.vertexlist}\n")
+			w.write(f"\t\t\tNORMALABCD? {('NULL' if bspnodei.bspnode.normalabcd is None else format(bspnodei.bspnode.normalabcd[0], '.8e'))} {('NULL' if bspnodei.bspnode.normalabcd is None else format(bspnodei.bspnode.normalabcd[1], '.8e'))} {('NULL' if bspnodei.bspnode.normalabcd is None else format(bspnodei.bspnode.normalabcd[2], '.8e'))} {('NULL' if bspnodei.bspnode.normalabcd is None else format(bspnodei.bspnode.normalabcd[3], '.8e'))}\n")
+			w.write(f"\t\t\tVERTEXLIST {' '.join(bspnodei.bspnode.vertexlist)}\n")
 			w.write(f"\t\t\tRENDERMETHOD \"{bspnodei.bspnode.rendermethod}\"\n")
 			w.write(f"\t\t\tRENDERINFO\n")
 			w.write(f"\t\t\t\tPEN? {('NULL' if bspnodei.bspnode.renderinfo.pen is None else bspnodei.bspnode.renderinfo.pen)}\n")
@@ -194,9 +194,9 @@ class sprite3ddef:
 			else: w.write(f"\t\t\t\t\tSIMPLESPRITETAG? \"{bspnodei.bspnode.renderinfo.simplespriteinst.simplespritetag}\"\n")
 			w.write(f"\t\t\t\t\tSIMPLESPRITEHAVESKIPFRAMES {bspnodei.bspnode.renderinfo.simplespriteinst.simplespritehaveskipframes}\n")
 			w.write(f"\t\t\t\t\tSIMPLESPRITESKIPFRAMES {bspnodei.bspnode.renderinfo.simplespriteinst.simplespriteskipframes}\n")
-			w.write(f"\t\t\t\tUVORIGIN? {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else bspnodei.bspnode.renderinfo.uvorigin[0])} {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else bspnodei.bspnode.renderinfo.uvorigin[1])} {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else bspnodei.bspnode.renderinfo.uvorigin[2])}\n")
-			w.write(f"\t\t\t\tUAXIS? {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else bspnodei.bspnode.renderinfo.uaxis[0])} {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else bspnodei.bspnode.renderinfo.uaxis[1])} {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else bspnodei.bspnode.renderinfo.uaxis[2])}\n")
-			w.write(f"\t\t\t\tVAXIS? {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else bspnodei.bspnode.renderinfo.vaxis[0])} {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else bspnodei.bspnode.renderinfo.vaxis[1])} {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else bspnodei.bspnode.renderinfo.vaxis[2])}\n")
+			w.write(f"\t\t\t\tUVORIGIN? {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else format(bspnodei.bspnode.renderinfo.uvorigin[0], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else format(bspnodei.bspnode.renderinfo.uvorigin[1], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.uvorigin is None else format(bspnodei.bspnode.renderinfo.uvorigin[2], '.8e'))}\n")
+			w.write(f"\t\t\t\tUAXIS? {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else format(bspnodei.bspnode.renderinfo.uaxis[0], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else format(bspnodei.bspnode.renderinfo.uaxis[1], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.uaxis is None else format(bspnodei.bspnode.renderinfo.uaxis[2], '.8e'))}\n")
+			w.write(f"\t\t\t\tVAXIS? {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else format(bspnodei.bspnode.renderinfo.vaxis[0], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else format(bspnodei.bspnode.renderinfo.vaxis[1], '.8e'))} {('NULL' if bspnodei.bspnode.renderinfo.vaxis is None else format(bspnodei.bspnode.renderinfo.vaxis[2], '.8e'))}\n")
 			w.write(f"\t\t\t\tNUMUVS? {len(bspnodei.bspnode.renderinfo.uvs)}\n")
 			for uvj in bspnodei.bspnode.renderinfo.uvs:
 				w.write(f"\t\t\t\t\tUV {format(uvj.uv[0], '.8e')} {format(uvj.uv[1], '.8e')}\n")

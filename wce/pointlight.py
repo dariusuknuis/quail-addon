@@ -56,6 +56,6 @@ class pointlight:
 		w.write(f"\tDYNAMICINFLUENCE {self.dynamicinfluence}\n")
 		w.write(f"\tXYZ {format(self.xyz[0], '.8e')} {format(self.xyz[1], '.8e')} {format(self.xyz[2], '.8e')}\n")
 		w.write(f"\tRADIUSOFINFLUENCE {format(self.radiusofinfluence, '.8e')}\n")
-		w.write(f"\tREGIONS? {('NULL' if self.regions is None else self.regions)}\n")
+		w.write(f"\tREGIONS? {' '.join(self.regions)}\n")
 		return ""
 

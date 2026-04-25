@@ -119,3 +119,73 @@ def apply_transparent(props):
     props.dynamic = False
     props.prelit = False
     props.opacity = 0.0
+
+def build_rendermethod_string(props) -> str:
+
+    # ----------------------------------------
+    # Userdefined shortcut
+    # ----------------------------------------
+    if props.use_userdefined:
+        return f"USERDEFINED_{props.userdefined_index}"
+
+    # ----------------------------------------
+    # Transparent override
+    # ----------------------------------------
+    if props.transparent_override:
+        return "TRANSPARENT"
+
+    parts = []
+
+    # ----------------------------------------
+    # Texture
+    # ----------------------------------------
+    if props.texture_index > 0:
+        parts.append(f"TEXTURE{props.texture_index}")
+
+    # ----------------------------------------
+    # Masked (TRANS prefix)
+    # ----------------------------------------
+    if props.masked:
+        parts.insert(0, "TRANS")
+
+    # ----------------------------------------
+    # Lighting
+    # ----------------------------------------
+    parts.append(props.lighting)
+
+    # ----------------------------------------
+    # Shading
+    # ----------------------------------------
+    parts.append(props.shading)
+
+    # ----------------------------------------
+    # Dynamic / Prelit
+    # ----------------------------------------
+    if props.dynamic:
+        parts.append("DYNAMIC")
+
+    if props.prelit:
+        parts.append("PRELIT")
+
+    # ----------------------------------------
+    # Alpha blend
+    # ----------------------------------------
+    if props.alphablend:
+        parts.append("BLEND")
+
+        # Only include opacity if blending
+        parts.append(f"OPACITY{props.opacity}%")
+
+    # ----------------------------------------
+    # Additive
+    # ----------------------------------------
+    if props.additive:
+        parts.append("ADDITIVE")
+
+    # ----------------------------------------
+    # Drawstyle fallback (rarely needed)
+    # ----------------------------------------
+    if not parts:
+        parts.append(props.drawstyle)
+
+    return "".join(parts)

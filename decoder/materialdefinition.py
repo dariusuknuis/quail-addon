@@ -478,7 +478,12 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.simplespritetag = tag
     props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
     props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
-    props.uvshiftperms = material.uvshiftperms
+    if material.uvshiftperms is not None:
+        props.has_uvshiftperms = True
+        props.uvshiftperms = material.uvshiftperms
+    else:
+        props.has_uvshiftperms = False
+        props.uvshiftperms = (0.0, 0.0)
     props.twosided = material.twosided == 1
 
     mat.use_nodes = True

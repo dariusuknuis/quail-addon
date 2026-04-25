@@ -102,7 +102,7 @@ class actordef:
 		w.write(f"\tCALLBACK \"{self.callback}\"\n")
 		w.write(f"\tBOUNDSREF {self.boundsref}\n")
 		w.write(f"\tCURRENTACTION? {('NULL' if self.currentaction is None else self.currentaction)}\n")
-		w.write(f"\tLOCATION? {('NULL' if self.location is None else self.location[0])} {('NULL' if self.location is None else self.location[1])} {('NULL' if self.location is None else self.location[2])} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
+		w.write(f"\tLOCATION? {('NULL' if self.location is None else format(self.location[0], '.8e'))} {('NULL' if self.location is None else format(self.location[1], '.8e'))} {('NULL' if self.location is None else format(self.location[2], '.8e'))} {('NULL' if self.location is None else self.location[3])} {('NULL' if self.location is None else self.location[4])} {('NULL' if self.location is None else self.location[5])}\n")
 		if self.activegeometry is None: w.write("\tACTIVEGEOMETRY? NULL\n")
 		else: w.write(f"\tACTIVEGEOMETRY? \"{self.activegeometry}\"\n")
 		w.write(f"\tNUMACTIONS {len(self.actions)}\n")

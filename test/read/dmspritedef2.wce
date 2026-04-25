@@ -38,9 +38,8 @@ DMSPRITEDEF2 "tag"
  		 // Argument 4 (%d): Alpha
 		RGBA 1 2 3 4
 	// The skin assignment groups
- 	 // Argument 1 (%d): The size of the group
- 	 // Argument 2 (%d...): The data of the group
-	SKINASSIGNMENTGROUPS 1 2 3
+ 	 // Argument 1 (%d...): First value is the number of groups, then pairs of dag/# of verts
+	SKINASSIGNMENTGROUPS 1 1 1
 	// The material palette used by the sprite
  	 // Argument 1 (%s): The name of the material palette
 	MATERIALPALETTE "1"
@@ -79,10 +78,10 @@ DMSPRITEDEF2 "tag"
  		 // Argument 5 (%d): Mesh operation type identifier
 		MESHOP 1 2 3.12345678 4 5
 	// The face material groups
- 	 // Argument 1 (%d...): The size of the group
+ 	 // Argument 1 (%d...): First value if number of groups, then pairs of mat and # of faces
 	FACEMATERIALGROUPS 1 1 1
 	// The vertex material groups
- 	 // Argument 1 (%d...): The size of the group
+ 	 // Argument 1 (%d...): First value if number of groups, then pairs of mat and # of verts
 	VERTEXMATERIALGROUPS 1 1 1
 	// Additional parameter vector
  	 // Argument 1 (%0.8e): Parameter x

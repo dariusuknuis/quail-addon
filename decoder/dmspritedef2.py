@@ -202,17 +202,23 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     if len(sprite.vertexmaterialgroups) > 0:
         vertex_material_attribute = mesh.attributes.new(name="Vertex_Material_Index", type='INT', domain='POINT')
+        groups = sprite.vertexmaterialgroups
+
+        group_count = int(groups[0])
+
         vertex_index = 0
-        count = 0
-        for i, vmg in enumerate(sprite.vertexmaterialgroups):
-            if i % 2 == 0:
-                count = int(vmg)
-                continue
-            mat_index = int(vmg)
+        idx = 1
+
+        for _ in range(group_count):
+            count = int(groups[idx])
+            mat_index = int(groups[idx + 1])
+            idx += 2
+
             for _ in range(count):
                 if vertex_index >= len(vertex_material_attribute.data):
                     break
-                vertex_material_attribute.data[vertex_index].value = mat_index  # type: ignore
+
+                vertex_material_attribute.data[vertex_index].value = mat_index
                 vertex_index += 1
 
     if len(sprite.facematerialgroups) > 0:
