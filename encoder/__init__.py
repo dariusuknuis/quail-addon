@@ -22,7 +22,9 @@ def write_animation_folder(parser, root_path):
     anim_dir = os.path.join(root_path, "animations")
     os.makedirs(anim_dir, exist_ok=True)
 
+    # ----------------------------------------
     # Group tracks by animation
+    # ----------------------------------------
     anim_groups = {}
 
     for t in parser.tracks.values():
@@ -31,7 +33,9 @@ def write_animation_folder(parser, root_path):
 
         anim_groups.setdefault(t.animation, []).append(t)
 
-    # Write each animation file
+    # ----------------------------------------
+    # Write animation files (ALL TRACKS per anim)
+    # ----------------------------------------
     for anim_name, tracks in anim_groups.items():
 
         filepath = os.path.join(anim_dir, f"{anim_name.lower()}.wce")
@@ -44,6 +48,15 @@ def write_animation_folder(parser, root_path):
             for t in tracks:
                 t.write(w)
                 w.write("\n")
+
+    # ----------------------------------------
+    # Write animations/_root.wce (DEDUPED)
+    # ----------------------------------------
+    root_file = os.path.join(anim_dir, "_root.wce")
+
+    with open(root_file, "w") as w:
+        for anim_name in sorted(anim_groups.keys()):
+            w.write(f"INCLUDE \"{anim_name.upper()}.WCE\"\n")
 
 def write_materials_and_sprites(parser, w):
 
@@ -71,6 +84,97 @@ def write_materials_and_sprites(parser, w):
         mat.write(w)
         w.write("\n")
 
+def write_model_folder(parser, root_obj, export_objects, root_path):
+
+    model_name = get_model_name(root_obj)
+    model_dir = os.path.join(root_path, model_name)
+
+    os.makedirs(model_dir, exist_ok=True)
+
+    # ----------------------------------------
+    # Build LOCAL parser (important!)
+    # ----------------------------------------
+    local_parser = wce(model_dir)
+
+    # Gather ONLY dependencies for this root
+    local_objects = gather_export_objects([root_obj])
+    local_actions = gather_export_tracks(local_objects)
+
+    # Encode ONLY this model
+    encode_actordef(local_parser, root_obj)
+
+    for obj in local_objects:
+        qdef = obj.get("quaildef")
+
+        if qdef == "hierarchicalspritedef":
+            encode_hierarchicalspritedef(local_parser, obj)
+
+        elif qdef == "dmspritedef2":
+            encode_dmspritedef2(local_parser, obj)
+
+        elif qdef == "polyhedrondefinition":
+            encode_polyhedrondefinition(local_parser, obj)
+
+        elif qdef == "materialpalette":
+            encode_materialpalette(local_parser, obj)
+
+        elif qdef == "materialdefinition":
+            encode_materialdefinition(local_parser, obj)
+
+        elif qdef == "simplespritedef":
+            encode_simplespritedef(local_parser, obj)
+
+    encode_track(local_parser, local_actions, bpy.context)
+
+    # ----------------------------------------
+    # Write MODEL WCE
+    # ----------------------------------------
+    model_wce_path = os.path.join(model_dir, f"{model_name}.wce")
+
+    with open(model_wce_path, "w") as w:
+        w.write("// wcemu v0.0.1\n\n")
+
+        write_materials_and_sprites(local_parser, w)
+
+        for obj in local_parser.materialpalettes.values():
+            obj.write(w)
+            w.write("\n")
+
+        for obj in local_parser.polyhedrondefinitions.values():
+            obj.write(w)
+            w.write("\n")
+
+        for obj in local_parser.dmspritedef2s.values():
+            obj.write(w)
+            w.write("\n")
+
+        for t in parser.tracks.values():
+            if t.is_pose:
+                t.write(w)
+                w.write("\n")
+
+        for obj in local_parser.hierarchicalspritedefs.values():
+            obj.write(w)
+            w.write("\n")
+
+        for obj in local_parser.actordefs.values():
+            obj.write(w)
+            w.write("\n")
+
+    # ----------------------------------------
+    # Animations
+    # ----------------------------------------
+    write_animation_folder(local_parser, model_dir)
+
+    # ----------------------------------------
+    # Model _root.wce
+    # ----------------------------------------
+    root_file = os.path.join(model_dir, "_root.wce")
+
+    with open(root_file, "w") as w:
+        w.write("INCLUDE \"ANIMATIONS/_ROOT.WCE\"\n")
+        w.write(f"INCLUDE \"{model_name.upper()}.WCE\"\n")
+
 def write_world_wce(parser, root_path):
 
     world_path = os.path.join(root_path, "world.wce")
@@ -88,52 +192,74 @@ def write_world_wce(parser, root_path):
             w.write("\tZONE 0\n")
             w.write("\tEQGVERSION? NULL\n")
 
+
+
 def write_quail_folder(parser, export_objects, root_path):
 
     print("Writing quail folder:", root_path)
 
     os.makedirs(root_path, exist_ok=True)
 
+    # ----------------------------------------
+    # ASSETS folder (placeholder)
+    # ----------------------------------------
+    assets_dir = os.path.join(root_path, "assets")
+    os.makedirs(assets_dir, exist_ok=True)
+
+    # ----------------------------------------
+    # WORLD.WCE
+    # ----------------------------------------
     write_world_wce(parser, root_path)
 
+    # ----------------------------------------
+    # ROOT OBJECTS
+    # ----------------------------------------
+    roots = get_root_objects(export_objects)
+
+    model_dirs = []
+
+    for root in roots:
+        name = get_model_name(root)
+        write_model_folder(parser, root, export_objects, root_path)
+        model_dirs.append(name)
+
+    # ----------------------------------------
+    # MAIN _root.wce
+    # ----------------------------------------
     root_file = os.path.join(root_path, "_root.wce")
 
     with open(root_file, "w") as w:
 
-        w.write("// wcemu v0.0.1\n")
-        w.write("// Generated by exporter\n\n")
+        w.write("INCLUDE \"WORLD.WCE\"\n")
 
-        w.write("INCLUDE \"WORLD.WCE\"\n\n")
-
-        write_materials_and_sprites(parser, w)
-
-        for tag, obj in parser.materialpalettes.items():
-            obj.write(w)
-            w.write("\n")
-
-        for tag, obj in parser.polyhedrondefinitions.items():
-            obj.write(w)
-            w.write("\n")
-
-        for tag, obj in parser.dmspritedef2s.items():
-            obj.write(w)
-            w.write("\n")
-
-        for t in parser.tracks.values():
-            if t.is_pose:
-                t.write(w)
-
-        for tag, obj in parser.hierarchicalspritedefs.items():
-            obj.write(w)
-            w.write("\n")
-
-        for tag, obj in parser.actordefs.items():
-            obj.write(w)
-            w.write("\n")
-
-    write_animation_folder(parser, root_path)
+        for name in model_dirs:
+            w.write(f"INCLUDE \"{name.upper()}/_ROOT.WCE\"\n")
 
     return ""
+
+def get_root_objects(export_objects):
+    roots = []
+
+    for obj in export_objects:
+
+        if not isinstance(obj, bpy.types.Object):
+            continue
+
+        if obj.get("quaildef") == "materialpalette":
+            continue  # still your exception
+
+        if obj.parent is None:
+            roots.append(obj)
+
+    return roots
+
+def get_model_name(obj):
+    name = obj.name.lower()
+
+    if "_" in name:
+        return name.split("_")[0]
+
+    return name
 
 def gather_export_tracks(export_objects):
 

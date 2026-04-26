@@ -111,7 +111,16 @@ def export_data(context, filepath: str, export_as_wce: bool, selected_only: bool
             dialog.message_box("No output path specified", "Quail Error", 'ERROR')
             return {'CANCELLED'}
 
-        base_name = os.path.splitext(os.path.basename(filepath))[0]
+        # ----------------------------------------
+        # Use collection name if available
+        # ----------------------------------------
+        col = context.collection
+
+        if col:
+            base_name = col.name.lower()
+        else:
+            base_name = os.path.splitext(os.path.basename(filepath))[0]
+
         ext = os.path.splitext(filepath)[1].lower()
 
         # ---------------------------------------------------------
@@ -153,7 +162,13 @@ def export_data(context, filepath: str, export_as_wce: bool, selected_only: bool
                 dialog.message_box("_root.wce not found after encode", "Quail Error", 'ERROR')
                 return {'CANCELLED'}
 
-            export_dir = os.path.splitext(filepath)[0]
+            # ----------------------------------------
+            # Output folder should match .quail name
+            # ----------------------------------------
+            export_dir = os.path.join(
+                os.path.dirname(filepath),
+                base_name + ".quail"
+            )
 
             print("Exporting full WCE folder:", export_dir)
 
