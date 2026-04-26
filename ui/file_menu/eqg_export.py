@@ -153,7 +153,14 @@ def export_data(context, filepath: str, export_as_wce: bool, selected_only: bool
                 dialog.message_box("_root.wce not found after encode", "Quail Error", 'ERROR')
                 return {'CANCELLED'}
 
-            shutil.copy(root_wce_path, filepath)
+            export_dir = os.path.splitext(filepath)[0]
+
+            print("Exporting full WCE folder:", export_dir)
+
+            if os.path.exists(export_dir):
+                shutil.rmtree(export_dir)
+
+            shutil.copytree(tmp_root, export_dir)
 
         else:
             # -----------------------------------------------------

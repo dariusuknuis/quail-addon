@@ -1,26 +1,35 @@
 import bpy, re
 import mathutils
 from bpy_extras import anim_utils
+from ..wce.track import track
 
 regexAniPrefix = re.compile(r"^[CDLOPST](0[1-9]|[1-9][0-9])")
 
-def encode_track(parser, context) -> str:
+def encode_track(parser, actions, context) -> str:
 
     errors = []
 
     # ----------------------------------------
     # Iterate armatures
     # ----------------------------------------
-    for obj in bpy.data.objects:
+    for action in actions:
 
-        if obj.type != 'ARMATURE':
+        errors = []
+
+        armature_obj = None
+
+        # Extract model code from action name (POS_AVI, C05_AVI, etc.)
+        parts = action.name.split("_")
+        model_code = parts[-1] if len(parts) > 1 else None
+
+        for obj in bpy.data.objects:
+            if obj.type == 'ARMATURE' and model_code and obj.name.startswith(model_code):
+                armature_obj = obj
+                break
+
+        if not armature_obj:
+            print(f"[SKIP] No armature for action {action.name}")
             continue
-
-        anim_data = obj.animation_data
-        if not anim_data or not anim_data.action:
-            continue
-
-        action = anim_data.action
 
         if not action.slots:
             continue
@@ -31,128 +40,173 @@ def encode_track(parser, context) -> str:
         # ----------------------------------------
         # Determine track type
         # ----------------------------------------
-        is_animation = bool(regexAniPrefix.match(action.name))
+        is_animation = not action.name.startswith("POS_")
 
-        # POS vs animation labeling
-        if is_animation:
-            action_group = action.name  # e.g. C01_HUM
-        else:
-            action_group = f"POS_{obj.name[:3]}"
+        action_group = action.name
 
         # ----------------------------------------
         # Iterate groups (each = one track)
         # ----------------------------------------
         for group in channelbag.groups:
-
-            # ----------------------------------------
-            # Find props
-            # ----------------------------------------
-            track_props = None
-            for t in action.quail_tracks:
-                if t.tag == group.name:
-                    track_props = t
-                    break
-
-            if not track_props:
-                continue
-
-            bone_name = group.name
-
-            if bone_name not in obj.pose.bones:
-                continue
-
-            pose_bone = obj.pose.bones[bone_name]
-            bone = obj.data.bones[bone_name]
-
-            # ----------------------------------------
-            # Rebuild rest matrix (same as decode)
-            # ----------------------------------------
-            rest_matrix = bone.matrix_local.copy()
-
-            if bone.parent:
-                rest_matrix = bone.parent.matrix_local.inverted() @ rest_matrix
-
-            # ----------------------------------------
-            # Collect frame times
-            # ----------------------------------------
-            frame_set = set()
-
-            for fcurve in group.channels:
-                for kp in fcurve.keyframe_points:
-                    frame_set.add(round(kp.co.x))
-
-            if not frame_set:
-                continue
-
-            frames = sorted(frame_set)
-
-            # ----------------------------------------
-            # Build Track-style data
-            # ----------------------------------------
-            track_data = {
-                "tag": track_props.track,
-                "action": action_group,
-                "interpolate": 1 if track_props.interpolate else 0,
-                "reverse": 1 if track_props.reverse else 0,
-                "sleep": track_props.sleep if track_props.has_sleep else None,
-                "frames": []
-            }
-
-            # ----------------------------------------
-            # Evaluate each frame
-            # ----------------------------------------
-            scene = bpy.context.scene
-
-            for f in frames:
-
-                scene.frame_set(int(f))
-
-                # pose space (same as decode input)
-                pose_matrix = pose_bone.matrix_basis.copy()
-
-                # Undo decode transform
-                local_anim = rest_matrix @ pose_matrix
-
-                # ----------------------------------------
-                # Decompose
-                # ----------------------------------------
-                loc, rot, scale_vec = local_anim.decompose()
-
-                # ----------------------------------------
-                # Convert BACK to WCE format
-                # ----------------------------------------
-
-                x = int(loc.x * 256)
-                y = int(loc.y * 256)
-                z = int(loc.z * 256)
-
-                qw = int(rot.w * 16384)
-                qx = int(rot.x * 16384)
-                qy = int(rot.y * 16384)
-                qz = int(rot.z * 16384)
-
-                scale = int(scale_vec.x * 256)
-
-                track_data["frames"].append(
-                    (scale, x, y, z, qw, qx, qy, qz)
-                )
-
-            # ----------------------------------------
-            # Build names
-            # ----------------------------------------
-            track_tag = track_data["tag"]
-            trackdef_tag = f"{track_tag}DEF"
-
-            # ----------------------------------------
-            # Encode objects
-            # ----------------------------------------
             try:
-                td = encode_trackdefinition(trackdef_tag, track_data)
-                ti = encode_trackinstance(track_tag, trackdef_tag, track_data)
+                # ----------------------------------------
+                # Find props
+                # ----------------------------------------
+                track_props = None
+                for t in action.quail_tracks:
+                    if t.tag == group.name:
+                        track_props = t
+                        break
 
-                # store in parser
-                parser.trackdefinitions[td.tag] = td
-                parser.trackinstances[ti.tag] = ti
+                if not track_props:
+                    continue
+
+                bone_name = group.name
+
+                if bone_name not in armature_obj.pose.bones:
+                    continue
+
+                pose_bone = armature_obj.pose.bones[bone_name]
+                bone = armature_obj.data.bones[bone_name]
+
+                # ----------------------------------------
+                # Rebuild rest matrix (same as decode)
+                # ----------------------------------------
+                rest_matrix = bone.matrix_local.copy()
+
+                if bone.parent:
+                    rest_matrix = bone.parent.matrix_local.inverted() @ rest_matrix
+
+                # ----------------------------------------
+                # Collect frame times
+                # ----------------------------------------
+                frame_set = set()
+
+                for fcurve in group.channels:
+                    for kp in fcurve.keyframe_points:
+                        frame_set.add(kp.co.x)
+
+                if not frame_set:
+                    continue
+
+                frames = sorted(frame_set)
+
+                # ----------------------------------------
+                # Build Track-style data
+                # ----------------------------------------
+                track_data = {
+                    "tag": track_props.track,
+                    "action": action_group,
+                    "interpolate": 1 if track_props.interpolate else 0,
+                    "reverse": 1 if track_props.reverse else 0,
+                    "sleep": track_props.sleep if track_props.has_sleep else None,
+                    "frames": []
+                }
+
+                # ----------------------------------------
+                # Evaluate each frame
+                # ----------------------------------------
+                for f in frames:
+
+                    loc = [0.0, 0.0, 0.0]
+                    rot = [1.0, 0.0, 0.0, 0.0]
+                    scale_x = 1.0
+
+                    for fc in group.channels:
+                        path = fc.data_path
+
+                        if path.endswith("location"):
+                            loc[fc.array_index] = fc.evaluate(f)
+
+                        elif path.endswith("rotation_quaternion"):
+                            rot[fc.array_index] = fc.evaluate(f)
+
+                        elif path.endswith("scale") and fc.array_index == 0:
+                            scale_x = fc.evaluate(f)
+
+                    # ----------------------------------------
+                    # Rebuild pose_matrix (same as decode input)
+                    # ----------------------------------------
+
+                    T = mathutils.Matrix.Translation(loc)
+                    R = mathutils.Quaternion(rot).to_matrix().to_4x4()
+
+                    pose_matrix = T @ R   # SAME ORDER AS DECODER
+
+                    # ----------------------------------------
+                    # Apply rest transform (this is the missing piece)
+                    # ----------------------------------------
+
+                    bone = pose_bone.bone
+
+                    rest_matrix = bone.matrix_local.copy()
+                    if bone.parent:
+                        rest_matrix = bone.parent.matrix_local.inverted() @ rest_matrix
+
+                    local_anim = rest_matrix @ pose_matrix
+
+                    # ----------------------------------------
+                    # Extract final values
+                    # ----------------------------------------
+
+                    loc = local_anim.to_translation()
+                    rot = local_anim.to_quaternion()
+
+                    # ----------------------------------------
+                    # Convert BACK to WCE format
+                    # ----------------------------------------
+
+                    x = int(loc.x * 256)
+                    y = int(loc.y * 256)
+                    z = int(loc.z * 256)
+
+                    qw = int(rot.w * 16384)
+                    qx = int(rot.x * 16384)
+                    qy = int(rot.y * 16384)
+                    qz = int(rot.z * 16384)
+
+                    scale = int(scale_x * 256)
+
+                    track_data["frames"].append(
+                        (scale, x, y, z, qw, qx, qy, qz)
+                    )
+
+                # ----------------------------------------
+                # Build names
+                # ----------------------------------------
+                track_tag = track_data["tag"]
+
+                t = track()
+
+                # ----------------------------------------
+                # Identity
+                # ----------------------------------------
+                t.tag = track_tag
+                t.trackdef = f"{track_tag}_TRACKDEF"
+
+                # ----------------------------------------
+                # Instance values
+                # ----------------------------------------
+                t.interpolate = track_data["interpolate"]
+                t.reverse = track_data["reverse"]
+                t.sleep = track_data["sleep"]
+
+                # ----------------------------------------
+                # Definition values
+                # ----------------------------------------
+                t.frames = track_data["frames"]
+                t.legacyframes = []
+
+                # ----------------------------------------
+                # Metadata (NOT written)
+                # ----------------------------------------
+                t.animation = track_data["action"]
+                t.is_pose = not is_animation
+
+                # ----------------------------------------
+                # Store
+                # ----------------------------------------
+                parser.tracks[t.tag] = t
 
             except Exception as e:
                 errors.append(f"Failed track encode {track_tag}: {e}")

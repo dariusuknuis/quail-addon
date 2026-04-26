@@ -32,6 +32,7 @@ from .sprite2ddef import sprite2ddef
 from .sprite3ddef import sprite3ddef
 from .trackdefinition import trackdefinition
 from .trackinstance import trackinstance
+from .track import track
 from .worlddef import worlddef
 from .worldtree import worldtree
 from .zone import zone
@@ -71,6 +72,7 @@ class wce:
     sprite3ddefs:dict[str, sprite3ddef]
     trackdefinitions:dict[str, trackdefinition]
     trackinstances:dict[str, trackinstance]
+    tracks:dict[str, track]
     worlddefs:dict[str, worlddef]
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
@@ -120,6 +122,7 @@ class wce:
         self.sprite3ddefs = {}
         self.trackdefinitions = {}
         self.trackinstances = {}
+        self.tracks = {}
         self.worlddefs = {}
         self.worldtrees = {}
         self.zones = {}

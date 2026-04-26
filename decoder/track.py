@@ -324,6 +324,7 @@ def build_wld_animations():
             continue
 
         action = bpy.data.actions.new(action_name)
+        action["quaildef"] = "track"
 
         armature_obj.animation_data_create()
         armature_obj.animation_data.action = action

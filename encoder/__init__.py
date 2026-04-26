@@ -6,6 +6,7 @@ from ..wce.wce import wce
 from typing import Optional
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
+from .track import encode_track
 from .dmspritedef2 import encode_dmspritedef2
 from .polyhedrondefinition import encode_polyhedrondefinition
 from .materialpalette import encode_materialpalette
@@ -14,6 +15,34 @@ from .simplespritedef import encode_simplespritedef
 from ..logger.error import error
 from .context import Context
 import os
+
+def write_animation_folder(parser, root_path):
+
+    anim_dir = os.path.join(root_path, "animations")
+    os.makedirs(anim_dir, exist_ok=True)
+
+    # Group tracks by animation
+    anim_groups = {}
+
+    for t in parser.tracks.values():
+        if t.is_pose:
+            continue
+
+        anim_groups.setdefault(t.animation, []).append(t)
+
+    # Write each animation file
+    for anim_name, tracks in anim_groups.items():
+
+        filepath = os.path.join(anim_dir, f"{anim_name.lower()}.wce")
+
+        with open(filepath, "w") as w:
+
+            w.write("// wcemu v0.0.1\n")
+            w.write("// Animation file\n\n")
+
+            for t in tracks:
+                t.write(w)
+                w.write("\n")
 
 def write_materials_and_sprites(parser, w):
 
@@ -85,6 +114,10 @@ def write_quail_folder(parser, export_objects, root_path):
             obj.write(w)
             w.write("\n")
 
+        for t in parser.tracks.values():
+            if t.is_pose:
+                t.write(w)
+
         for tag, obj in parser.hierarchicalspritedefs.items():
             obj.write(w)
             w.write("\n")
@@ -93,7 +126,48 @@ def write_quail_folder(parser, export_objects, root_path):
             obj.write(w)
             w.write("\n")
 
+    write_animation_folder(parser, root_path)
+
     return ""
+
+def gather_export_tracks(export_objects):
+
+    actions = set()
+
+    # ----------------------------------------
+    # Find HS_DEF armatures
+    # ----------------------------------------
+    for obj in export_objects:
+
+        if not isinstance(obj, bpy.types.Object):
+            continue
+
+        if obj.type != 'ARMATURE':
+            continue
+
+        if obj.get("quaildef") != "hierarchicalspritedef":
+            continue
+
+        model_code = obj.name.replace("_HS_DEF", "")
+
+        # ----------------------------------------
+        # Direct action on armature (strongest link)
+        # ----------------------------------------
+        if obj.animation_data and obj.animation_data.action:
+            actions.add(obj.animation_data.action)
+
+        # ----------------------------------------
+        # Also gather matching actions by name
+        # ----------------------------------------
+        for action in bpy.data.actions:
+            if action.get("quaildef") != "track":
+                continue
+
+            # Match "_AVI", "_HUM", etc
+            if action.name.endswith(f"_{model_code}"):
+                actions.add(action)
+
+    return actions
 
 def gather_export_objects(root_objects):
     visited = set()
@@ -195,6 +269,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # Gather dependency graph
     # ------------------------------------------------
     export_objects = gather_export_objects(root_objects)
+    export_actions = gather_export_tracks(export_objects)
 
     print("Export set:")
     for obj in export_objects:
@@ -210,6 +285,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     polyhedrons = []
     dmsprite_defs = []
     dmsprite2_defs = []
+    tracks = []
     hierarchicalsprites = []
     eqgmodels = []
     eqgters = []
@@ -268,6 +344,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         err = encode_hierarchicalspritedef(parser, obj)
         if err:
             errors.append(err)
+
+    err = encode_track(parser, export_actions, context)
+    if err:
+        errors.append(err)
+
 
     # for obj in dmsprite_defs:
     #     err = encode_dmspritedefinition(parser, obj)
