@@ -1,88 +1,232 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
 
-# import bpy
-# from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
-# from ...decoder.track import get_or_create_track_props
+import bpy
+import statistics
+from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
+from bpy_extras import anim_utils
 
-# class QuailTrackProperties(bpy.types.PropertyGroup):
+def update_sleep(self, context):
+    obj = context.object
+    if not obj or not obj.animation_data:
+        return
 
-#     tag: StringProperty(name="Tag")
+    action = obj.animation_data.action
+    if not action or not action.slots:
+        return
 
-#     interpolate: IntProperty(name="Interpolate", default=0)
-#     reverse: IntProperty(name="Reverse", default=0)
+    sleep = self.sleep
+    if sleep <= 0:
+        return
 
-#     has_sleep: BoolProperty(name="Has Sleep", default=False)
-#     sleep: IntProperty(name="Sleep", default=0)
+    fps = context.scene.render.fps
+    new_step = max(1, (sleep / 1000.0) * fps)
 
-#     numframes: IntProperty(name="Num Frames", default=0)
+    slot = action.slots[0]
+    channelbag = anim_utils.action_ensure_channelbag_for_slot(action, slot)
 
-# class QUAIL_PT_track_panel(bpy.types.Panel):
-#     bl_label = "Quail Track"
-#     bl_space_type = 'DOPESHEET_EDITOR'
-#     bl_region_type = 'UI'
-#     bl_category = 'Quail'
+    # ----------------------------------------
+    # Find the group for this track
+    # ----------------------------------------
+    group = None
+    for g in channelbag.groups:
+        if g.name == self.tag:
+            group = g
+            break
 
-#     @classmethod
-#     def poll(cls, context):
-#         return context.active_action_group is not None
+    if not group:
+        return
 
-#     def draw(self, context):
-#         layout = self.layout
+    # ----------------------------------------
+    # Collect unique frame positions
+    # ----------------------------------------
+    frames = set()
+    for fcurve in group.channels:
+        for kp in fcurve.keyframe_points:
+            frames.add(kp.co.x)
 
-#         group = context.active_action_group
-#         action = context.active_action
+    if len(frames) < 2:
+        return
 
-#         if not group or not action:
-#             layout.label(text="No track selected")
-#             return
+    frames = sorted(frames)
 
-#         track = get_or_create_track_props(action, group)
+    # ----------------------------------------
+    # Compute deltas between frames
+    # ----------------------------------------
+    deltas = []
+    for i in range(1, len(frames)):
+        d = frames[i] - frames[i - 1]
+        if d > 0.0001:  # ignore tiny float noise
+            deltas.append(d)
 
-#         # ----------------------------------------
-#         # Tag (sync with group name)
-#         # ----------------------------------------
-#         layout.prop(group, "name", text="Tag")
+    if not deltas:
+        return
 
-#         # ----------------------------------------
-#         # Track properties
-#         # ----------------------------------------
-#         box = layout.box()
-#         box.label(text="Track Properties")
+    # ----------------------------------------
+    # Infer base step (robust)
+    # ----------------------------------------
+    try:
+        base_step = statistics.median(deltas)
+    except:
+        base_step = min(deltas)
 
-#         box.prop(track, "interpolate")
-#         box.prop(track, "reverse")
+    if base_step <= 0:
+        return
 
-#         # Nullable sleep (like your system)
-#         row = box.row(align=True)
-#         row.prop(track, "has_sleep", text="")
-#         sub = row.row()
-#         sub.enabled = track.has_sleep
-#         sub.prop(track, "sleep", text="Sleep")
+    # ----------------------------------------
+    # Resnap keyframes to new spacing
+    # ----------------------------------------
+    start = frames[0]
 
-#         # ----------------------------------------
-#         # Derived
-#         # ----------------------------------------
-#         layout.separator()
+    for fcurve in group.channels:
+        for kp in fcurve.keyframe_points:
 
-#         num_frames = self.get_num_frames(group)
-#         track.numframes = num_frames
+            # infer index
+            i = round((kp.co.x - start) / base_step)
 
-#         layout.label(text=f"Num Frames: {num_frames}")
+            # rebuild frame
+            new_frame = start + i * new_step
 
-#     def get_num_frames(self, group):
-#         max_frame = 0
+            kp.co.x = new_frame
+            kp.handle_left.x = new_frame
+            kp.handle_right.x = new_frame
 
-#         for fc in group.channels:
-#             if fc.keyframe_points:
-#                 max_frame = max(max_frame, int(fc.keyframe_points[-1].co.x))
+        fcurve.update()
+class QuailTrackProperties(bpy.types.PropertyGroup):
 
-#         return max_frame
+    tag: StringProperty(name="DAG")
 
-# def register():
-#     bpy.types.Action.quail_tracks = CollectionProperty(type=QuailTrackProperties)
-#     bpy.types.Action.quail_active_track = IntProperty(default=-1)
+    track: StringProperty(name="Tag")
+
+    interpolate: BoolProperty(name="Interpolate", default=False)
+    reverse: BoolProperty(name="Reverse", default=False)
+
+    has_sleep: BoolProperty(name="Has Sleep", default=False)
+    sleep: IntProperty(name="Sleep", default=0, update=update_sleep)
+
+    numframes: IntProperty(name="Num Frames", default=1)
+
+class QUAIL_PT_track_panel(bpy.types.Panel):
+    bl_label = "Quail Track"
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = 'Quail'
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+
+        if not obj or obj.type != 'ARMATURE':
+            return False
+
+        anim_data = obj.animation_data
+        if not anim_data or not anim_data.action:
+            return False
+
+        action = anim_data.action
+
+        # Ensure there is at least one slot
+        if not action.slots:
+            return False
+
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+
+        obj = context.object
+        bone = context.active_pose_bone
+
+        if not obj or not obj.animation_data:
+            return
+
+        action = obj.animation_data.action
+        if not action or not action.slots:
+            return
+
+        slot = action.slots[0]
+
+        from bpy_extras import anim_utils
+        channelbag = anim_utils.action_ensure_channelbag_for_slot(action, slot)
+
+        # ----------------------------------------
+        # Resolve group (bone OR fallback)
+        # ----------------------------------------
+
+        group = None
+
+        if bone:
+            group = channelbag.groups.get(bone.name)
+
+        if not group and channelbag.groups:
+            group = channelbag.groups[0]
+
+        if not group:
+            layout.label(text="No track selected")
+            return
+
+        # ----------------------------------------
+        # Track props (READ ONLY)
+        # ----------------------------------------
+
+        track = None
+        for t in action.quail_tracks:
+            if t.tag == group.name:
+                track = t
+                break
+
+        if not track:
+            layout.label(text="Track not initialized")
+            return
+
+        # ----------------------------------------
+        # DAG (sync with group name)
+        # ----------------------------------------
+
+        layout.prop(group, "name", text="DAG")
+        layout.prop(track, "track", text="Tag")
+
+        # ----------------------------------------
+        # Track properties
+        # ----------------------------------------
+
+        box = layout.box()
+        box.label(text="Track Properties")
+
+        box.prop(track, "interpolate")
+        box.prop(track, "reverse")
+
+        row = box.row(align=True)
+        row.prop(track, "has_sleep", text="")
+        sub = row.row()
+        sub.enabled = track.has_sleep
+        sub.prop(track, "sleep", text="Sleep")
+
+        # ----------------------------------------
+        # Derived
+        # ----------------------------------------
+
+        layout.separator()
+
+        num_frames = self.get_num_frames(group)
+        layout.label(text=f"Num Frames: {num_frames}")
+
+    def get_num_frames(self, group):
+        if not group:
+            return 0
+
+        frame_set = set()
+
+        for fcurve in group.channels:  # <-- IMPORTANT: groups use .channels, not .fcurves
+            for kp in fcurve.keyframe_points:
+                frame_set.add(kp.co.x)
+
+        return len(frame_set)
+
+def register():
+    bpy.types.Action.quail_tracks = CollectionProperty(type=QuailTrackProperties)
+    bpy.types.Action.quail_active_track = IntProperty(default=-1)
 
 
-# def unregister():
-#     del bpy.types.Action.quail_tracks
-#     del bpy.types.Action.quail_active_track
+def unregister():
+    del bpy.types.Action.quail_tracks
+    del bpy.types.Action.quail_active_track

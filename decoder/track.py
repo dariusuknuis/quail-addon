@@ -4,6 +4,7 @@ import bpy
 import mathutils
 import re
 import math
+from bpy_extras import anim_utils
 
 regexAniPrefix = re.compile(r"^[CDLOPST](0[1-9]|[1-9][0-9])")
 regexItemModel = re.compile(r"IT\d+")
@@ -82,6 +83,22 @@ class Track:
                 "scale": scale
             })
 
+def get_or_create_track_props(action, group):
+    """
+    Find or create QuailTrackProperties for a given ActionGroup.
+    Uses group.name as the unique key.
+    """
+
+    # 🔍 Find existing
+    for t in action.quail_tracks:
+        if t.tag == group.name:
+            return t
+
+    # ➕ Create new
+    t = action.quail_tracks.add()
+    t.tag = group.name
+
+    return t
 
 def _try_build_track(name):
 
@@ -324,6 +341,49 @@ def build_wld_animations():
 
             if bone_name not in armature_obj.pose.bones:
                 continue
+
+            # -----------------------------------------
+            # Ensure slot exists
+            # -----------------------------------------
+            if not action.slots:
+                action.fcurve_ensure_for_datablock(
+                    armature_obj,
+                    f'pose.bones["{bone_name}"].location',
+                    index=0
+                )
+
+            slot = action.slots[0]
+
+            # -----------------------------------------
+            # Ensure channelbag (THIS is the correct API)
+            # -----------------------------------------
+            channelbag = anim_utils.action_ensure_channelbag_for_slot(action, slot)
+
+            # -----------------------------------------
+            # Get/create group
+            # -----------------------------------------
+            group = channelbag.groups.get(bone_name)
+            if not group:
+                group = channelbag.groups.new(name=bone_name)
+
+            # -----------------------------------------
+            # Create track props (WRITE SAFE HERE)
+            # -----------------------------------------
+            track_props = get_or_create_track_props(action, group)
+
+            track_props.tag = group.name
+            track_props.track = track.tag
+            track_props.interpolate = track.interpolate
+            track_props.reverse = track.reverse
+
+            if track.sleep is not None:
+                track_props.has_sleep = True
+                track_props.sleep = track.sleep
+            else:
+                track_props.has_sleep = False
+                track_props.sleep = 0
+
+            track_props.numframes = len(track.frames)
 
             pose_bone = armature_obj.pose.bones[bone_name]
             pose_bone.rotation_mode = 'QUATERNION'
