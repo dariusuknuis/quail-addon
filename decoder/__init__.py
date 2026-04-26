@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from ..wce.wce import wce
 from typing import Optional
+from .worlddef import decode_worlddef
 from .actordef import decode_actordef
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
@@ -74,6 +75,15 @@ def wce_decode(path: str):
     base_parent = None
 
     ctx = Context(parser, base_collection, base_parent)
+
+
+    for _, worlddef in parser.worlddefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_worlddef(ctx, worlddef)
+        if err:
+            error(err)
 
     for _, spritedef in parser.simplespritedefs.items():
         ctx.collection = base_collection

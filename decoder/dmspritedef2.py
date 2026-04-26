@@ -11,21 +11,15 @@ from .context import Context
 
 def find_hsprite_for_mesh(parser, mesh_name):
 
-    mesh_base = mesh_name.replace("_DMSPRITEDEF", "")[:5]
+    mesh_prefix = mesh_name.replace("_DMSPRITEDEF", "").split(".")[0][:3]
 
     for hs in parser.hierarchicalspritedefs.values():
         for skin in hs.attachedskins:
 
             tag = skin.dmsprite
+            tag_prefix = tag.replace("_DMSPRITEDEF", "").split(".")[0][:3]
 
-            # exact match
-            if tag == mesh_name:
-                return hs, skin
-
-            # base match (ignore index)
-            tag_base = tag.replace("_DMSPRITEDEF", "")[:5]
-
-            if tag_base == mesh_base:
+            if tag_prefix == mesh_prefix:
                 return hs, skin
 
     return None, None
@@ -94,6 +88,8 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     if hsprite:
         obj["hsprite"] = hsprite.tag
         print(obj.name, "->", obj.get("hsprite"))
+    else:
+        print(obj.name, ": no hsprite found")
 
     obj.location = mathutils.Vector(sprite.centeroffset)
 

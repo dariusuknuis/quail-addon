@@ -4,8 +4,8 @@ WORLDDEF
  	 // Argument 1 (%d): 0: old wld versioning, 1: new wld versioning
 	NEWWORLD 1
 	// Should this wce be treated like a zone?
- 	 // Argument 1 (%s): 0: no, 1: yes
-	ZONE "1"
+ 	 // Argument 1 (%d): 0: no, 1: yes
+	ZONE 1
 	// Used in eqg parsing for version rebuilding
  	 // Argument 1 (%d): The version of the eqg file
 	EQGVERSION? 1

@@ -8,12 +8,12 @@ class worlddef:
 		return "WORLDDEF"
 
 	newworld:int
-	zone:str
+	zone:int
 	eqgversion:int | None
 
 	def __init__(self):
 		self.newworld = 0 #2
-		self.zone = "" #2
+		self.zone = 0 #2
 		self.eqgversion = None #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
@@ -23,7 +23,7 @@ class worlddef:
 		records = property(r, "NEWWORLD", 1)
 		self.newworld = int(records[1])
 		records = property(r, "ZONE", 1)
-		self.zone = str(records[1])
+		self.zone = int(records[1])
 		records = property(r, "EQGVERSION?", 1)
 		self.eqgversion = int(records[1]) if records[1] != "NULL" else None
 		return ""
@@ -31,7 +31,7 @@ class worlddef:
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()}\n")
 		w.write(f"\tNEWWORLD {self.newworld}\n")
-		w.write(f"\tZONE \"{self.zone}\"\n")
+		w.write(f"\tZONE {self.zone}\n")
 		w.write(f"\tEQGVERSION? {('NULL' if self.eqgversion is None else self.eqgversion)}\n")
 		return ""
 
