@@ -15,7 +15,7 @@ from .materialdefinition import encode_materialdefinition
 from .simplespritedef import encode_simplespritedef
 from ..logger.error import error
 from .context import Context
-import os
+import os, shutil
 
 def write_animation_folder(parser, root_path):
 
@@ -192,7 +192,59 @@ def write_world_wce(parser, root_path):
             w.write("\tZONE 0\n")
             w.write("\tEQGVERSION? NULL\n")
 
+def export_simplesprite_images(export_objects, assets_dir):
 
+    written = set()
+
+    for obj in export_objects:
+
+        if not hasattr(obj, "get"):
+            continue
+
+        if obj.get("quaildef") != "simplespritedef":
+            continue
+
+        tree = obj
+        props = tree.quail_simplesprite
+
+        for frame in props.frames:
+            for file in frame.files:
+
+                if not file.image_name or not file.file_name:
+                    continue
+
+                # ----------------------------------------
+                # Normalize filename to lowercase
+                # ----------------------------------------
+                filename = file.file_name.lower()
+
+                # Deduplicate
+                if filename in written:
+                    continue
+
+                written.add(filename)
+
+                img = bpy.data.images.get(file.image_name)
+                if not img:
+                    print(f"WARNING: Missing image {file.image_name}")
+                    continue
+
+                dst_path = os.path.join(assets_dir, filename)
+
+                try:
+                    if img.packed_file:
+                        img.unpack(method='USE_ORIGINAL')
+
+                    src = bpy.path.abspath(img.filepath)
+
+                    if src and os.path.exists(src):
+                        shutil.copy2(src, dst_path)
+                    else:
+                        print(f"Fallback saving image (no source): {filename}")
+                        img.save_render(dst_path)
+
+                except Exception as e:
+                    print(f"ERROR exporting image {filename}: {e}")
 
 def write_quail_folder(parser, export_objects, root_path):
 
@@ -205,6 +257,11 @@ def write_quail_folder(parser, export_objects, root_path):
     # ----------------------------------------
     assets_dir = os.path.join(root_path, "assets")
     os.makedirs(assets_dir, exist_ok=True)
+
+    # ----------------------------------------
+    # EXPORT TEXTURES
+    # ----------------------------------------
+    export_simplesprite_images(export_objects, assets_dir)
 
     # ----------------------------------------
     # WORLD.WCE

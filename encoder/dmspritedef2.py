@@ -72,23 +72,49 @@ def encode_dmspritedef2(parser, obj) -> str:
         wce_sprite.vertices.append(vobj)
 
     # ----------------------------------------
-    # UVs (POINT domain fallback)
+    # UVs (POINT domain fallback for loose verts ONLY)
     # ----------------------------------------
     wce_sprite.uvs = []
+
+    point_uv_attr = mesh.attributes.get("vertex_uvs")
+
+    # ----------------------------------------
+    # Build set of vertices actually used by faces
+    # ----------------------------------------
+    used_verts = set()
+    for poly in mesh.polygons:
+        used_verts.update(poly.vertices)
+
+    # ----------------------------------------
+    # Build loop-based UV map (only for used verts)
+    # ----------------------------------------
+    uv_map = {}
     if mesh.uv_layers:
         uv_layer = mesh.uv_layers.active
-
-        uv_map = {}
 
         for poly in mesh.polygons:
             for li, vi in zip(poly.loop_indices, poly.vertices):
                 uv_map[vi] = uv_layer.data[li].uv
 
-        for i in range(len(mesh.vertices)):
-            uvi = dmspritedef2.uv()
+    # ----------------------------------------
+    # Assign UVs
+    # ----------------------------------------
+    for i in range(len(mesh.vertices)):
+
+        if i in used_verts:
+            # Face vertex → use loop UV (same behavior as before)
             uv = uv_map.get(i, (0.0, 0.0))
-            uvi.uv = (float(uv[0]), float(uv[1]))
-            wce_sprite.uvs.append(uvi)
+
+        elif point_uv_attr:
+            # Loose vertex → use POINT domain UV
+            uv = point_uv_attr.data[i].vector
+
+        else:
+            uv = (0.0, 0.0)
+
+        uvi = dmspritedef2.uv()
+        uvi.uv = (float(uv[0]), float(uv[1]))
+        wce_sprite.uvs.append(uvi)
 
     # ----------------------------------------
     # Vertex Normals (attribute)

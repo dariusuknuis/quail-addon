@@ -2,7 +2,7 @@
 
 import bpy
 from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, BoolProperty
+from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 import os
@@ -27,6 +27,22 @@ bl_info = {
     "category": "Import-Export",
 }
 
+# ---------------------------------------------------------
+# Callback
+# ---------------------------------------------------------
+
+def update_export_format(self, context):
+    if not self.filepath:
+        return
+
+    base = os.path.splitext(self.filepath)[0]
+
+    if self.export_format == "EQG":
+        self.filepath = base + ".eqg"
+    elif self.export_format == "S3D":
+        self.filepath = base + ".s3d"
+    else:
+        self.filepath = base + ".wce"
 
 # ---------------------------------------------------------
 # Operator
@@ -36,13 +52,25 @@ class ExportEQG(Operator, ExportHelper):
     bl_label = "Export EQG"
     bl_options = {'PRESET'}
 
-    filename_ext = ".eqg"
+    filename_ext = ""
 
     filter_glob: StringProperty(
         default="*.eqg;*.s3d;*.wce",
         options={'HIDDEN'},
         maxlen=255,
     )  # type: ignore
+
+    export_format: EnumProperty(
+        name="Format",
+        description="Choose output format",
+        items=[
+            ("EQG", "EQG (.eqg)", "EQG archive"),
+            ("S3D", "S3D (.s3d)", "S3D archive"),
+            ("WCE", "WCE (.quail folder)", "Raw Quail folder output"),
+        ],
+        default="EQG",
+        update=update_export_format,
+    ) # type: ignore
 
     export_selected_only: BoolProperty(
         name="Selected Objects Only",
@@ -62,16 +90,37 @@ class ExportEQG(Operator, ExportHelper):
     )  # type: ignore
 
     def execute(self, context):
+        base = os.path.splitext(self.filepath)[0]
+
+        if self.export_format == "EQG":
+            filepath = base + ".eqg"
+            export_as_wce = False
+
+        elif self.export_format == "S3D":
+            filepath = base + ".s3d"
+            export_as_wce = False
+
+        else:  # WCE
+            filepath = base + ".wce"
+            export_as_wce = True
+
         return export_data(
             context,
-            self.filepath,
-            self.export_as_wce,
+            filepath,
+            export_as_wce,
             self.export_selected_only
         )
 
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.prop(self, "export_format")
+        layout.prop(self, "export_selected_only")
+        layout.prop(self, "overwrite")
 
 
 # ---------------------------------------------------------
