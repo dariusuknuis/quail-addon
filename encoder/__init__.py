@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from ..wce.wce import wce
 from typing import Optional
+from ..common import base_tag
 from ..common.s3dmaterial import material_tag_parse
 from .worlddef import encode_worlddef
 from .actordef import encode_actordef
@@ -21,10 +22,6 @@ import os, shutil
 
 
 def write_animation_folder(parser, root_path):
-
-    anim_dir = os.path.join(root_path, "animations")
-    os.makedirs(anim_dir, exist_ok=True)
-
     # ----------------------------------------
     # Group tracks by animation
     # ----------------------------------------
@@ -35,6 +32,12 @@ def write_animation_folder(parser, root_path):
             continue
 
         anim_groups.setdefault(t.animation, []).append(t)
+
+    if not anim_groups:
+        return False
+
+    anim_dir = os.path.join(root_path, "animations")
+    os.makedirs(anim_dir, exist_ok=True)
 
     # ----------------------------------------
     # Write animation files (ALL TRACKS per anim)
@@ -61,19 +64,106 @@ def write_animation_folder(parser, root_path):
         for anim_name in sorted(anim_groups.keys()):
             w.write(f"INCLUDE \"{anim_name.upper()}.WCE\"\n")
 
-def write_materials_and_sprites(parser, w):
+    return True
+
+def write_material_sets(parser, material_sets, model_dir):
+
+    if not material_sets:
+        return False
+
+    root_lines = []
+
+    for filepath, entries in material_sets.items():
+
+        with open(filepath, "w") as w:
+
+            written_sprites = set()
+
+            for mat, sprite_tag in entries:
+
+                # write sprite first
+                if sprite_tag:
+                    sprite = parser.simplespritedefs.get(sprite_tag)
+
+                    if sprite and sprite_tag not in written_sprites:
+                        sprite.write(w)
+                        w.write("\n")
+                        written_sprites.add(sprite_tag)
+
+                mat.write(w)
+                w.write("\n")
+
+        # track for _root.wce
+        filename = os.path.basename(filepath)
+        root_lines.append(f'INCLUDE "{filename.upper()}"\n')
+
+    # ----------------------------------------
+    # Write material_sets/_root.wce
+    # ----------------------------------------
+    if root_lines:
+        root_path = os.path.join(model_dir, "material_sets", "_root.wce")
+
+        with open(root_path, "w") as w:
+            for line in sorted(root_lines):
+                w.write(line)
+
+    return True
+
+def get_material_set_filename(tag: str, model_dir: str) -> str:
+
+    tag_upper = tag.upper()
+
+    material_sets_dir = os.path.join(model_dir, "material_sets")
+    os.makedirs(material_sets_dir, exist_ok=True)
+
+    if tag_upper.startswith("CHR_EYE"):
+        return os.path.join(material_sets_dir, "chr_eye.wce")
+
+    elif tag_upper.startswith("CLK") and len(tag_upper) >= 5:
+        return os.path.join(material_sets_dir, tag_upper[:5].lower() + ".wce")
+
+    elif len(tag_upper) >= 8:
+        index = tag_upper[5:8]
+        base = tag_upper[:3].lower()
+
+        return os.path.join(material_sets_dir, f"{base}_alt{index}.wce")
+
+    else:
+        return os.path.join(material_sets_dir, "other_mats.wce")
+
+def write_materials_and_sprites(parser, w, model_dir):
 
     written_sprites = set()
+
+    # ----------------------------------------
+    # Collect variation material groups
+    # ----------------------------------------
+    material_sets = {}
 
     for tag, mat in parser.materialdefinitions.items():
 
         sprite_tag = mat.simplespriteinst.simplespritetag
 
+        is_variation = tag in parser.variationmaterialtags
+        print("CHECK:", tag, "->", tag in parser.variationmaterialtags)
+
         # ----------------------------------------
-        # Write SimpleSprite FIRST (if needed)
+        # Handle VARIATION materials
+        # ----------------------------------------
+        if is_variation:
+
+            filename = get_material_set_filename(tag, model_dir)
+
+            if filename not in material_sets:
+                material_sets[filename] = []
+
+            material_sets[filename].append((mat, sprite_tag))
+            continue
+
+        # ----------------------------------------
+        # NORMAL MATERIAL PATH
         # ----------------------------------------
         if sprite_tag:
-
             sprite = parser.simplespritedefs.get(sprite_tag)
 
             if sprite and sprite_tag not in written_sprites:
@@ -81,11 +171,14 @@ def write_materials_and_sprites(parser, w):
                 w.write("\n")
                 written_sprites.add(sprite_tag)
 
-        # ----------------------------------------
-        # Write MaterialDefinition
-        # ----------------------------------------
         mat.write(w)
         w.write("\n")
+
+    # ----------------------------------------
+    # Write MATERIAL SET FILES
+    # ----------------------------------------
+    wrote_material_sets = write_material_sets(parser, material_sets, model_dir)
+    return wrote_material_sets
 
 def write_model_folder(parser, root_obj, export_objects, root_path):
 
@@ -98,9 +191,10 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     # Build LOCAL parser (important!)
     # ----------------------------------------
     local_parser = wce(model_dir)
+    local_parser.variationmaterialtags = set(parser.variationmaterialtags)
 
     # Gather ONLY dependencies for this root
-    local_objects = gather_export_objects([root_obj])
+    local_objects = gather_export_objects([root_obj], parser)
     local_actions = gather_export_tracks(local_objects)
 
     # Encode ONLY this model
@@ -137,7 +231,7 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     with open(model_wce_path, "w") as w:
         w.write("// wcemu v0.0.1\n\n")
 
-        write_materials_and_sprites(local_parser, w)
+        wrote_material_sets = write_materials_and_sprites(local_parser, w, model_dir)
 
         for obj in local_parser.materialpalettes.values():
             obj.write(w)
@@ -167,7 +261,7 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     # ----------------------------------------
     # Animations
     # ----------------------------------------
-    write_animation_folder(local_parser, model_dir)
+    wrote_animations = write_animation_folder(local_parser, model_dir)
 
     # ----------------------------------------
     # Model _root.wce
@@ -175,7 +269,13 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     root_file = os.path.join(model_dir, "_root.wce")
 
     with open(root_file, "w") as w:
-        w.write("INCLUDE \"ANIMATIONS/_ROOT.WCE\"\n")
+
+        if wrote_animations:
+            w.write("INCLUDE \"ANIMATIONS/_ROOT.WCE\"\n")
+
+        if wrote_material_sets:
+            w.write("INCLUDE \"MATERIAL_SETS/_ROOT.WCE\"\n")
+
         w.write(f"INCLUDE \"{model_name.upper()}.WCE\"\n")
 
 def write_world_wce(parser, root_path):
@@ -360,10 +460,11 @@ def gather_export_tracks(export_objects):
 
     return actions
 
-def gather_export_objects(root_objects):
+def gather_export_objects(root_objects, parser):
     visited = set()
     stack = list(root_objects)
     palette_material_tags = set()
+    parser.variationmaterialtags.clear()
 
     def add(obj):
         if obj and obj not in visited:
@@ -438,6 +539,50 @@ def gather_export_objects(root_objects):
                                 f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' "
                                 f"for material '{mat.name}'"
                             )
+            # ----------------------------------------
+            # SECOND: detect AND ADD variation materials
+            # ----------------------------------------
+            for mat in bpy.data.materials:
+
+                if mat.get("quaildef") != "materialdefinition":
+                    continue
+
+                tag = mat.name
+
+                # skip palette materials
+                if tag in palette_material_tags:
+                    continue
+
+                prefix = material_tag_parse(tag)
+                if not prefix:
+                    continue
+
+                # match against palette materials
+                for palette_tag in palette_material_tags:
+                    if palette_tag.startswith(prefix):
+
+                        # mark as variation
+                        parser.variationmaterialtags.add(tag)
+
+                        # ADD IT INTO THE SAME PIPELINE
+                        add(mat)
+
+                        # add its sprite too (same as normal path)
+                        mprops = mat.quail_materialdefinition
+                        sprite_tag = mprops.simplespritetag
+
+                        if sprite_tag and sprite_tag != "NONE":
+                            sprite = bpy.data.node_groups.get(sprite_tag)
+
+                            if sprite:
+                                add(sprite)
+                            else:
+                                print(
+                                    f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' "
+                                    f"for variation material '{mat.name}'"
+                                )
+
+                        break
 
     return visited
 
@@ -472,7 +617,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     # Gather dependency graph
     # ------------------------------------------------
-    export_objects = gather_export_objects(root_objects)
+    export_objects = gather_export_objects(root_objects, parser)
     export_actions = gather_export_tracks(export_objects)
 
     print("Export set:")

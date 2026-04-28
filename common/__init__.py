@@ -67,3 +67,15 @@ def _get_group_io_sockets(node_group):
     gi = {sock.name: sock for sock in gi_node.outputs}  # inputs of the group appear as outputs on Group Input
     go = {sock.name: sock for sock in go_node.inputs}   # outputs of the group appear as inputs on Group Output
     return gi, go
+
+def base_tag(tag: str) -> str:
+    if not tag:
+        return tag
+
+    # Strip Blender index suffix like ".001"
+    if "." in tag:
+        base, suffix = tag.rsplit(".", 1)
+        if suffix.isdigit():
+            return base
+
+    return tag

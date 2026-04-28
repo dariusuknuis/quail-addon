@@ -76,6 +76,7 @@ class wce:
     worlddefs:dict[str, worlddef]
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
+    variationmaterialtags: set[str]
 
     def _instantiate_definition(self, cls, tag, r):
         if cls.__init__.__code__.co_argcount > 1:
@@ -126,6 +127,7 @@ class wce:
         self.worlddefs = {}
         self.worldtrees = {}
         self.zones = {}
+        self.variationmaterialtags = set()
 
     def parse_definitions(self, current_path:str, r:io.TextIOWrapper):
 

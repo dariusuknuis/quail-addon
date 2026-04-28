@@ -1,11 +1,11 @@
 import re
+from ..common import base_tag
 
 VARIATION_REGEX = re.compile(r'^[A-Z]{3}(CH|FA|FT|HE|HN|LG|MN|TA|TL|UA)\d{4}_MDF$')
 
-def material_tag_parse(tag: str, is_chr=True) -> str:
+def material_tag_parse(tag: str) -> str:
 
-    if not is_chr:
-        return ""
+    tag = base_tag(tag)
 
     if len(tag) >= 5 and tag.startswith("CLK"):
         if tag[3:5].isdigit():
