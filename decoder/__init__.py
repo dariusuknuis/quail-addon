@@ -42,6 +42,17 @@ def find_assets_root(start_path: str) -> str | None:
 
         current = parent
 
+def ensure_material_fake_users():
+
+    for mat in bpy.data.materials:
+
+        if mat.get("quaildef") != "materialdefinition":
+            continue
+
+        # If nothing is using it, preserve it
+        if mat.users == 0:
+            mat.use_fake_user = True
+
 def wce_decode(path: str):
 
     state.QUAIL_UPDATING = True
@@ -190,5 +201,7 @@ def wce_decode(path: str):
         err = decode_eqganidef(ctx, eqgani)
         if err:
             error(err)
+
+    ensure_material_fake_users()
 
     state.QUAIL_UPDATING = False

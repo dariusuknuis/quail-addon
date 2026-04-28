@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from ..wce.wce import wce
 from typing import Optional
+from ..common.s3dmaterial import material_tag_parse
 from .worlddef import encode_worlddef
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
@@ -16,6 +17,8 @@ from .simplespritedef import encode_simplespritedef
 from ..logger.error import error
 from .context import Context
 import os, shutil
+
+
 
 def write_animation_folder(parser, root_path):
 
@@ -360,6 +363,7 @@ def gather_export_tracks(export_objects):
 def gather_export_objects(root_objects):
     visited = set()
     stack = list(root_objects)
+    palette_material_tags = set()
 
     def add(obj):
         if obj and obj not in visited:
@@ -416,6 +420,7 @@ def gather_export_objects(root_objects):
                 # MATERIALDEFINITION
                 # ----------------------------------------
                 if mat.get("quaildef") == "materialdefinition":
+                    palette_material_tags.add(mat.name)
 
                     mprops = mat.quail_materialdefinition
                     sprite_tag = mprops.simplespritetag
