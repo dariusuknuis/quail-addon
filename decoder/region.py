@@ -79,10 +79,18 @@ def decode_region(ctx: Context, reg: region) -> str:
         node.fronttree = vn.fronttree
         node.backtree = vn.backtree
 
-    # ------------------------------------------------
-    # Parenting / linking
-    # ------------------------------------------------
     obj.parent = ctx.parent
-    ctx.collection.objects.link(obj)
+
+    # ----------------------------------------
+    # Prefer REGIONS collection if it exists
+    # ----------------------------------------
+    target_collection = None
+
+    if hasattr(ctx, "region_collection") and ctx.region_collection:
+        target_collection = ctx.region_collection
+    else:
+        target_collection = ctx.collection
+
+    target_collection.objects.link(obj)
 
     return ""

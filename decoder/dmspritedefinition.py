@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
+from ..common.region import is_region_mesh, is_zone_collection
 from ..wce.wce import wce
 from ..wce.dmspritedefinition import dmspritedefinition
 from .context import Context
@@ -29,7 +30,16 @@ def find_hsprite_for_mesh(parser, mesh_name):
 def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
-    ctx.collection.objects.link(obj)
+    # Decide target collection
+    target_collection = ctx.collection
+
+    if is_region_mesh(sprite.tag) and is_zone_collection(ctx.collection):
+        region_mesh_collection = getattr(ctx, "region_mesh_collection", None)
+
+        if region_mesh_collection:
+            target_collection = region_mesh_collection
+
+    target_collection.objects.link(obj)
     obj['quaildef'] = 'dmspritedefinition'
 
     obj.parent = ctx.parent

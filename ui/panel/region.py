@@ -3,14 +3,58 @@
 import bpy
 from bpy.props import FloatProperty, BoolProperty, IntProperty, StringProperty, CollectionProperty, PointerProperty
 
+class QUAIL_OT_select_none_regions(bpy.types.Operator):
+    bl_idname = "quail.select_none_regions"
+    bl_label = "Select None"
+
+    def execute(self, context):
+        props = context.object.quail_region
+        for vis in props.vislists:
+            for item in vis.visible_regions:
+                item.selected = False
+        return {'FINISHED'}
+
+class QUAIL_OT_select_all_regions(bpy.types.Operator):
+    bl_idname = "quail.select_all_regions"
+    bl_label = "Select All"
+
+    def execute(self, context):
+        props = context.object.quail_region
+        for vis in props.vislists:
+            for item in vis.visible_regions:
+                item.selected = True
+        return {'FINISHED'}
+
+class QUAIL_OT_select_visible_regions(bpy.types.Operator):
+    bl_idname = "quail.select_visible_regions"
+    bl_label = "Select Visible Regions"
+
+    def execute(self, context):
+        obj = context.object
+        props = obj.quail_region
+
+        # Deselect everything first
+        for o in context.view_layer.objects:
+            o.select_set(False)
+
+        for vis in props.vislists:
+            for item in vis.visible_regions:
+                if item.selected and item.region:
+                    item.region.select_set(True)
+
+        return {'FINISHED'}
+
 class QUAIL_UL_region_visible(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_propname, index):
 
+        row = layout.row(align=True)
+
         if item.region:
-            layout.prop(item.region, "name", text="", emboss=False)
+            row.prop(item, "selected", text="")
+            row.label(text=item.region.name, icon='OBJECT_DATA')
         else:
-            layout.label(text="(None)")
+            row.label(text="(None)")
 
 class QuailRegionVisibleItem(bpy.types.PropertyGroup):
     region: PointerProperty(
@@ -18,6 +62,8 @@ class QuailRegionVisibleItem(bpy.types.PropertyGroup):
         type=bpy.types.Object,
         poll=lambda self, obj: obj.get("quaildef") == "region"
     )
+
+    selected: BoolProperty(default=False)
 
 # ------------------------------------------------
 # VISLIST ITEM
@@ -183,6 +229,13 @@ def draw_region_in_transform(self, context):
             vis,
             "selected_index"
         )
+
+        row = vbox.row(align=True)
+        row.operator("quail.select_visible_regions", text="Select Checked")
+
+        row = vbox.row(align=True)
+        row.operator("quail.select_all_regions", text="All")
+        row.operator("quail.select_none_regions", text="None")
 
 
 # ------------------------------------------------

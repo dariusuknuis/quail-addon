@@ -5,6 +5,7 @@ import mathutils
 from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
 from ..common.s3dobject import create_bounding_radius_empty, attach_collision_volume, create_bounding_box
+from ..common.region import is_region_mesh, is_zone_collection
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
@@ -27,7 +28,16 @@ def find_hsprite_for_mesh(parser, mesh_name):
 def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh = bpy.data.meshes.new(sprite.tag)
     obj = bpy.data.objects.new(sprite.tag, mesh)
-    ctx.collection.objects.link(obj)
+    # Decide target collection
+    target_collection = ctx.collection
+
+    if is_region_mesh(sprite.tag) and is_zone_collection(ctx.collection):
+        region_mesh_collection = getattr(ctx, "region_mesh_collection", None)
+
+        if region_mesh_collection:
+            target_collection = region_mesh_collection
+
+    target_collection.objects.link(obj)
     obj['quaildef'] = 'dmspritedef2'
 
     obj.parent = ctx.parent
@@ -303,7 +313,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     create_bounding_radius_empty(
         parent_obj=obj,
         radius=sprite.boundingradius,
-        collection=ctx.collection
+        collection=target_collection
     )
 
     # ------------------------------------------------

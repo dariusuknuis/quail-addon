@@ -1,4 +1,17 @@
-import bpy
+import bpy, re
+
+REGION_MESH_PATTERN = re.compile(r"^R\d+_DMSPRITEDEF")
+
+def is_region_mesh(tag: str) -> bool:
+    return bool(REGION_MESH_PATTERN.match(tag))
+
+
+def is_zone_collection(collection) -> bool:
+    if not collection:
+        return False
+
+    props = getattr(collection, "quail_worlddef", None)
+    return bool(props and props.zone)
 
 def decode_vislist_to_indices(vislistbytes, ranges):
     regions = []
@@ -45,12 +58,13 @@ def decode_vislist_to_indices(vislistbytes, ranges):
                     current += 1
                 i += 2
 
+            i += 1
+
         else:
             idx = (ranges[i+1] << 8) | ranges[i]
             regions.append(idx + 1)
-            i += 1
-
-        i += 1
+            i += 2
+            continue
 
     return regions
 
@@ -71,7 +85,9 @@ def resolve_region_visibility():
 
             # convert string → ints
             try:
-                ranges = [int(x) for x in vis.range.split()]
+                parts = [int(x) for x in vis.range.split()]
+                num_ranges = parts[0]
+                ranges = parts[1:]
             except:
                 continue
 
