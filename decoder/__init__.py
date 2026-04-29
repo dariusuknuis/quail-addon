@@ -10,6 +10,7 @@ from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
 from .polyhedrondefinition import decode_polyhedrondefinition
+from .region import decode_region
 from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
 from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations
@@ -20,6 +21,7 @@ from .eqganidef import decode_eqganidef
 from ..logger.error import error
 from .context import Context
 from ..common import state
+from ..common.region import resolve_region_visibility
 import os
 
 def find_assets_root(start_path: str) -> str | None:
@@ -143,6 +145,16 @@ def wce_decode(path: str):
         err = decode_dmspritedef2(ctx, dmspritedef2)
         if err:
             error(err)
+
+    for _, region in parser.regions.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_region(ctx, region)
+        if err:
+            error(err)
+
+    resolve_region_visibility()
 
     for _, trackdef in parser.trackdefinitions.items():
         ctx.collection = base_collection

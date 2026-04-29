@@ -8,27 +8,27 @@ class region:
 		return "REGION"
 
 	tag:str
-	reverbvolume:float
-	reverboffset:int
+	reverbvolume:float | None
+	reverboffset:int | None
 	regionfog:int
 	gourand2:int
 	encodedvisibility:int
 	vislistbytes:int
-	sphere:tuple[float, float, float, float]
+	sphere:tuple[float, float, float, float] | None
 	userdata:str
-	sprite:str
+	sprite:str | None
 
 	def __init__(self):
 		self.tag = ""
-		self.reverbvolume = 0.0 #2
-		self.reverboffset = 0 #2
+		self.reverbvolume = None #2
+		self.reverboffset = None #2
 		self.regionfog = 0 #2
 		self.gourand2 = 0 #2
 		self.encodedvisibility = 0 #2
 		self.vislistbytes = 0 #2
-		self.sphere = (0.0, 0.0, 0.0, 0.0) #2
+		self.sphere = None #2
 		self.userdata = "" #2
-		self.sprite = "" #2
+		self.sprite = None #2
 		self.regionvertexs = []
 		self.rendervertices = []
 		self.walls = []
@@ -111,10 +111,10 @@ class region:
 		if r is None:
 			return "no reader provided"
 
-		records = property(r, "REVERBVOLUME", 1)
-		self.reverbvolume = float(records[1])
-		records = property(r, "REVERBOFFSET", 1)
-		self.reverboffset = int(records[1])
+		records = property(r, "REVERBVOLUME?", 1)
+		self.reverbvolume = float(records[1]) if records[1] != "NULL" else None
+		records = property(r, "REVERBOFFSET?", 1)
+		self.reverboffset = int(records[1]) if records[1] != "NULL" else None
 		records = property(r, "REGIONFOG", 1)
 		self.regionfog = int(records[1])
 		records = property(r, "GOURAND2", 1)
@@ -232,18 +232,18 @@ class region:
 			vislisti.range = records[1:]
 
 			self.visiblelists.append(vislisti)
-		records = property(r, "SPHERE", 4)
-		self.sphere = (float(records[1]), float(records[2]), float(records[3]), float(records[4]))
+		records = property(r, "SPHERE?", 4)
+		self.sphere = None if records[1] == "NULL" else (float(records[1]), float(records[2]), float(records[3]), float(records[4]))
 		records = property(r, "USERDATA", 1)
 		self.userdata = str(records[1])
-		records = property(r, "SPRITE", 1)
-		self.sprite = str(records[1])
+		records = property(r, "SPRITE?", 1)
+		self.sprite = str(records[1]) if records[1] != "NULL" else None
 		return ""
 
 	def write(self, w:io.TextIOWrapper)->str:
 		w.write(f"{self.definition()} \"{self.tag}\"\n")
-		w.write(f"\tREVERBVOLUME {format(self.reverbvolume, '.8e')}\n")
-		w.write(f"\tREVERBOFFSET {self.reverboffset}\n")
+		w.write(f"\tREVERBVOLUME? {('NULL' if self.reverbvolume is None else format(self.reverbvolume, '.8e'))}\n")
+		w.write(f"\tREVERBOFFSET? {('NULL' if self.reverboffset is None else self.reverboffset)}\n")
 		w.write(f"\tREGIONFOG {self.regionfog}\n")
 		w.write(f"\tGOURAND2 {self.gourand2}\n")
 		w.write(f"\tENCODEDVISIBILITY {self.encodedvisibility}\n")
@@ -287,8 +287,9 @@ class region:
 		for vislisti in self.visiblelists:
 			w.write(f"\t\tVISLIST\n")
 			w.write(f"\t\tRANGE {' '.join(vislisti.range)}\n")
-		w.write(f"\tSPHERE {format(self.sphere[0], '.8e')} {format(self.sphere[1], '.8e')} {format(self.sphere[2], '.8e')} {format(self.sphere[3], '.8e')}\n")
+		w.write(f"\tSPHERE? {('NULL' if self.sphere is None else format(self.sphere[0], '.8e'))} {('NULL' if self.sphere is None else format(self.sphere[1], '.8e'))} {('NULL' if self.sphere is None else format(self.sphere[2], '.8e'))} {('NULL' if self.sphere is None else format(self.sphere[3], '.8e'))}\n")
 		w.write(f"\tUSERDATA \"{self.userdata}\"\n")
-		w.write(f"\tSPRITE \"{self.sprite}\"\n")
+		if self.sprite is None: w.write("\tSPRITE? NULL\n")
+		else: w.write(f"\tSPRITE? \"{self.sprite}\"\n")
 		return ""
 

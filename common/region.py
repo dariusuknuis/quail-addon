@@ -1,0 +1,91 @@
+import bpy
+
+def decode_vislist_to_indices(vislistbytes, ranges):
+    regions = []
+    current = 1
+
+    i = 0
+    while i < len(ranges):
+        b = ranges[i]
+
+        if vislistbytes:
+            if b <= 0x3E:
+                current += b
+
+            elif b == 0x3F:
+                count = (ranges[i+2] << 8) | ranges[i+1]
+                current += count
+                i += 2
+
+            elif 0x40 <= b <= 0x7F:
+                skip = (b & 0b00111000) >> 3
+                take = b & 0b00000111
+                current += skip
+                for _ in range(take):
+                    regions.append(current)
+                    current += 1
+
+            elif 0x80 <= b <= 0xBF:
+                take = (b & 0b00111000) >> 3
+                for _ in range(take):
+                    regions.append(current)
+                    current += 1
+                current += (b & 0b00000111)
+
+            elif 0xC0 <= b <= 0xFE:
+                take = b - 0xC0
+                for _ in range(take):
+                    regions.append(current)
+                    current += 1
+
+            elif b == 0xFF:
+                count = (ranges[i+2] << 8) | ranges[i+1]
+                for _ in range(count):
+                    regions.append(current)
+                    current += 1
+                i += 2
+
+        else:
+            idx = (ranges[i+1] << 8) | ranges[i]
+            regions.append(idx + 1)
+            i += 1
+
+        i += 1
+
+    return regions
+
+def resolve_region_visibility():
+
+    region_objs = [
+        o for o in bpy.data.objects
+        if o.get("quaildef") == "region"
+    ]
+
+    for obj in region_objs:
+        props = obj.quail_region
+
+        for vis in props.vislists:
+
+            if not vis.range:
+                continue
+
+            # convert string → ints
+            try:
+                ranges = [int(x) for x in vis.range.split()]
+            except:
+                continue
+
+            indices = decode_vislist_to_indices(
+                props.vislistbytes,
+                ranges
+            )
+
+            # clear
+            while len(vis.visible_regions) > 0:
+                vis.visible_regions.remove(0)
+
+            # assign references
+            for idx in indices:
+                if 0 <= idx - 1 < len(region_objs):
+                    ref = vis.visible_regions.add()
+                    ref.region = region_objs[idx - 1]
