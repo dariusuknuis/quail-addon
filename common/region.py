@@ -2,6 +2,77 @@ import bpy, re
 
 REGION_MESH_PATTERN = re.compile(r"^R\d+_DMSPRITEDEF")
 
+def encode_raw_pairs(indices):
+    data = []
+    for rid in indices:
+        idx0 = rid - 1  # convert to 0-based
+        data.append(idx0 & 0xFF)
+        data.append((idx0 >> 8) & 0xFF)
+    return data
+
+def encode_vislist(regions):
+    """Run-length encode a sorted 1-based region list into compact bytes."""
+    if not regions:
+        return []
+    max_reg = regions[-1]
+    groups = []
+    cur = 1
+    start = 1
+    vis = (regions[0] == 1)
+    while cur <= max_reg:
+        is_vis = cur in regions
+        if is_vis != vis:
+            groups.append((vis, cur - start))
+            vis = is_vis
+            start = cur
+        cur += 1
+    groups.append((vis, cur - start))
+
+    out = []
+    i = 0
+    while i < len(groups):
+        vis_flag, cnt = groups[i]
+        nxt = groups[i+1] if i+1 < len(groups) else (None, None)
+        if vis_flag:
+            # visible run
+            if nxt[0] is False and cnt <= 7 and nxt[1] <= 7:
+                out.append(0x80 | (cnt << 3) | nxt[1])
+                i += 2
+                continue
+            elif cnt <= 62:
+                out.append(0xC0 + cnt)
+            else:
+                out.extend([0xFF, cnt & 0xFF, (cnt >> 8) & 0xFF])
+        else:
+            # invisible run
+            if nxt[0] is True and cnt <= 7 and nxt[1] <= 7:
+                out.append(0x40 | (cnt << 3) | nxt[1])
+                i += 2
+                continue
+            elif cnt <= 62:
+                out.append(cnt)
+            else:
+                out.extend([0x3F, cnt & 0xFF, (cnt >> 8) & 0xFF])
+        i += 1
+    return out
+
+def get_region_indices(vis):
+    indices = []
+
+    for item in vis.visible_regions:
+        if not item.region:
+            continue
+
+        name = item.region.name
+        if name.startswith("R"):
+            try:
+                idx = int(name[1:])
+                indices.append(idx)
+            except:
+                pass
+
+    return sorted(set(indices))
+
 def is_region_mesh(tag: str) -> bool:
     return bool(REGION_MESH_PATTERN.match(tag))
 
@@ -13,7 +84,7 @@ def is_zone_collection(collection) -> bool:
     props = getattr(collection, "quail_worlddef", None)
     return bool(props and props.zone)
 
-def decode_vislist_to_indices(vislistbytes, ranges):
+def decode_vislist(vislistbytes, ranges):
     regions = []
     current = 1
 
@@ -91,7 +162,7 @@ def resolve_region_visibility():
             except:
                 continue
 
-            indices = decode_vislist_to_indices(
+            indices = decode_vislist(
                 props.vislistbytes,
                 ranges
             )

@@ -10,6 +10,7 @@ from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
 from .polyhedrondefinition import decode_polyhedrondefinition
+from .worldtree import decode_worldtree
 from .region import decode_region
 from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
@@ -155,6 +156,14 @@ def wce_decode(path: str):
             error(err)
 
     resolve_region_visibility()
+
+    for _, worldtree in parser.worldtrees.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_worldtree(ctx, worldtree)
+        if err:
+            error(err)
 
     for _, trackdef in parser.trackdefinitions.items():
         ctx.collection = base_collection

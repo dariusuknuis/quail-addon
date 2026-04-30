@@ -2,6 +2,110 @@
 
 import bpy
 from bpy.props import FloatProperty, BoolProperty, IntProperty, StringProperty, CollectionProperty, PointerProperty
+from ...common.region import encode_vislist
+
+def update_region_sphere(self, context):
+    obj = context.object
+
+    if not obj or obj.get("quaildef") != "region":
+        return
+
+    props = obj.quail_region
+
+    if not props.has_sphere:
+        return
+
+    # Update position
+    obj.location = (
+        props.sphere_x,
+        props.sphere_y,
+        props.sphere_z
+    )
+
+    # Update radius (visual size)
+    obj.empty_display_size = props.sphere_r
+
+def rebuild_vislist_range(obj):
+    props = obj.quail_region
+
+    for vis in props.vislists:
+        indices = []
+
+        # collect indices from region names
+        for item in vis.visible_regions:
+            if not item.region:
+                continue
+            name = item.region.name
+            if name.startswith("R"):
+                try:
+                    idx = int(name[1:])
+                    indices.append(idx)
+                except:
+                    pass
+
+        indices = sorted(set(indices))
+
+        # encode
+        if props.vislistbytes:
+            data = encode_vislist(indices)
+        else:
+            data = []
+            for rid in indices:
+                idx0 = rid - 1
+                data.append(idx0 & 0xFF)
+                data.append((idx0 >> 8) & 0xFF)
+
+        # rebuild RANGE string (with count)
+        full = [len(data)] + data
+        vis.range = " ".join(str(x) for x in full)
+
+class QUAIL_OT_remove_selected_from_vislist(bpy.types.Operator):
+    bl_idname = "quail.remove_selected_from_vislist"
+    bl_label = "Remove Selected Regions"
+
+    def execute(self, context):
+        obj = context.object
+        props = obj.quail_region
+
+        vis = props.vislists[0]
+
+        selected_set = set(context.selected_objects)
+
+        i = 0
+        while i < len(vis.visible_regions):
+            item = vis.visible_regions[i]
+            if item.region in selected_set:
+                vis.visible_regions.remove(i)
+            else:
+                i += 1
+
+        rebuild_vislist_range(obj)
+
+        return {'FINISHED'}
+
+class QUAIL_OT_add_selected_to_vislist(bpy.types.Operator):
+    bl_idname = "quail.add_selected_to_vislist"
+    bl_label = "Add Selected Regions"
+
+    def execute(self, context):
+        obj = context.object
+        props = obj.quail_region
+
+        vis = props.vislists[0]
+
+        existing = {item.region for item in vis.visible_regions}
+
+        for o in context.selected_objects:
+            if o.get("quaildef") != "region":
+                continue
+
+            if o not in existing:
+                item = vis.visible_regions.add()
+                item.region = o
+
+        rebuild_vislist_range(obj)
+
+        return {'FINISHED'}
 
 class QUAIL_OT_select_none_regions(bpy.types.Operator):
     bl_idname = "quail.select_none_regions"
@@ -96,21 +200,21 @@ class QuailRegionProperties(bpy.types.PropertyGroup):
     # -------------------------
     # Sphere (optional)
     # -------------------------
-    has_sphere: BoolProperty(name="Has Sphere", default=False)
+    has_sphere: BoolProperty(name="Sphere", default=False)
 
-    sphere_x: FloatProperty(name="X", default=0.0)
-    sphere_y: FloatProperty(name="Y", default=0.0)
-    sphere_z: FloatProperty(name="Z", default=0.0)
-    sphere_r: FloatProperty(name="Radius", default=0.0)
+    sphere_x: FloatProperty(name="X", default=0.0, update=update_region_sphere)
+    sphere_y: FloatProperty(name="Y", default=0.0, update=update_region_sphere)
+    sphere_z: FloatProperty(name="Z", default=0.0, update=update_region_sphere)
+    sphere_r: FloatProperty(name="Radius", default=0.0, update=update_region_sphere)
 
     # -------------------------
     # Reverb (optional)
     # -------------------------
-    has_reverbvolume: BoolProperty(name="Has Reverb Volume", default=False)
-    reverbvolume: FloatProperty(name="Reverb Volume", default=0.0)
+    has_reverbvolume: BoolProperty(name="Reverb Volume", default=False)
+    reverbvolume: FloatProperty(default=0.0)
 
-    has_reverboffset: BoolProperty(name="Has Reverb Offset", default=False)
-    reverboffset: IntProperty(name="Reverb Offset", default=0)
+    has_reverboffset: BoolProperty(name="Reverb Offset", default=False)
+    reverboffset: IntProperty(default=0)
 
     # -------------------------
     # Flags
@@ -123,8 +227,8 @@ class QuailRegionProperties(bpy.types.PropertyGroup):
     # -------------------------
     # Sprite (optional)
     # -------------------------
-    has_sprite: BoolProperty(name="Has Sprite", default=False)
-    sprite: StringProperty(name="Sprite", default="")
+    has_sprite: BoolProperty(name="Sprite", default=False)
+    sprite: StringProperty(default="")
 
     # -------------------------
     userdata: StringProperty(name="User Data", default="")
@@ -237,6 +341,9 @@ def draw_region_in_transform(self, context):
         row.operator("quail.select_all_regions", text="All")
         row.operator("quail.select_none_regions", text="None")
 
+        row = vbox.row(align=True)
+        row.operator("quail.add_selected_to_vislist", text="Add Selected")
+        row.operator("quail.remove_selected_from_vislist", text="Remove Selected")
 
 # ------------------------------------------------
 # REGISTER

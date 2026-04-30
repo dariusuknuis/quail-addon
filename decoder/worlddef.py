@@ -72,6 +72,23 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
             ctx.region_mesh_collection = region_mesh_collection
 
         # ----------------------------------------
+        # WORLDTREE collection
+        # ----------------------------------------
+
+        if len(ctx.parser.worldtrees) > 0:
+
+            worldtree_collection = col.children.get("WORLDTREE")
+
+            if not worldtree_collection:
+                worldtree_collection = bpy.data.collections.new("WORLDTREE")
+                col.children.link(worldtree_collection)
+
+            ctx.worldtree_collection = worldtree_collection
+            (next((lc for lc in bpy.context.view_layer.layer_collection.children
+                for lc in [lc] + list(lc.children)
+                if lc.collection == worldtree_collection), None)).hide_viewport = True
+
+        # ----------------------------------------
         # Set 3D View clip distance
         # ----------------------------------------
         for window in bpy.context.window_manager.windows:
