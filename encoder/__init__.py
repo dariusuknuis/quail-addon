@@ -7,6 +7,8 @@ from typing import Optional
 from ..common import base_tag
 from ..common.s3dmaterial import material_tag_parse
 from .worlddef import encode_worlddef
+from .worldtree import encode_worldtree
+from .region import encode_region
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .track import encode_track
@@ -17,9 +19,11 @@ from .materialdefinition import encode_materialdefinition
 from .simplespritedef import encode_simplespritedef
 from ..logger.error import error
 from .context import Context
-import os, shutil
+import os, shutil, re
 
-
+def extract_r_index(tag: str):
+    m = re.match(r"R(\d+)", tag.upper())
+    return int(m.group(1)) if m else 0
 
 def write_animation_folder(parser, root_path):
     # ----------------------------------------
@@ -349,9 +353,124 @@ def export_simplesprite_images(export_objects, assets_dir):
                 except Exception as e:
                     print(f"ERROR exporting image {filename}: {e}")
 
+def write_zone_folder(parser, export_objects, root_path):
+
+    print("Writing ZONE structure:", root_path)
+
+    os.makedirs(root_path, exist_ok=True)
+
+    # ----------------------------------------
+    # ASSETS
+    # ----------------------------------------
+    assets_dir = os.path.join(root_path, "assets")
+    os.makedirs(assets_dir, exist_ok=True)
+    export_simplesprite_images(export_objects, assets_dir)
+
+    # ----------------------------------------
+    # WORLD.WCE (same as before)
+    # ----------------------------------------
+    write_world_wce(parser, root_path)
+
+    # ========================================
+    # ZONE FOLDER (worldtree goes here)
+    # ========================================
+    zone_dir = os.path.join(root_path, "zone")
+    os.makedirs(zone_dir, exist_ok=True)
+
+    zone_path = os.path.join(zone_dir, "zone.wce")
+
+    with open(zone_path, "w") as w:
+        w.write("// ZONE\n\n")
+
+        # worldtree
+        for wt in parser.worldtrees.values():
+            wt.write(w)
+            w.write("\n")
+
+    # zone/_root.wce
+    with open(os.path.join(zone_dir, "_root.wce"), "w") as w:
+        w.write('INCLUDE "ZONE.WCE"\n')
+
+    # ========================================
+    # REGION FOLDER (materials + regions)
+    # ========================================
+    region_dir = os.path.join(root_path, "region")
+    os.makedirs(region_dir, exist_ok=True)
+
+    region_path = os.path.join(region_dir, "region.wce")
+
+    with open(region_path, "w") as w:
+        w.write("// REGION\n\n")
+
+        # materials + sprites
+        write_materials_and_sprites(parser, w, region_dir)
+
+        # material palettes
+        for obj in parser.materialpalettes.values():
+            obj.write(w)
+            w.write("\n")
+
+        # regions
+        for obj in parser.regions.values():
+            obj.write(w)
+            w.write("\n")
+
+    # ========================================
+    # Rxxxx FILES (chunked DMSPRITEDEFs)
+    # ========================================
+    dms = sorted(
+        list(parser.dmspritedef2s.values()) +
+        list(parser.dmspritedefinitions.values()),
+        key=lambda x: extract_r_index(x.tag)
+    )
+
+    chunk_size = 1000
+    r_files = []
+
+    for i in range(0, len(dms), chunk_size):
+        chunk = dms[i:i + chunk_size]
+
+        index = i + chunk_size
+        filename = f"r{index}.wce"
+        filepath = os.path.join(region_dir, filename)
+
+        with open(filepath, "w") as w:
+            w.write("// DMSPRITES\n\n")
+
+            for obj in chunk:
+                obj.write(w)
+                w.write("\n")
+
+        r_files.append(filename)
+
+    # ========================================
+    # region/_root.wce
+    # ========================================
+    with open(os.path.join(region_dir, "_root.wce"), "w") as w:
+        w.write('INCLUDE "REGION.WCE"\n')
+
+        for f in sorted(r_files):
+            w.write(f'INCLUDE "{f.upper()}"\n')
+
+    # ========================================
+    # ROOT _root.wce
+    # ========================================
+    root_file = os.path.join(root_path, "_root.wce")
+
+    with open(root_file, "w") as w:
+
+        w.write('INCLUDE "WORLD.WCE"\n')
+        w.write('INCLUDE "ZONE/_ROOT.WCE"\n')
+        w.write('INCLUDE "REGION/_ROOT.WCE"\n')
+
+    return ""
+
 def write_quail_folder(parser, export_objects, root_path):
 
     print("Writing quail folder:", root_path)
+
+    if parser.worlddef and parser.worlddef.zone:
+        return write_zone_folder(parser, export_objects, root_path)
 
     os.makedirs(root_path, exist_ok=True)
 
@@ -463,6 +582,13 @@ def gather_export_tracks(export_objects):
 def gather_export_objects(root_objects, parser):
     visited = set()
     stack = list(root_objects)
+
+    for col in bpy.data.collections:
+        if col.name == "WORLDTREE":
+            for obj in col.objects:
+                if obj.get("quaildef") == "worldnode":
+                    stack.append(obj)
+
     palette_material_tags = set()
     parser.variationmaterialtags.clear()
 
@@ -489,6 +615,30 @@ def gather_export_objects(root_objects, parser):
         # Safe quaildef access
         # ----------------------------------------
         qdef = obj.get("quaildef") if hasattr(obj, "get") else None
+
+        # ========================================
+        # WORLDNODE → REGION
+        # ========================================
+        if qdef == "worldnode":
+            props = obj.quail_worldnode
+
+            if props.region_tag:
+                region_obj = bpy.data.objects.get(props.region_tag)
+
+                if region_obj:
+                    add(region_obj)
+
+        # ========================================
+        # REGION → DMSPRITE
+        # ========================================
+        elif qdef == "region":
+            props = obj.quail_region
+
+            if props.sprite:
+                sprite_obj = bpy.data.objects.get(props.sprite)
+
+                if sprite_obj:
+                    add(sprite_obj)
 
         # ----------------------------------------
         # DMSPRITE → MATERIALPALETTE
@@ -644,6 +794,35 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
             errors.append(err)
 
     # ------------------------------------------------
+    # Find WORLDTREE
+    # ------------------------------------------------
+
+    worldtree_collection = None
+
+    # check active collection first
+    if context.collection and context.collection.name == "WORLDTREE":
+        worldtree_collection = context.collection
+
+    # otherwise search children of selected collection
+    elif context.collection:
+        for child in context.collection.children:
+            if child.name == "WORLDTREE":
+                worldtree_collection = child
+                break
+
+    worldtrees = []
+
+    if worldtree_collection:
+
+        worldnodes = [
+            obj for obj in worldtree_collection.objects
+            if obj.get("quaildef") == "worldnode"
+        ]
+
+        if worldnodes:
+            worldtrees.append((worldtree_collection, worldnodes))
+
+    # ------------------------------------------------
     # Gather Blender objects by type (FILTERED SET)
     # ------------------------------------------------
     actordefs = []
@@ -653,6 +832,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     polyhedrons = []
     dmsprite_defs = []
     dmsprite2_defs = []
+    regions = []
     tracks = []
     hierarchicalsprites = []
     eqgmodels = []
@@ -671,6 +851,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "hierarchicalspritedef":
             hierarchicalsprites.append(obj)
+
+        elif qdef == "region":
+            regions.append(obj)
 
         elif qdef == "dmspritedefinition":
             dmsprite_defs.append(obj)
@@ -716,6 +899,16 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     err = encode_track(parser, export_actions, context)
     if err:
         errors.append(err)
+
+    for col, nodes in worldtrees:
+        err = encode_worldtree(parser, col, nodes)
+        if err:
+            errors.append(err)
+
+    for obj in regions:
+        err = encode_region(parser, obj)
+        if err:
+            errors.append(err)
 
 
     # for obj in dmsprite_defs:

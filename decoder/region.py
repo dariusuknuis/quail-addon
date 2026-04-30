@@ -5,7 +5,6 @@ import mathutils
 from .context import Context
 from ..wce.region import region
 
-
 def decode_region(ctx: Context, reg: region) -> str:
 
     # ------------------------------------------------

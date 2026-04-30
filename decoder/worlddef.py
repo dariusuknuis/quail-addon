@@ -1,8 +1,7 @@
 import bpy
-import re
 from .context import Context
 from ..wce.worlddef import worlddef
-from ..common.region import is_region_mesh
+from ..common.region import is_region_mesh, create_world_bounds_from_regions
 
 
 def decode_worlddef(ctx: Context, wd: worlddef) -> str:
@@ -34,6 +33,10 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
     # ZONE LOGIC
     # ========================================
     if props.zone:
+
+        # Create region bounding empty
+
+        create_world_bounds_from_regions(ctx, ctx.parser)
 
         # ----------------------------------------
         # REGIONS collection

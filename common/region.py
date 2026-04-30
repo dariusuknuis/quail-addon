@@ -1,6 +1,60 @@
-import bpy, re
+import bpy, re, mathutils
 
 REGION_MESH_PATTERN = re.compile(r"^R\d+_DMSPRITEDEF")
+
+def create_world_bounds_from_regions(ctx, parser):
+
+    regions = list(parser.regions.values())
+
+    if not regions:
+        print("No regions found.")
+        return None
+
+    # Only regions with spheres
+    spheres = [r.sphere for r in regions if r.sphere is not None]
+
+    if not spheres:
+        print("No region spheres found.")
+        return None
+
+    # ----------------------------------------
+    # Compute bounds
+    # ----------------------------------------
+    min_x = min(s[0] - s[3] for s in spheres)
+    max_x = max(s[0] + s[3] for s in spheres)
+
+    min_y = min(s[1] - s[3] for s in spheres)
+    max_y = max(s[1] + s[3] for s in spheres)
+
+    min_z = min(s[2] - s[3] for s in spheres)
+    max_z = max(s[2] + s[3] for s in spheres)
+
+    center = mathutils.Vector((
+        (min_x + max_x) / 2,
+        (min_y + max_y) / 2,
+        (min_z + max_z) / 2
+    ))
+
+    extent_x = (max_x - min_x) / 2
+    extent_y = (max_y - min_y) / 2
+    extent_z = (max_z - min_z) / 2
+
+    # ----------------------------------------
+    # Create bounding empty
+    # ----------------------------------------
+    obj = bpy.data.objects.new("WORLD_BOUNDS", None)
+    obj["quaildef"] = "worldbounds"
+
+    obj.empty_display_type = 'CUBE'
+    obj.location = center
+    obj.empty_display_size = 1.0
+    obj.scale = (extent_x, extent_y, extent_z)
+
+    ctx.collection.objects.link(obj)
+
+    print(f"Created WORLD_BOUNDS at {center} scale {obj.scale}")
+
+    return obj
 
 def encode_raw_pairs(indices):
     data = []
