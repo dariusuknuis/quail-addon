@@ -7,6 +7,7 @@ from typing import Optional
 from ..common import base_tag
 from ..common.s3dmaterial import material_tag_parse
 from .worlddef import encode_worlddef
+from .globalambientlightdef import encode_globalambientlightdef
 from .worldtree import encode_worldtree
 from .region import encode_region
 from .actordef import encode_actordef
@@ -282,6 +283,31 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
 
         w.write(f"INCLUDE \"{model_name.upper()}.WCE\"\n")
 
+def write_ambientlightdef(w, parser):
+
+    regions = sorted(
+        parser.regions.values(),
+        key=lambda x: extract_r_index(x.tag)
+    )
+
+    count = len(regions)
+
+    region_indices = " ".join(str(i) for i in range(count))
+
+    w.write('AMBIENTLIGHT "DEFAULT_AMBIENTLIGHT"\n')
+    w.write('\tLIGHT "DEFAULT_LIGHTDEF"\n')
+    w.write('\t// LIGHTFLAGS 0\n')
+    w.write(f'\tREGIONLIST {count} {region_indices}\n\n')
+
+    w.write('LIGHTDEFINITION "DEFAULT_LIGHTDEF"\n')
+    w.write('\tCURRENTFRAME? NULL\n')
+    w.write('\tNUMFRAMES 1\n')
+    w.write('\t\tLIGHTLEVELS 1.00000000e+00\n')
+    w.write('\tSLEEP? NULL\n')
+    w.write('\tHAVESKIPFRAMES 1\n')
+    w.write('\tSKIPFRAMES 0\n')
+    w.write('\tNUMCOLORS 0\n\n')
+
 def write_world_wce(parser, root_path):
 
     world_path = os.path.join(root_path, "world.wce")
@@ -367,13 +393,13 @@ def write_zone_folder(parser, export_objects, root_path):
     export_simplesprite_images(export_objects, assets_dir)
 
     # ----------------------------------------
-    # WORLD.WCE (same as before)
+    # WORLD.WCE
     # ----------------------------------------
     write_world_wce(parser, root_path)
 
-    # ========================================
-    # ZONE FOLDER (worldtree goes here)
-    # ========================================
+    # ----------------------------------------
+    # ZONE FOLDER
+    # ----------------------------------------
     zone_dir = os.path.join(root_path, "zone")
     os.makedirs(zone_dir, exist_ok=True)
 
@@ -382,18 +408,22 @@ def write_zone_folder(parser, export_objects, root_path):
     with open(zone_path, "w") as w:
         w.write("// ZONE\n\n")
 
-        # worldtree
+        if parser.globalambientlightdef:
+            parser.globalambientlightdef.write(w)
+            w.write("\n")
+
+        write_ambientlightdef(w, parser)
+
         for wt in parser.worldtrees.values():
             wt.write(w)
             w.write("\n")
 
-    # zone/_root.wce
     with open(os.path.join(zone_dir, "_root.wce"), "w") as w:
         w.write('INCLUDE "ZONE.WCE"\n')
 
-    # ========================================
-    # REGION FOLDER (materials + regions)
-    # ========================================
+    # ----------------------------------------
+    # REGION FOLDER
+    # ----------------------------------------
     region_dir = os.path.join(root_path, "region")
     os.makedirs(region_dir, exist_ok=True)
 
@@ -402,22 +432,24 @@ def write_zone_folder(parser, export_objects, root_path):
     with open(region_path, "w") as w:
         w.write("// REGION\n\n")
 
-        # materials + sprites
         write_materials_and_sprites(parser, w, region_dir)
 
-        # material palettes
         for obj in parser.materialpalettes.values():
             obj.write(w)
             w.write("\n")
 
-        # regions
-        for obj in parser.regions.values():
+        regions_sorted = sorted(
+            parser.regions.values(),
+            key=lambda x: extract_r_index(x.tag)
+        )
+
+        for obj in regions_sorted:
             obj.write(w)
             w.write("\n")
 
-    # ========================================
+    # ----------------------------------------
     # Rxxxx FILES (chunked DMSPRITEDEFs)
-    # ========================================
+    # ----------------------------------------
     dms = sorted(
         list(parser.dmspritedef2s.values()) +
         list(parser.dmspritedefinitions.values()),
@@ -443,18 +475,18 @@ def write_zone_folder(parser, export_objects, root_path):
 
         r_files.append(filename)
 
-    # ========================================
+    # ----------------------------------------
     # region/_root.wce
-    # ========================================
+    # ----------------------------------------
     with open(os.path.join(region_dir, "_root.wce"), "w") as w:
         w.write('INCLUDE "REGION.WCE"\n')
 
         for f in sorted(r_files):
             w.write(f'INCLUDE "{f.upper()}"\n')
 
-    # ========================================
+    # ----------------------------------------
     # ROOT _root.wce
-    # ========================================
+    # ----------------------------------------
     root_file = os.path.join(root_path, "_root.wce")
 
     with open(root_file, "w") as w:
@@ -885,6 +917,10 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     # Encode (order matters!)
     # ------------------------------------------------
+
+    err = encode_globalambientlightdef(parser)
+    if err:
+        errors.append(err)
 
     for obj in actordefs:
         err = encode_actordef(parser, obj)

@@ -5,6 +5,7 @@ import mathutils
 from ..wce.wce import wce
 from typing import Optional
 from .worlddef import decode_worlddef
+from .globalambientlightdef import decode_globalambientlightdef
 from .actordef import decode_actordef
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
@@ -96,6 +97,14 @@ def wce_decode(path: str):
         ctx.parent = base_parent
 
         err = decode_worlddef(ctx, worlddef)
+        if err:
+            error(err)
+
+    for _, globalambientlightdef in parser.globalambientlightdefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_globalambientlightdef(ctx, globalambientlightdef)
         if err:
             error(err)
 

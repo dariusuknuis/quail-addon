@@ -42,6 +42,27 @@ def encode_region(parser, obj) -> str:
     wce_region.sprite = props.sprite if props.has_sprite else None
 
     # ------------------------------------------------
+    # VISNODES
+    # ------------------------------------------------
+    wce_region.visnodes = []
+
+    for vn in props.visnodes:
+        node = region.visnode()
+
+        node.vnormalabcd = (
+            vn.normal_x,
+            vn.normal_y,
+            vn.normal_z,
+            vn.normal_w,
+        )
+
+        node.vislistindex = vn.vislistindex
+        node.fronttree = vn.fronttree
+        node.backtree = vn.backtree
+
+        wce_region.visnodes.append(node)
+
+    # ------------------------------------------------
     # VISLISTS (USE STORED RANGE DIRECTLY)
     # ------------------------------------------------
     wce_region.visiblelists = []
