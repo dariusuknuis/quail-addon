@@ -166,61 +166,154 @@ def attach_collision_volume(parent_obj: bpy.types.Object, poly_tag: str) -> bpy.
 
     return poly_obj
 
-def create_bounding_box(mesh_obj, bounding_box_data):
+def apply_bounding_box_geo(parent_obj, bounds, use_custom=False, visible=False):
 
-    if not mesh_obj or mesh_obj.type != 'MESH':
+    if not bounds:
         return None
 
-    # Skip if all zeros
-    if not any(v != 0 for pair in bounding_box_data for v in pair):
-        return None
+    (min_x, min_y, min_z), (max_x, max_y, max_z) = bounds
 
-    min_x, min_y, min_z = bounding_box_data[0]
-    max_x, max_y, max_z = bounding_box_data[1]
+    name = "QUAIL_BoundingBox"
 
-    # Remove existing box
-    bb_name = f"{mesh_obj.name}_BOUNDINGBOX"
-    existing = bpy.data.objects.get(bb_name)
-    if existing:
-        bpy.data.objects.remove(existing, do_unlink=True)
+    # ------------------------------------------------
+    # Create node group (once)
+    # ------------------------------------------------
+    if name in bpy.data.node_groups:
+        ng = bpy.data.node_groups[name]
+    else:
+        ng = bpy.data.node_groups.new(name, 'GeometryNodeTree')
 
-    # Geometry
-    vertices = [
-        (min_x, min_y, min_z), (max_x, min_y, min_z),
-        (max_x, max_y, min_z), (min_x, max_y, min_z),
-        (min_x, min_y, max_z), (max_x, min_y, max_z),
-        (max_x, max_y, max_z), (min_x, max_y, max_z)
-    ]
+        # Interface
+        ng.interface.new_socket(name="Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+        ng.interface.new_socket(name="Min", in_out='INPUT', socket_type='NodeSocketVector')
+        ng.interface.new_socket(name="Max", in_out='INPUT', socket_type='NodeSocketVector')
+        ng.interface.new_socket(name="UseCustom", in_out='INPUT', socket_type='NodeSocketBool')
+        ng.interface.new_socket(name="Visible", in_out='INPUT', socket_type='NodeSocketBool')
 
-    faces = [
-        (0, 1, 2, 3),
-        (4, 5, 6, 7),
-        (0, 1, 5, 4),
-        (1, 2, 6, 5),
-        (2, 3, 7, 6),
-        (3, 0, 4, 7)
-    ]
+        ng.interface.new_socket(name="Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
 
-    mesh = bpy.data.meshes.new(f"{mesh_obj.name}_BOUNDINGBOX")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
+        nodes = ng.nodes
+        links = ng.links
+        nodes.clear()
 
-    bbox_obj = bpy.data.objects.new(bb_name, mesh)
+        # ------------------------------------------------
+        # Nodes
+        # ------------------------------------------------
+        input_node = nodes.new("NodeGroupInput")
+        output_node = nodes.new("NodeGroupOutput")
 
-    # Your material
-    mat = get_collision_volume_material()
-    if mat:
-        bbox_obj.data.materials.append(mat)
+        bbox = nodes.new("GeometryNodeBoundBox")
 
-    # Link to same collection
-    mesh_obj.users_collection[0].objects.link(bbox_obj)
+        # Switch Custom
+        switch_custom = nodes.new("GeometryNodeSwitch")
+        switch_custom.input_type = 'GEOMETRY'
 
-    # Parent
-    bbox_obj.parent = mesh_obj
+        # Math
+        add = nodes.new("ShaderNodeVectorMath")
+        add.operation = 'ADD'
 
-    bbox_obj.hide_set(True)
+        mul = nodes.new("ShaderNodeVectorMath")
+        mul.operation = 'MULTIPLY'
+        mul.inputs[1].default_value = (0.5, 0.5, 0.5)
 
-    return bbox_obj
+        sub = nodes.new("ShaderNodeVectorMath")
+        sub.operation = 'SUBTRACT'
+
+        # Geometry
+        cube = nodes.new("GeometryNodeMeshCube")
+        transform = nodes.new("GeometryNodeTransform")
+        mesh_to_curve = nodes.new("GeometryNodeMeshToCurve")
+
+        # Visibility switch
+        switch_vis = nodes.new("GeometryNodeSwitch")
+        switch_vis.input_type = 'GEOMETRY'
+
+        join = nodes.new("GeometryNodeJoinGeometry")
+
+        # ------------------------------------------------
+        # Layout
+        # ------------------------------------------------
+        input_node.location = (-1000, 0)
+        bbox.location = (-800, -200)
+
+        switch_custom.location = (-600, 0)
+
+        add.location = (-400, 0)
+        mul.location = (-200, 0)
+        sub.location = (-400, -200)
+
+        cube.location = (0, -200)
+        transform.location = (200, -200)
+        mesh_to_curve.location = (400, -200)
+
+        switch_vis.location = (600, -200)
+        join.location = (800, 0)
+        output_node.location = (1000, 0)
+
+        # ------------------------------------------------
+        # Wiring
+        # ------------------------------------------------
+
+        # Geometry to BoundingBox
+        links.new(input_node.outputs["Geometry"], bbox.inputs[0])
+
+        # UseCustom switch for Min
+        links.new(input_node.outputs["UseCustom"], switch_custom.inputs["Switch"])
+        links.new(bbox.outputs[0], switch_custom.inputs[1])  # False
+        links.new(transform.outputs["Geometry"], switch_custom.inputs[2])  # True
+
+        # center = (min + max) * 0.5
+        links.new(input_node.outputs["Min"], add.inputs[0])
+        links.new(input_node.outputs["Max"], add.inputs[1])
+        links.new(add.outputs[0], mul.inputs[0])
+
+        # size = max - min
+        links.new(input_node.outputs["Max"], sub.inputs[0])
+        links.new(input_node.outputs["Min"], sub.inputs[1])
+
+        # cube
+        links.new(cube.outputs["Mesh"], transform.inputs["Geometry"])
+        links.new(sub.outputs[0], transform.inputs["Scale"])
+        links.new(mul.outputs[0], transform.inputs["Translation"])
+
+        # wireframe
+        links.new(switch_custom.outputs[0], mesh_to_curve.inputs["Mesh"])
+
+        # visibility
+        links.new(input_node.outputs["Visible"], switch_vis.inputs["Switch"])
+        links.new(mesh_to_curve.outputs["Curve"], switch_vis.inputs[2])
+
+        # join
+        links.new(input_node.outputs["Geometry"], join.inputs[0])
+        links.new(switch_vis.outputs[0], join.inputs[0])
+
+        links.new(join.outputs["Geometry"], output_node.inputs["Geometry"])
+
+    # ------------------------------------------------
+    # Apply modifier
+    # ------------------------------------------------
+    mod = parent_obj.modifiers.get("BoundingBox")
+    if not mod:
+        mod = parent_obj.modifiers.new("BoundingBox", 'NODES')
+
+    mod.node_group = ng
+
+    # ------------------------------------------------
+    # Set inputs
+    # ------------------------------------------------
+    try:
+        mod["Socket_1"][0] = min_x
+        mod["Socket_1"][1] = min_y
+        mod["Socket_1"][2] = min_z
+        mod["Socket_2"][0] = max_x
+        mod["Socket_2"][1] = max_y
+        mod["Socket_2"][2] = max_z
+        mod["Socket_3"] = use_custom              # UseCustom
+        mod["Socket_4"] = visible                 # Visible
+    except Exception as e:
+        print("BoundingBox input error:", e)
+
+    return mod
 
 def collect_sprite_graph(root_obj):
     visited = set()

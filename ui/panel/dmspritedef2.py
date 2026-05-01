@@ -3,7 +3,7 @@
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
 from ...common import state
-from ...common.s3dobject import create_bounding_box
+from ...common.s3dobject import apply_bounding_box_geo
 
 def update_fpscale(self, context):
 
@@ -77,24 +77,28 @@ def update_bounding_box(self, context):
     if not obj or obj.get("quaildef") != "dmspritedef2":
         return
 
-    bb_name = f"{obj.name}_BOUNDINGBOX"
-    existing = bpy.data.objects.get(bb_name)
-
-    if not self.useboundingbox:
-        if existing:
-            bpy.data.objects.remove(existing, do_unlink=True)
-        return
-
     bounds = (
         (self.b_box_min_x, self.b_box_min_y, self.b_box_min_z),
         (self.b_box_max_x, self.b_box_max_y, self.b_box_max_z),
     )
 
-    # Remove old
-    if existing:
-        bpy.data.objects.remove(existing, do_unlink=True)
+    mod = obj.modifiers.get("BoundingBox")
+    if not mod or mod.type != 'NODES':
+        mod = apply_bounding_box_geo(obj, bounds)
 
-    create_bounding_box(obj, bounds)
+    if not mod:
+        return
+
+    try:
+        # Min / Max
+        mod["Socket_1"] = bounds[0]
+        mod["Socket_2"] = bounds[1]
+
+        # Use custom vs AABB
+        mod["Socket_3"] = self.useboundingbox
+
+    except Exception as e:
+        print("BoundingBox update failed:", e)
 
 def update_polyhedron(self, context):
 

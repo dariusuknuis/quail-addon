@@ -4,7 +4,7 @@ import bpy
 import mathutils
 from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
-from ..common.s3dobject import apply_bounding_radius_geo, attach_collision_volume, create_bounding_box
+from ..common.s3dobject import apply_bounding_radius_geo, attach_collision_volume, apply_bounding_box_geo
 from ..common.region import is_region_mesh, is_zone_collection
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
@@ -304,7 +304,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     # Create Bounding Box
     # ------------------------------------------------
 
-    create_bounding_box(obj, bounds)
+    apply_bounding_box_geo(obj, bounds, use_custom=True, visible=False)
 
     # ------------------------------------------------
     # Add bouding radius geo node
