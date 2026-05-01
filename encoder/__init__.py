@@ -553,11 +553,22 @@ def get_root_objects(export_objects):
 
     for obj in export_objects:
 
+        # ----------------------------------------
+        # ACTORDEF collections → treat as roots
+        # ----------------------------------------
+        if isinstance(obj, bpy.types.Collection):
+            if obj.get("quaildef") == "actordef":
+                roots.append(obj)
+            continue
+
+        # ----------------------------------------
+        # Normal object handling
+        # ----------------------------------------
         if not isinstance(obj, bpy.types.Object):
             continue
 
         if obj.get("quaildef") == "materialpalette":
-            continue  # still your exception
+            continue
 
         if obj.parent is None:
             roots.append(obj)
@@ -635,6 +646,18 @@ def gather_export_objects(root_objects, parser):
             continue
 
         visited.add(obj)
+
+        # ----------------------------------------
+        # COLLECTION → expand into objects + subcollections
+        # ----------------------------------------
+        if isinstance(obj, bpy.types.Collection):
+            for child_obj in obj.objects:
+                add(child_obj)
+
+            for child_col in obj.children:
+                add(child_col)
+
+            continue
 
         # ----------------------------------------
         # Children (ONLY for Blender Objects)
@@ -780,21 +803,50 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     # Build root set
     # ------------------------------------------------
+    root_objects = []
+
+    col = context.collection
+
+    # ------------------------------------------------
+    # SELECTED EXPORT
+    # ------------------------------------------------
     if selected_only:
 
-        if context.selected_objects:
+        # ----------------------------------------
+        # Case 1: Active collection is WORLDDEF
+        # ----------------------------------------
+        if col and col.get("quaildef") == "worlddef":
+            root_objects = list(col.objects) + list(col.children)
+
+        # ----------------------------------------
+        # Case 2: Active collection is ACTORDEF
+        # ----------------------------------------
+        elif col and col.get("quaildef") == "actordef":
+            root_objects = [col]
+
+        # ----------------------------------------
+        # Case 3: Objects selected (normal case)
+        # ----------------------------------------
+        elif context.selected_objects:
             root_objects = list(context.selected_objects)
 
+        # ----------------------------------------
+        # Fallback
+        # ----------------------------------------
         else:
-            # ----------------------------------------
-            # Fallback: use active collection
-            # ----------------------------------------
-            col = context.collection
-
             if col:
-                root_objects = list(col.objects)
+                root_objects = list(col.objects) + list(col.children)
             else:
                 root_objects = []
+
+    # ------------------------------------------------
+    # FULL EXPORT (no selection)
+    # ------------------------------------------------
+    else:
+        if col:
+            root_objects = list(col.objects) + list(col.children)
+        else:
+            root_objects = []
 
     # ------------------------------------------------
     # Gather dependency graph
@@ -872,6 +924,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     eqganis = []
 
     for obj in export_objects:
+
+        if isinstance(obj, bpy.types.Collection):
+            if obj.get("quaildef") == "actordef":
+                actordefs.append(obj)
+            continue
 
         qdef = obj.get("quaildef")
 

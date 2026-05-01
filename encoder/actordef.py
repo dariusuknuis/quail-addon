@@ -1,12 +1,12 @@
 import bpy
 from ..wce.actordef import actordef
 
-def encode_actordef(parser, obj) -> str:
+def encode_actordef(parser, col) -> str:
 
-    if obj.get("quaildef") != "actordef":
+    if col.get("quaildef") != "actordef":
         return ""
 
-    props = obj.quail_actordef
+    props = col.quail_actordef
 
     # ------------------------------------------------
     # Create WCE object
@@ -16,7 +16,7 @@ def encode_actordef(parser, obj) -> str:
     # -------------------------
     # Tag
     # -------------------------
-    wce_actor.tag = obj.name
+    wce_actor.tag = col.name
 
     # -------------------------
     # Basic fields
@@ -56,7 +56,7 @@ def encode_actordef(parser, obj) -> str:
     if props.activegeometry:
         # You may want to store a real tag later
         # For now match decoder behavior (flag-only)
-        wce_actor.activegeometry = obj.name
+        wce_actor.activegeometry = col.name
     else:
         wce_actor.activegeometry = None
 

@@ -126,3 +126,31 @@ def create_bounding_box(mesh_obj, bounding_box_data):
     bbox_obj.hide_set(True)
 
     return bbox_obj
+
+def collect_sprite_graph(root_obj):
+    visited = set()
+    stack = [root_obj]
+
+    while stack:
+        obj = stack.pop()
+
+        if obj in visited:
+            continue
+
+        visited.add(obj)
+
+        # ----------------------------------------
+        # Children
+        # ----------------------------------------
+        for child in obj.children:
+            stack.append(child)
+
+        # ----------------------------------------
+        # CHILD_OF constraints (very important)
+        # ----------------------------------------
+        for other in bpy.data.objects:
+            for c in other.constraints:
+                if c.type == 'CHILD_OF' and c.target == obj:
+                    stack.append(other)
+
+    return visited

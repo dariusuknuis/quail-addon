@@ -1,31 +1,71 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
 import bpy
-import os
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty
+from ...common.s3dobject import collect_sprite_graph
 
+
+# ------------------------------------------------
+# Update: LOD Sprite (collection-based)
+# ------------------------------------------------
 def update_lod_sprite(self, context):
-    obj = context.object
-    if not obj or obj.get("quaildef") != "actordef":
+
+    col = context.collection
+    if not col or col.get("quaildef") != "actordef":
         return
 
-    props = obj.quail_actordef
+    props = col.quail_actordef
 
-    for child in list(obj.children):
-        child.parent = None
+    # ----------------------------------------
+    # First: remove ALL existing sprite graph objects from this collection
+    # ----------------------------------------
+    to_remove = set()
 
+    for obj in list(col.objects):
+        if obj.get("quaildef") in {
+            "hierarchicalspritedef",
+            "dmspritedef2",
+            "dmspritedefinition",
+            "sprite3ddef"
+        }:
+            to_remove.update(collect_sprite_graph(obj))
+
+    for obj in to_remove:
+        if col in obj.users_collection:
+            col.objects.unlink(obj)
+
+    # ----------------------------------------
+    # Then: add all graphs from current LOD selection
+    # ----------------------------------------
     for action in props.actions:
         for lod in action.lods:
-            if lod.sprite:
-                lod.sprite.parent = obj
+            sprite = lod.sprite
 
+            if not sprite:
+                continue
+
+            graph = collect_sprite_graph(sprite)
+
+            for obj in graph:
+
+                # Remove from non-actordef collections
+                for c in list(obj.users_collection):
+                    if c.get("quaildef") != "actordef":
+                        c.objects.unlink(obj)
+
+                # Ensure in THIS collection
+                if col not in obj.users_collection:
+                    col.objects.link(obj)
+
+# ------------------------------------------------
+# Update counts
+# ------------------------------------------------
 def update_numactions(self, context):
     actions = self.actions
 
     if len(actions) < self.numactions:
         for _ in range(self.numactions - len(actions)):
             act = actions.add()
-
             act.numlods = 1
 
     elif len(actions) > self.numactions:
@@ -43,7 +83,12 @@ def update_numlods(self, context):
         for _ in range(len(lods) - self.numlods):
             lods.remove(len(lods) - 1)
 
+
+# ------------------------------------------------
+# Properties
+# ------------------------------------------------
 class QuailLODProperties(bpy.types.PropertyGroup):
+
     sprite: PointerProperty(
         name="Sprite",
         type=bpy.types.Object,
@@ -61,11 +106,10 @@ class QuailLODProperties(bpy.types.PropertyGroup):
         default=1.0e30
     )
 
+
 class QuailActionProperties(bpy.types.PropertyGroup):
-    unk1: BoolProperty(
-        name="Unknown 1",
-        default=False
-    )
+
+    unk1: BoolProperty(name="Unknown 1", default=False)
 
     numlods: IntProperty(
         name="Num Levels of Detail",
@@ -76,24 +120,20 @@ class QuailActionProperties(bpy.types.PropertyGroup):
 
     lods: bpy.props.CollectionProperty(type=QuailLODProperties)
 
-# Define Actor properties
+
 class QuailActorDefProperties(bpy.types.PropertyGroup):
 
     callback: StringProperty(name="Callback", default="")
     boundsref: IntProperty(name="BoundsRef", default=0)
 
     # -------------------------
-    # Current Action (optional)
+    # Current Action
     # -------------------------
     has_currentaction: BoolProperty(name="Has Current Action", default=False)
-
-    currentaction: IntProperty(
-        name="Current Action",
-        default=0
-    )
+    currentaction: IntProperty(name="Current Action", default=0)
 
     # -------------------------
-    # Location (optional)
+    # Location (stored only)
     # -------------------------
     has_location: BoolProperty(name="Has Location", default=False)
 
@@ -106,12 +146,7 @@ class QuailActorDefProperties(bpy.types.PropertyGroup):
     rot_z: FloatProperty(name="Rot Z", default=0.0)
 
     # -------------------------
-    # Active Geometry (flag)
-    # -------------------------
-    activegeometry: BoolProperty(
-        name="Active Geometry",
-        default=False
-    )
+    activegeometry: BoolProperty(name="Active Geometry", default=False)
 
     # -------------------------
     # Actions
@@ -126,122 +161,106 @@ class QuailActorDefProperties(bpy.types.PropertyGroup):
     actions: bpy.props.CollectionProperty(type=QuailActionProperties)
 
     # -------------------------
-    collider: BoolProperty(
-        name="Sprite Volume Only",
-        default=False
-    )
-
+    collider: BoolProperty(name="Sprite Volume Only", default=False)
     userdata: StringProperty(name="User Data", default="")
 
+
+# ------------------------------------------------
+# Operator: Create ActorDef (Collection)
+# ------------------------------------------------
 class OBJECT_OT_add_quail_actordef(bpy.types.Operator):
-    """Create a new ActorDef"""
-    bl_idname = "object.add_custom_actor"
+    bl_idname = "object.add_quail_actordef"
     bl_label = "ActorDef"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        # Create an Empty
-        obj = bpy.data.objects.new("Actor", None)
 
-        # Set transformation
-        obj.location = context.scene.cursor.location
+        col = bpy.data.collections.new("ActorDef")
+        col["quaildef"] = "actordef"
 
-        obj.empty_display_type = 'SINGLE_ARROW'
-
-        # Add custom property to identify this as an actor
-        obj['quaildef'] = 'actordef'
-
-
-        # Link to collection
-        context.collection.objects.link(obj)
-
-        # Set active object
-        bpy.context.view_layer.objects.active = obj
-        obj.select_set(True)
+        context.collection.children.link(col)
 
         return {'FINISHED'}
 
-def draw_actordef_in_transform(self, context):
-    obj = context.object
-    if not obj or obj.get('quaildef') != 'actordef':
-        return
 
-    props = obj.quail_actordef
-    layout = self.layout
+# ------------------------------------------------
+# UI Panel (Collection context)
+# ------------------------------------------------
+class PROPERTIES_PT_quail_actordef(bpy.types.Panel):
+    bl_label = "ACTORDEF"
+    bl_idname = "PROPERTIES_PT_quail_actordef"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "collection"
 
-    box = layout.box()
-    box.label(text="ACTORDEF")
+    def draw(self, context):
 
-    # Basic
-    box.prop(props, "callback")
-    box.prop(props, "boundsref")
+        col = context.collection
 
-    # -------------------------
-    # Current Action
-    # -------------------------
-    box.prop(props, "has_currentaction")
-    if props.has_currentaction:
-        box.prop(props, "currentaction")
+        if not col or col.get("quaildef") != "actordef":
+            return
 
-    # -------------------------
-    # Location
-    # -------------------------
-    box.prop(props, "has_location")
-    if props.has_location:
-        col = box.column(align=True)
-        col.label(text="Position")
-        row = col.row(align=True)
-        row.prop(props, "loc_x")
-        row.prop(props, "loc_y")
-        row.prop(props, "loc_z")
+        props = col.quail_actordef
+        layout = self.layout
 
-        col.label(text="Rotation")
-        row = col.row(align=True)
-        row.prop(props, "rot_x")
-        row.prop(props, "rot_y")
-        row.prop(props, "rot_z")
+        box = layout.box()
 
-    # -------------------------
-    # Active Geometry
-    # -------------------------
-    box.prop(props, "activegeometry")
+        # Basic
+        box.prop(props, "callback")
+        box.prop(props, "boundsref")
 
-    # -------------------------
-    # Actions
-    # -------------------------
-    box.prop(props, "numactions")
+        # Current Action
+        box.prop(props, "has_currentaction")
+        if props.has_currentaction:
+            box.prop(props, "currentaction")
 
-    for i, action in enumerate(props.actions):
-        action_box = box.box()
-        action_box.label(text=f"Action {i+1}")
+        # Location (data only)
+        box.prop(props, "has_location")
+        if props.has_location:
+            col_ui = box.column(align=True)
 
-        action_box.prop(action, "unk1")
-        action_box.prop(action, "numlods")
+            col_ui.label(text="Position")
+            row = col_ui.row(align=True)
+            row.prop(props, "loc_x")
+            row.prop(props, "loc_y")
+            row.prop(props, "loc_z")
 
-        for j, lod in enumerate(action.lods):
-            lod_box = action_box.box()
-            lod_box.label(text=f"LOD {j+1}")
+            col_ui.label(text="Rotation")
+            row = col_ui.row(align=True)
+            row.prop(props, "rot_x")
+            row.prop(props, "rot_y")
+            row.prop(props, "rot_z")
 
-            lod_box.prop(lod, "sprite")
-            lod_box.prop(lod, "mindistance")
+        # Active Geometry
+        box.prop(props, "activegeometry")
 
-    # -------------------------
-    box.prop(props, "collider")
-    box.prop(props, "userdata")
+        # Actions
+        box.prop(props, "numactions")
 
-# Register classes
+        for i, action in enumerate(props.actions):
+            action_box = box.box()
+            action_box.label(text=f"Action {i+1}")
+
+            action_box.prop(action, "unk1")
+            action_box.prop(action, "numlods")
+
+            for j, lod in enumerate(action.lods):
+                lod_box = action_box.box()
+                lod_box.label(text=f"LOD {j+1}")
+
+                lod_box.prop(lod, "sprite")
+                lod_box.prop(lod, "mindistance")
+
+        # Misc
+        box.prop(props, "collider")
+        box.prop(props, "userdata")
+
+
 def register():
-    # ignored, auto_load bpy.utils.register_class(QuailActorDefProperties)
-    # ignored, auto_load bpy.utils.register_class(OBJECT_OT_add_custom_empty)
-    # ignored, auto_load bpy.utils.register_class(VIEW3D_MT_quail_add)
-    # ignored, auto_load bpy.utils.register_class(PROPERTIES_PT_quail_actor)
-    bpy.types.Object.quail_actordef = PointerProperty(type=QuailActorDefProperties)
-    bpy.types.OBJECT_PT_transform.prepend(draw_actordef_in_transform)
+
+    bpy.types.Collection.quail_actordef = PointerProperty(type=QuailActorDefProperties)
+
 
 def unregister():
-    del bpy.types.Object.quail_actordef
-    bpy.types.OBJECT_PT_transform.remove(draw_actordef_in_transform)
-    # ignored, auto_load bpy.utils.unregister_class(PROPERTIES_PT_quail_actor)
-    # ignored, auto_load bpy.utils.unregister_class(VIEW3D_MT_quail_add)
-    # ignored, auto_load bpy.utils.unregister_class(OBJECT_OT_add_custom_empty)
-    # ignored, auto_load bpy.utils.unregister_class(QuailActorDefProperties)
+
+    del bpy.types.Collection.quail_actordef
