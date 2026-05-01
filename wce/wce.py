@@ -171,7 +171,15 @@ class wce:
 
             if line.startswith(actorinst.definition()):
                 try:
-                    self.actorinsts[tag] = self._instantiate_definition(actorinst, tag, r)
+                    inst = self._instantiate_definition(actorinst, tag, r)
+
+                    key = tag
+                    if not key:
+                        # generate unique key
+                        key = f"__actorinst_{len(self.actorinsts)}"
+
+                    self.actorinsts[key] = inst
+
                 except Exception as e:
                     raise Exception(f"{path_cursor} actorinst: {e}")
                 continue

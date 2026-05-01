@@ -7,6 +7,7 @@ from typing import Optional
 from .worlddef import decode_worlddef
 from .globalambientlightdef import decode_globalambientlightdef
 from .actordef import decode_actordef
+from .actorinst import decode_actorinst
 from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
@@ -205,6 +206,14 @@ def wce_decode(path: str):
         ctx.parent = base_parent
 
         err = decode_actordef(ctx, actordef)
+        if err:
+            error(err)
+
+    for _, actorinst in parser.actorinsts.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_actorinst(ctx, actorinst)
         if err:
             error(err)
 

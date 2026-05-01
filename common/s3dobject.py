@@ -17,6 +17,101 @@ def create_bounding_radius_empty(parent_obj: bpy.types.Object, radius: float, co
 
     return sphere
 
+def apply_bounding_radius_geo(parent_obj: bpy.types.Object, radius: float, enabled: bool = False):
+
+    if radius is None or radius <= 0:
+        return None
+
+    name = "QUAIL_BoundingSphere"
+
+    # ------------------------------------------------
+    # Get or create node group
+    # ------------------------------------------------
+    if name in bpy.data.node_groups:
+        ng = bpy.data.node_groups[name]
+    else:
+        ng = bpy.data.node_groups.new(name, 'GeometryNodeTree')
+
+        # sockets
+        ng.interface.new_socket(name="Geometry", in_out='INPUT', socket_type='NodeSocketGeometry')
+        ng.interface.new_socket(name="Radius", in_out='INPUT', socket_type='NodeSocketFloat')
+        ng.interface.new_socket(name="Enabled", in_out='INPUT', socket_type='NodeSocketBool')
+
+        ng.interface.new_socket(name="Geometry", in_out='OUTPUT', socket_type='NodeSocketGeometry')
+
+        nodes = ng.nodes
+        links = ng.links
+        nodes.clear()
+
+        input_node = nodes.new("NodeGroupInput")
+        output_node = nodes.new("NodeGroupOutput")
+        bbox = nodes.new("GeometryNodeBoundBox")
+        add = nodes.new("ShaderNodeVectorMath")
+        add.operation = 'ADD'
+        mult = nodes.new("ShaderNodeVectorMath")
+        mult.operation = 'MULTIPLY'
+        mult.inputs[1].default_value = (0.5, 0.5, 0.5)
+
+        sphere = nodes.new("GeometryNodeMeshUVSphere")
+        transform = nodes.new("GeometryNodeTransform")
+        mesh_to_curve = nodes.new("GeometryNodeMeshToCurve")
+        switch = nodes.new("GeometryNodeSwitch")
+        join = nodes.new("GeometryNodeJoinGeometry")
+
+        input_node.location = (-800, 0)
+        bbox.location = (-600, -200)
+        add.location = (-400, -200)
+        mult.location = (-200, -200)
+
+        sphere.location = (-200, 100)
+        transform.location = (0, 100)
+
+        mesh_to_curve.location = (200, 100)
+        switch.location = (400, 100)
+        join.location = (600, 100)
+        output_node.location = (800, 100)
+
+        # ------------------------------------------------
+        # wiring
+        # ------------------------------------------------
+        links.new(input_node.outputs["Geometry"], bbox.inputs["Geometry"])
+
+        links.new(bbox.outputs["Min"], add.inputs[0])
+        links.new(bbox.outputs["Max"], add.inputs[1])
+
+        links.new(add.outputs["Vector"], mult.inputs[0])
+        links.new(mult.outputs["Vector"], transform.inputs["Translation"])
+
+        links.new(input_node.outputs["Radius"], transform.inputs["Scale"])
+        links.new(sphere.outputs["Mesh"], transform.inputs["Geometry"])
+
+        links.new(input_node.outputs["Enabled"], switch.inputs["Switch"])
+        links.new(transform.outputs["Geometry"], mesh_to_curve.inputs[0])
+        links.new(mesh_to_curve.outputs[0], switch.inputs[2])
+
+        links.new(input_node.outputs["Geometry"], join.inputs[0])
+        links.new(switch.outputs["Output"], join.inputs[0])
+
+        links.new(join.outputs["Geometry"], output_node.inputs["Geometry"])
+
+    # ------------------------------------------------
+    # Apply modifier
+    # ------------------------------------------------
+    mod = parent_obj.modifiers.get("BoundingSphere")
+    if not mod:
+        mod = parent_obj.modifiers.new("BoundingSphere", 'NODES')
+
+    mod.node_group = ng
+
+    # ------------------------------------------------
+    # Set inputs
+    # ------------------------------------------------
+    # Input order: Geometry, Radius, Enabled
+    mod["Socket_1"] = radius
+    mod["Socket_2"] = enabled
+
+    return mod
+
 def get_collision_volume_material() -> bpy.types.Material:
     name = "CollisionVolumeMaterial"
 

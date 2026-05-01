@@ -51,17 +51,22 @@ def update_bounding_radius(self, context):
     if not obj or obj.get("quaildef") != "dmspritedef2":
         return
 
-    empty_name = f"{obj.name}_BOUNDINGRADIUS"
-    empty = bpy.data.objects.get(empty_name)
-
-    if not empty:
+    mod = obj.modifiers.get("BoundingSphere")
+    if not mod or mod.type != 'NODES':
         return
 
-    if self.useboundingradius:
-        empty.empty_display_size = self.boundingradius
-    else:
-        # Default fallback
-        empty.empty_display_size = 1.0
+    # ----------------------------------------
+    # Compute effective radius
+    # ----------------------------------------
+    radius = self.boundingradius if self.useboundingradius else 1.0
+
+    # ----------------------------------------
+    # Apply to geo nodes
+    # ----------------------------------------
+    try:
+        mod["Socket_1"] = radius
+    except Exception as e:
+        print("Failed to set radius:", e)
 
 def update_bounding_box(self, context):
 
