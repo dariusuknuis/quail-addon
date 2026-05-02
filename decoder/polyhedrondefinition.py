@@ -6,7 +6,7 @@ from bpy.types import Object, Collection
 from ..wce.wce import wce
 from ..wce.polyhedrondefinition import polyhedrondefinition
 from .context import Context
-from ..common.s3dobject import create_bounding_radius_empty, get_collision_volume_material
+from ..common.s3dobject import apply_bounding_radius_geo, get_collision_volume_material
 
 def decode_polyhedrondefinition(ctx:Context, volume:polyhedrondefinition) -> str:
     mesh = bpy.data.meshes.new(volume.tag)
@@ -66,12 +66,11 @@ def decode_polyhedrondefinition(ctx:Context, volume:polyhedrondefinition) -> str
     scale = volume.scalefactor if volume.scalefactor is not None else 1.0
     obj.scale = (scale, scale, scale)
 
-    # Create bounding radius empty
-    create_bounding_radius_empty(
-        parent_obj=obj,
-        radius=volume.boundingradius,
-        collection=ctx.collection
-    )
+    # ------------------------------------------------
+    # Add bouding radius geo node
+    # ------------------------------------------------
+
+    apply_bounding_radius_geo(parent_obj=obj, radius=volume.boundingradius, enabled=False)
 
 
     return ""

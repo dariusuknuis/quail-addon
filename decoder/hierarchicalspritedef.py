@@ -284,16 +284,6 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
     apply_pivot_shapes(arm_obj)
 
     # ------------------------------------------------
-    # Add bouding radius empty
-    # ------------------------------------------------
-
-    create_bounding_radius_empty(
-        parent_obj=arm_obj,
-        radius=bounding_radius,
-        collection=ctx.collection
-    )
-
-    # ------------------------------------------------
     # Attach collision volume (polyhedron)
     # ------------------------------------------------
 

@@ -152,11 +152,11 @@ class wce:
                 if len(records) != 2:
                     raise Exception(f"{path_cursor} INCLUDE: expected 1 argument, got {len(records)-1}")
                 new_path = f"{current_dir}/{records[1].lower()}"
-                file_reader = open(new_path, "r")
-                data = file_reader.read()
-                r = io.StringIO(data)
-                self.parse_definitions(new_path, r)
-                continue
+                with open(new_path, "r") as file_reader:
+                    data = file_reader.read()
+                    r = io.StringIO(data)
+                    self.parse_definitions(new_path, r)
+                    continue
 
             tag = ""
             if len(records) > 1:

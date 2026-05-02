@@ -226,7 +226,19 @@ def resolve_region_visibility():
                 vis.visible_regions.remove(0)
 
             # assign references
+            region_map = {}
+
+            for o in region_objs:
+                name = o.name
+                if name.startswith("R"):
+                    try:
+                        idx = int(name[1:])
+                        region_map[idx] = o
+                    except:
+                        pass
+
             for idx in indices:
-                if 0 <= idx - 1 < len(region_objs):
+                obj = region_map.get(idx)
+                if obj:
                     ref = vis.visible_regions.add()
-                    ref.region = region_objs[idx - 1]
+                    ref.region_name = obj.name

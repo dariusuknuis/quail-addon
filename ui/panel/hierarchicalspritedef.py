@@ -5,6 +5,50 @@ from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProper
 from ...common import state
 from ...common.armature import attach_object_to_dag
 
+def update_display_bounding_radius(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "hierarchicalspritedef":
+        return
+
+    arm = obj
+    empty_name = f"{arm.name}_BOUNDINGRADIUS"
+
+    existing = bpy.data.objects.get(empty_name)
+
+    # -----------------------------
+    # REMOVE if toggle turned OFF
+    # -----------------------------
+    if not self.display_boundingradius:
+        if existing:
+            bpy.data.objects.remove(existing, do_unlink=True)
+        return
+
+    # -----------------------------
+    # CREATE if toggle turned ON
+    # -----------------------------
+    if not existing:
+
+        empty = bpy.data.objects.new(empty_name, None)
+        empty.empty_display_type = 'SPHERE'
+
+        context.collection.objects.link(empty)
+        empty.parent = arm
+
+    else:
+        empty = existing
+
+    # -----------------------------
+    # APPLY SIZE
+    # -----------------------------
+    if self.has_boundingradius:
+        empty.empty_display_size = self.boundingradius
+    else:
+        empty.empty_display_size = 1.0
+
 def update_polyhedron(self, context):
 
     if state.QUAIL_UPDATING:
@@ -51,7 +95,6 @@ def update_bounding_radius(self, context):
     if self.has_boundingradius:
         empty.empty_display_size = self.boundingradius
     else:
-        # Default fallback
         empty.empty_display_size = 1.0
 
 def update_centeroffset(self, context):
@@ -269,6 +312,12 @@ class QuailAttachedSkinProperties(bpy.types.PropertyGroup):
 
 class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
 
+    display_boundingradius: BoolProperty(
+        name="Display Bounding Radius",
+        default=False,
+        update=lambda self, context: update_display_bounding_radius(self, context)
+    )
+
     dags: CollectionProperty(type=QuailDAGProperties)
     selected_dag_index: IntProperty(name="DAG Index", default=0, min=0)
 
@@ -379,6 +428,8 @@ def draw_hierarchicalspritedef_in_transform(self, context):
     if props.has_boundingradius:
         row = box.row(align=True)
         row.prop(props, "boundingradius")
+
+    box.prop(props, "display_boundingradius")
 
     box.prop(props, "dagcollisions")
 

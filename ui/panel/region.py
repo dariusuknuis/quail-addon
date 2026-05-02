@@ -33,9 +33,9 @@ def rebuild_vislist_range(obj):
 
         # collect indices from region names
         for item in vis.visible_regions:
-            if not item.region:
+            name = item.region_name
+            if not name:
                 continue
-            name = item.region.name
             if name.startswith("R"):
                 try:
                     idx = int(name[1:])
@@ -74,7 +74,8 @@ class QUAIL_OT_remove_selected_from_vislist(bpy.types.Operator):
         i = 0
         while i < len(vis.visible_regions):
             item = vis.visible_regions[i]
-            if item.region in selected_set:
+            obj = bpy.data.objects.get(item.region_name)
+            if obj in selected_set:
                 vis.visible_regions.remove(i)
             else:
                 i += 1
@@ -93,15 +94,15 @@ class QUAIL_OT_add_selected_to_vislist(bpy.types.Operator):
 
         vis = props.vislists[0]
 
-        existing = {item.region for item in vis.visible_regions}
+        existing = {item.region_name for item in vis.visible_regions}
 
         for o in context.selected_objects:
             if o.get("quaildef") != "region":
                 continue
 
-            if o not in existing:
+            if o.name not in existing:
                 item = vis.visible_regions.add()
-                item.region = o
+                item.region_name = o.name
 
         rebuild_vislist_range(obj)
 
@@ -143,8 +144,10 @@ class QUAIL_OT_select_visible_regions(bpy.types.Operator):
 
         for vis in props.vislists:
             for item in vis.visible_regions:
-                if item.selected and item.region:
-                    item.region.select_set(True)
+                if item.selected:
+                    obj = bpy.data.objects.get(item.region_name)
+                    if obj:
+                        obj.select_set(True)
 
         return {'FINISHED'}
 
@@ -154,18 +157,21 @@ class QUAIL_UL_region_visible(bpy.types.UIList):
 
         row = layout.row(align=True)
 
-        if item.region:
+        obj = bpy.data.objects.get(item.region_name)
+
+        if obj:
             row.prop(item, "selected", text="")
-            row.label(text=item.region.name, icon='OBJECT_DATA')
+            row.label(text=obj.name, icon='OBJECT_DATA')
         else:
             row.label(text="(None)")
 
 class QuailRegionVisibleItem(bpy.types.PropertyGroup):
-    region: PointerProperty(
-        name="Region",
-        type=bpy.types.Object,
-        poll=lambda self, obj: obj.get("quaildef") == "region"
-    )
+    # region: PointerProperty(
+    #     name="Region",
+    #     type=bpy.types.Object,
+    #     poll=lambda self, obj: obj.get("quaildef") == "region"
+    # )
+    region_name: StringProperty()
 
     selected: BoolProperty(default=False)
 
