@@ -1,5 +1,49 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
+
 import bpy
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty
+from ...common import state
+
+def update_has_scalefactor(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "actorinst":
+        return
+
+    if not self.has_scalefactor:
+        # Reset scale to 1
+        obj.scale = (1.0, 1.0, 1.0)
+
+        # Lock scale
+        obj.lock_scale = (True, True, True)
+    else:
+        # Unlock scale
+        obj.lock_scale = (False, False, False)
+
+def update_has_location(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    obj = context.object
+    if not obj or obj.get("quaildef") != "actorinst":
+        return
+
+    if not self.has_location:
+        # Zero transforms
+        obj.location = (0.0, 0.0, 0.0)
+        obj.rotation_euler = (0.0, 0.0, 0.0)
+
+        # Lock transforms
+        obj.lock_location = (True, True, True)
+        obj.lock_rotation = (True, True, True)
+    else:
+        # Unlock transforms
+        obj.lock_location = (False, False, False)
+        obj.lock_rotation = (False, False, False)
 
 class OBJECT_OT_add_quail_actorinst(bpy.types.Operator):
     bl_idname = "object.add_quail_actorinst"
@@ -29,47 +73,40 @@ class QuailActorInstProperties(bpy.types.PropertyGroup):
     # -------------------------
     # Current Action
     # -------------------------
-    has_currentaction: BoolProperty(name="Has Current Action", default=False)
-    currentaction: StringProperty(name="Current Action", default="")
+    has_currentaction: BoolProperty(name="Current Action", default=False)
+    currentaction: StringProperty(name="Action", default="")
 
     # -------------------------
     # Location
     # -------------------------
-    has_location: BoolProperty(name="Has Location", default=False)
-
-    loc_x: FloatProperty(name="X", default=0.0)
-    loc_y: FloatProperty(name="Y", default=0.0)
-    loc_z: FloatProperty(name="Z", default=0.0)
-
-    rot_x: FloatProperty(name="Rot X", default=0.0)
-    rot_y: FloatProperty(name="Rot Y", default=0.0)
-    rot_z: FloatProperty(name="Rot Z", default=0.0)
+    has_location: BoolProperty(name="Location", default=True, update=update_has_location)
 
     # -------------------------
     # Optional fields
     # -------------------------
-    has_boundingradius: BoolProperty(name="Has Bounding Radius", default=False)
-    boundingradius: FloatProperty(name="Bounding Radius", default=0.0)
+    has_boundingradius: BoolProperty(name="Bounding Radius", default=True)
+    boundingradius: FloatProperty(name="Radius", default=1.0)
 
-    has_scalefactor: BoolProperty(name="Has Scale Factor", default=False)
-    scalefactor: FloatProperty(name="Scale Factor", default=1.0)
+    has_scalefactor: BoolProperty(name="Scale Factor", default=True)
 
-    sound: StringProperty(name="Sound", default="")
+    has_sound: BoolProperty(name="Sound", default=False)
+    sound: StringProperty(name="Sound Ref", default="")
 
-    has_active: BoolProperty(name="Has Active", default=False)
+    has_active: BoolProperty(name="Active", default=False)
     active: IntProperty(name="Active", default=1)
+
+    has_dmrgbtrack: BoolProperty(name="DMRGB Track", default=False)
+    dmrgbtrack: StringProperty(name="Track Ref", default="")
 
     # -------------------------
     # Required
     # -------------------------
     spritevolumeonly: BoolProperty(name="Sprite Volume Only", default=False)
 
-    dmrgbtrack: StringProperty(name="DMRGB Track", default="")
-
     sphere: StringProperty(name="Sphere", default="")
     sphereradius: FloatProperty(name="Sphere Radius", default=0.0)
 
-    useboundingbox: BoolProperty(name="Use Bounding Box", default=False)
+    useboundingbox: BoolProperty(name="Use Bounding Box", default=True)
 
     userdata: StringProperty(name="User Data", default="")
 
@@ -100,21 +137,8 @@ def draw_actorinst_in_transform(self, context):
     # -------------------------
     # Location
     # -------------------------
+
     box.prop(props, "has_location")
-    if props.has_location:
-        col = box.column(align=True)
-
-        col.label(text="Position")
-        row = col.row(align=True)
-        row.prop(props, "loc_x")
-        row.prop(props, "loc_y")
-        row.prop(props, "loc_z")
-
-        col.label(text="Rotation")
-        row = col.row(align=True)
-        row.prop(props, "rot_x")
-        row.prop(props, "rot_y")
-        row.prop(props, "rot_z")
 
     # -------------------------
     # Optional
@@ -124,20 +148,20 @@ def draw_actorinst_in_transform(self, context):
         box.prop(props, "boundingradius")
 
     box.prop(props, "has_scalefactor")
-    if props.has_scalefactor:
-        box.prop(props, "scalefactor")
 
-    box.prop(props, "sound")
+    box.prop(props, "has_sound")
+    if props.has_sound:
+        box.prop(props, "sound")
 
     box.prop(props, "has_active")
     if props.has_active:
         box.prop(props, "active")
 
-    # -------------------------
-    # Required
-    # -------------------------
     box.prop(props, "spritevolumeonly")
-    box.prop(props, "dmrgbtrack")
+
+    box.prop(props, "has_dmrgbtrack")
+    if props.has_dmrgbtrack:
+        box.prop(props, "dmrgbtrack")
 
     box.prop(props, "sphere")
     box.prop(props, "sphereradius")
