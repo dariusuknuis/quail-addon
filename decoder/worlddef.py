@@ -3,6 +3,14 @@ from .context import Context
 from ..wce.worlddef import worlddef
 from ..common.region import is_region_mesh, create_world_bounds_from_regions
 
+def find_layer_collection(layer_coll, target):
+    if layer_coll.collection == target:
+        return layer_coll
+    for child in layer_coll.children:
+        found = find_layer_collection(child, target)
+        if found:
+            return found
+    return None
 
 def decode_worlddef(ctx: Context, wd: worlddef) -> str:
 
@@ -15,6 +23,10 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
     if getattr(ctx.parser, "rgbdeformationtrackdefs", None):
         if len(ctx.parser.rgbdeformationtrackdefs) > 0:
             col.name = "_objects"
+
+    if getattr(ctx.parser, "pointlights", None):
+        if len(ctx.parser.pointlights) > 0:
+            col.name = "_lights"
 
     # Tag collection
     col["quaildef"] = "worlddef"
@@ -58,9 +70,9 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
                 col.children.link(region_collection)
 
             ctx.region_collection = region_collection
-            (next((lc for lc in bpy.context.view_layer.layer_collection.children
-                for lc in [lc] + list(lc.children)
-                if lc.collection == region_collection), None)).hide_viewport = True
+            lc = find_layer_collection(bpy.context.view_layer.layer_collection, region_collection)
+            if lc:
+                lc.hide_viewport = True
         # ----------------------------------------
         # REGION_MESHES collection
         # ----------------------------------------
@@ -95,9 +107,9 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
                 col.children.link(worldtree_collection)
 
             ctx.worldtree_collection = worldtree_collection
-            (next((lc for lc in bpy.context.view_layer.layer_collection.children
-                for lc in [lc] + list(lc.children)
-                if lc.collection == worldtree_collection), None)).hide_viewport = True
+            lc = find_layer_collection(bpy.context.view_layer.layer_collection, region_collection)
+            if lc:
+                lc.hide_viewport = True
 
         # ----------------------------------------
         # Set 3D View clip distance

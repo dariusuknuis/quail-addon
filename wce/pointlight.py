@@ -14,7 +14,7 @@ class pointlight:
 	dynamicinfluence:int
 	xyz:tuple[float, float, float]
 	radiusofinfluence:float
-	regions:list[str]
+	regions:list[str] | None
 
 	def __init__(self):
 		self.tag = ""
@@ -24,7 +24,7 @@ class pointlight:
 		self.dynamicinfluence = 0 #2
 		self.xyz = (0.0, 0.0, 0.0) #2
 		self.radiusofinfluence = 0.0 #2
-		self.regions = [] #2
+		self.regions = None #2
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -44,7 +44,7 @@ class pointlight:
 		records = property(r, "RADIUSOFINFLUENCE", 1)
 		self.radiusofinfluence = float(records[1])
 		records = property(r, "REGIONS?", -1)
-		self.regions = records[1:]
+		self.regions = None if len(records) > 1 and records[1] == "NULL" else records[1:]
 
 		return ""
 
@@ -56,6 +56,6 @@ class pointlight:
 		w.write(f"\tDYNAMICINFLUENCE {self.dynamicinfluence}\n")
 		w.write(f"\tXYZ {format(self.xyz[0], '.8e')} {format(self.xyz[1], '.8e')} {format(self.xyz[2], '.8e')}\n")
 		w.write(f"\tRADIUSOFINFLUENCE {format(self.radiusofinfluence, '.8e')}\n")
-		w.write(f"\tREGIONS? {' '.join(self.regions)}\n")
+		w.write(f"\tREGIONS? {'NULL' if self.regions is None else ' '.join(self.regions)}\n")
 		return ""
 

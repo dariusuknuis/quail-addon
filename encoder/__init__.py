@@ -9,6 +9,7 @@ from ..common.s3dmaterial import material_tag_parse
 from .worlddef import encode_worlddef
 from .globalambientlightdef import encode_globalambientlightdef
 from .worldtree import encode_worldtree
+from .light import encode_light
 from .region import encode_region
 from .actorinst import encode_actorinst
 from .actordef import encode_actordef
@@ -536,6 +537,61 @@ def write_objects_folder(parser, export_objects, root_path):
 
     return ""
 
+def write_lights_folder(parser, export_objects, root_path):
+
+    os.makedirs(root_path, exist_ok=True)
+
+    # ========================================
+    # WORLD.WCE (POINTLIGHTS)
+    # ========================================
+    world_path = os.path.join(root_path, "world.wce")
+
+    with open(world_path, "w") as w:
+        w.write("// wcemu v0.0.1\n\n")
+
+        # WORLDDEF
+        if parser.worlddef:
+            parser.worlddef.write(w)
+            w.write("\n")
+        else:
+            w.write("WORLDDEF\n")
+            w.write("\tNEWWORLD 0\n")
+            w.write("\tZONE 0\n")
+            w.write("\tEQGVERSION? NULL\n\n")
+
+        # POINTLIGHTS
+        for inst in parser.pointlights.values():
+            inst.write(w)
+            w.write("\n")
+
+    # ========================================
+    # ZONE FOLDER (LIGHTDEFINITIONS)
+    # ========================================
+    zone_dir = os.path.join(root_path, "zone")
+    os.makedirs(zone_dir, exist_ok=True)
+
+    zone_path = os.path.join(zone_dir, "zone.wce")
+
+    with open(zone_path, "w") as w:
+        w.write("// ZONE\n\n")
+
+        for ldef in parser.lightdefinitions.values():
+            ldef.write(w)
+            w.write("\n")
+
+    # zone/_root.wce
+    with open(os.path.join(zone_dir, "_root.wce"), "w") as w:
+        w.write('INCLUDE "ZONE.WCE"\n')
+
+    # ========================================
+    # ROOT _root.wce
+    # ========================================
+    with open(os.path.join(root_path, "_root.wce"), "w") as w:
+        w.write('INCLUDE "WORLD.WCE"\n')
+        w.write('INCLUDE "ZONE/_ROOT.WCE"\n')
+
+    return ""
+
 def write_quail_folder(parser, export_objects, root_path):
 
     print("Writing quail folder:", root_path)
@@ -958,6 +1014,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     dmsprite_defs = []
     dmsprite2_defs = []
     rgbdeformationtrackdefs = []
+    lights = []
     regions = []
     tracks = []
     hierarchicalsprites = []
@@ -985,6 +1042,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "hierarchicalspritedef":
             hierarchicalsprites.append(obj)
+
+        elif qdef == "light":
+            lights.append(obj)
 
         elif qdef == "region":
             regions.append(obj)
@@ -1045,6 +1105,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     err = encode_track(parser, export_actions, context)
     if err:
         errors.append(err)
+
+    for obj in lights:
+        err = encode_light(parser, obj)
+        if err:
+            errors.append(err)
 
     for col, nodes in worldtrees:
         err = encode_worldtree(parser, col, nodes)
@@ -1113,6 +1178,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     if os.path.basename(folder_path).lower().startswith("_objects"):
         return write_objects_folder(parser, export_objects, folder_path)
+
+    if os.path.basename(folder_path).lower().startswith("_lights"):
+        return write_lights_folder(parser, export_objects, folder_path)
 
     err = write_quail_folder(parser, export_objects, folder_path)
 

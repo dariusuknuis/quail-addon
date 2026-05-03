@@ -167,7 +167,35 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
             dialog.message_box("File does not exist", "Quail Error", 'ERROR')
             return {'CANCELLED'}
 
-        wce_decode(decode_path)
+        # wce_decode(decode_path)
+
+        if os.path.isdir(decode_path):
+
+            root_name = os.path.basename(decode_path)
+
+            # MAIN ROOT COLLECTION (arena.quail)
+            main_collection = bpy.data.collections.new(root_name)
+            context.scene.collection.children.link(main_collection)
+
+            # ----------------------------------------
+            # 1. ROOT WCE → goes directly into main_collection
+            # ----------------------------------------
+            wce_decode(decode_path, main_collection)
+
+            # ----------------------------------------
+            # 2. Subfolders → also children of main_collection
+            # ----------------------------------------
+            objects_path = os.path.join(decode_path, "_objects")
+            lights_path = os.path.join(decode_path, "_lights")
+
+            if os.path.exists(objects_path):
+                wce_decode(objects_path, main_collection)
+
+            if os.path.exists(lights_path):
+                wce_decode(lights_path, main_collection)
+
+        else:
+            wce_decode(decode_path)
 
         # ---------------------------------------------------------
         # Pack images

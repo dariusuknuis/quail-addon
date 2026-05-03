@@ -59,7 +59,7 @@ def ensure_material_fake_users():
         if mat.users == 0:
             mat.use_fake_user = True
 
-def wce_decode(path: str):
+def wce_decode(path: str, parent_collection=None):
 
     state.QUAIL_UPDATING = True
 
@@ -87,9 +87,44 @@ def wce_decode(path: str):
 
     print(f"Resolved assets path: {parser.assets_path}")
 
-    base_collection = bpy.data.collections.new(base_file_name)
-    bpy.context.scene.collection.children.link(base_collection)
+    # ----------------------------------------
+    # Detect _objects / _lights subfolders
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # Root decode should NOT create subcollection
+    # ----------------------------------------
+
+    if parent_collection and os.path.basename(path) == os.path.basename(parent_collection.name):
+        base_collection = parent_collection
+    else:
+        base_collection = parent_collection.children.get(base_file_name) if parent_collection else None
+
+        if not base_collection:
+            base_collection = bpy.data.collections.new(base_file_name)
+
+            if parent_collection:
+                parent_collection.children.link(base_collection)
+            else:
+                bpy.context.scene.collection.children.link(base_collection)
+
     base_parent = None
+
+    # If this is a quail folder, route collections
+    # if os.path.isdir(path):
+
+    #     folder_name = os.path.basename(path).lower()
+
+    #     if folder_name == "_objects" or folder_name == "_lights":
+    #         # Create parent container
+    #         parent_name = os.path.basename(os.path.dirname(path))
+    #         parent_collection = bpy.data.collections.get(parent_name)
+
+    #         if not parent_collection:
+    #             parent_collection = bpy.data.collections.new(parent_name)
+    #             bpy.context.scene.collection.children.link(parent_collection)
+
+    #         parent_collection.children.link(base_collection)
 
     ctx = Context(parser, base_collection, base_parent)
 
