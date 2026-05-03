@@ -171,20 +171,13 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
 
         if os.path.isdir(decode_path):
 
-            root_name = os.path.basename(decode_path)
+            root_name = os.path.splitext(os.path.basename(decode_path))[0]
 
-            # MAIN ROOT COLLECTION (arena.quail)
             main_collection = bpy.data.collections.new(root_name)
             context.scene.collection.children.link(main_collection)
 
-            # ----------------------------------------
-            # 1. ROOT WCE → goes directly into main_collection
-            # ----------------------------------------
             wce_decode(decode_path, main_collection)
 
-            # ----------------------------------------
-            # 2. Subfolders → also children of main_collection
-            # ----------------------------------------
             objects_path = os.path.join(decode_path, "_objects")
             lights_path = os.path.join(decode_path, "_lights")
 

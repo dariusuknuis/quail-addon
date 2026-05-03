@@ -87,15 +87,7 @@ def wce_decode(path: str, parent_collection=None):
 
     print(f"Resolved assets path: {parser.assets_path}")
 
-    # ----------------------------------------
-    # Detect _objects / _lights subfolders
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # Root decode should NOT create subcollection
-    # ----------------------------------------
-
-    if parent_collection and os.path.basename(path) == os.path.basename(parent_collection.name):
+    if parent_collection and os.path.splitext(os.path.basename(path))[0] == parent_collection.name:
         base_collection = parent_collection
     else:
         base_collection = parent_collection.children.get(base_file_name) if parent_collection else None
@@ -110,24 +102,7 @@ def wce_decode(path: str, parent_collection=None):
 
     base_parent = None
 
-    # If this is a quail folder, route collections
-    # if os.path.isdir(path):
-
-    #     folder_name = os.path.basename(path).lower()
-
-    #     if folder_name == "_objects" or folder_name == "_lights":
-    #         # Create parent container
-    #         parent_name = os.path.basename(os.path.dirname(path))
-    #         parent_collection = bpy.data.collections.get(parent_name)
-
-    #         if not parent_collection:
-    #             parent_collection = bpy.data.collections.new(parent_name)
-    #             bpy.context.scene.collection.children.link(parent_collection)
-
-    #         parent_collection.children.link(base_collection)
-
     ctx = Context(parser, base_collection, base_parent)
-
 
     for _, worlddef in parser.worlddefs.items():
         ctx.collection = base_collection

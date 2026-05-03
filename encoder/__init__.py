@@ -621,6 +621,15 @@ def write_quail_folder(parser, export_objects, root_path):
     # ROOT OBJECTS
     # ----------------------------------------
     roots = get_root_objects(export_objects)
+    print("\n=== ROOT OBJECTS ===")
+    for r in roots:
+        if isinstance(r, bpy.types.Collection):
+            print(f"[COLLECTION] {r.name} ({r.get('quaildef')})")
+        elif isinstance(r, bpy.types.Object):
+            print(f"[OBJECT] {r.name} ({r.get('quaildef')})")
+        else:
+            print(f"[UNKNOWN] {r}")
+    print("====================\n")
 
     model_dirs = []
 
@@ -646,25 +655,62 @@ def write_quail_folder(parser, export_objects, root_path):
 def get_root_objects(export_objects):
     roots = []
 
+    # ----------------------------------------
+    # FIRST: collect DMSPRITEDEFs used by regions
+    # ----------------------------------------
+    region_sprite_tags = set()
+
+    for obj in export_objects:
+        if not isinstance(obj, bpy.types.Object):
+            continue
+
+        if obj.get("quaildef") != "region":
+            continue
+
+        props = obj.quail_region
+        if props.sprite:
+            region_sprite_tags.add(props.sprite)
+
+    # ----------------------------------------
+    # MAIN ROOT LOGIC
+    # ----------------------------------------
     for obj in export_objects:
 
         # ----------------------------------------
-        # ACTORDEF collections → treat as roots
+        # ACTORDEF collections → ROOT
         # ----------------------------------------
         if isinstance(obj, bpy.types.Collection):
             if obj.get("quaildef") == "actordef":
                 roots.append(obj)
             continue
 
-        # ----------------------------------------
-        # Normal object handling
-        # ----------------------------------------
         if not isinstance(obj, bpy.types.Object):
             continue
 
-        if obj.get("quaildef") == "materialpalette":
+        qdef = obj.get("quaildef")
+
+        # ----------------------------------------
+        # SKIP world structure (always)
+        # ----------------------------------------
+        if qdef in {"worldnode", "region"}:
             continue
 
+        # ----------------------------------------
+        # SKIP DMSPRITEDEFs ONLY if used by regions
+        # ----------------------------------------
+        if qdef in {"dmspritedef2", "dmspritedefinition"}:
+            if obj.name in region_sprite_tags:
+                continue
+
+        # ----------------------------------------
+        # Skip palettes
+        # ----------------------------------------
+        if qdef == "materialpalette":
+            continue
+
+        # ----------------------------------------
+        # Root condition
+        # ----------------------------------------
         if obj.parent is None:
             roots.append(obj)
 
@@ -854,6 +900,9 @@ def gather_export_objects(root_objects, parser):
                 if tag in palette_material_tags:
                     continue
 
+                if tag in parser.variationmaterialtags:
+                    continue
+
                 prefix = material_tag_parse(tag)
                 if not prefix:
                     continue
@@ -862,10 +911,11 @@ def gather_export_objects(root_objects, parser):
                 for palette_tag in palette_material_tags:
                     if palette_tag.startswith(prefix):
 
-                        # mark as variation
+                        if mat in visited:
+                            continue
+
                         parser.variationmaterialtags.add(tag)
 
-                        # ADD IT INTO THE SAME PIPELINE
                         add(mat)
 
                         # add its sprite too (same as normal path)
@@ -959,13 +1009,19 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     world_collection = None
 
-    for obj in export_objects:
-        if isinstance(obj, bpy.types.Object):
-            for col in obj.users_collection:
-                if col.get("quaildef") == "worlddef":
-                    world_collection = col
-                    break
-        if world_collection:
+    if context.collection and context.collection.get("quaildef") == "worlddef":
+        world_collection = context.collection
+
+    else:
+        for col in bpy.data.collections:
+            if col.get("quaildef") != "worlddef":
+                continue
+
+            # skip subfolders like _objects/_lights
+            if col.name.lower().startswith("_"):
+                continue
+
+            world_collection = col
             break
 
     if world_collection:
