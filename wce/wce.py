@@ -77,6 +77,8 @@ class wce:
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
     variationmaterialtags: set[str]
+    _dmrgbtrack_map: dict[str, str]
+
 
     def _instantiate_definition(self, cls, tag, r):
         if cls.__init__.__code__.co_argcount > 1:
@@ -128,6 +130,8 @@ class wce:
         self.worldtrees = {}
         self.zones = {}
         self.variationmaterialtags = set()
+        self._dmrgbtrack_map = {}
+
 
     def parse_definitions(self, current_path:str, r:io.TextIOWrapper):
 
@@ -326,7 +330,14 @@ class wce:
 
             if line.startswith(pointlight.definition()):
                 try:
-                    self.pointlights[tag] = self._instantiate_definition(pointlight, tag, r)
+                    inst = self._instantiate_definition(pointlight, tag, r)
+
+                    key = tag
+                    if not key:
+                        key = f"__pointlight_{len(self.pointlights)}"
+
+                    self.pointlights[key] = inst
+
                 except Exception as e:
                     raise Exception(f"{path_cursor} pointlight: {e}")
                 continue

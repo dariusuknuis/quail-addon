@@ -10,10 +10,12 @@ from .worlddef import encode_worlddef
 from .globalambientlightdef import encode_globalambientlightdef
 from .worldtree import encode_worldtree
 from .region import encode_region
+from .actorinst import encode_actorinst
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .track import encode_track
 from .dmspritedef2 import encode_dmspritedef2
+from .rgbdeformationtrackdef import encode_rgbdeformationtrackdef
 from .polyhedrondefinition import encode_polyhedrondefinition
 from .materialpalette import encode_materialpalette
 from .materialdefinition import encode_materialdefinition
@@ -497,6 +499,43 @@ def write_zone_folder(parser, export_objects, root_path):
 
     return ""
 
+def write_objects_folder(parser, export_objects, root_path):
+
+    os.makedirs(root_path, exist_ok=True)
+
+    world_path = os.path.join(root_path, "world.wce")
+
+    with open(world_path, "w") as w:
+        w.write("// wcemu v0.0.1\n\n")
+
+        if parser.worlddef:
+            parser.worlddef.write(w)
+            w.write("\n")
+        else:
+            w.write("WORLDDEF\n")
+            w.write("\tNEWWORLD 0\n")
+            w.write("\tZONE 0\n")
+            w.write("\tEQGVERSION? NULL\n\n")
+
+        for inst in parser.actorinsts.values():
+
+            if inst.dmrgbtrack:
+                track = parser.rgbdeformationtrackdefs.get(inst.dmrgbtrack)
+                if track:
+                    track.write(w)
+                    w.write("\n")
+
+            inst.write(w)
+            w.write("\n")
+
+    # ----------------------------------------
+    # _root.wce
+    # ----------------------------------------
+    with open(os.path.join(root_path, "_root.wce"), "w") as w:
+        w.write('INCLUDE "WORLD.WCE"\n')
+
+    return ""
+
 def write_quail_folder(parser, export_objects, root_path):
 
     print("Writing quail folder:", root_path)
@@ -626,11 +665,12 @@ def gather_export_objects(root_objects, parser):
     visited = set()
     stack = list(root_objects)
 
-    for col in bpy.data.collections:
-        if col.name == "WORLDTREE":
-            for obj in col.objects:
-                if obj.get("quaildef") == "worldnode":
-                    stack.append(obj)
+    if any(obj.get("quaildef") == "worldnode" for obj in root_objects if hasattr(obj, "get")):
+        for col in bpy.data.collections:
+            if col.name == "WORLDTREE":
+                for obj in col.objects:
+                    if obj.get("quaildef") == "worldnode":
+                        stack.append(obj)
 
     palette_material_tags = set()
     parser.variationmaterialtags.clear()
@@ -909,6 +949,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     # Gather Blender objects by type (FILTERED SET)
     # ------------------------------------------------
+    actorinsts = []
     actordefs = []
     simplesprites = []
     materialdefs = []
@@ -916,6 +957,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     polyhedrons = []
     dmsprite_defs = []
     dmsprite2_defs = []
+    rgbdeformationtrackdefs = []
     regions = []
     tracks = []
     hierarchicalsprites = []
@@ -935,6 +977,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if not qdef:
             continue
 
+        if qdef == "actorinst":
+            actorinsts.append(obj)
+
         if qdef == "actordef":
             actordefs.append(obj)
 
@@ -949,6 +994,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "dmspritedef2":
             dmsprite2_defs.append(obj)
+
+        elif qdef == "rgbdeformationtrackdef":
+            rgbdeformationtrackdefs.append(obj)
 
         elif qdef == "polyhedrondefinition":
             polyhedrons.append(obj)
@@ -978,6 +1026,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     err = encode_globalambientlightdef(parser)
     if err:
         errors.append(err)
+
+    for obj in actorinsts:
+        err = encode_actorinst(parser, obj)
+        if err:
+            errors.append(err)
 
     for obj in actordefs:
         err = encode_actordef(parser, obj)
@@ -1011,6 +1064,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     for obj in dmsprite2_defs:
         err = encode_dmspritedef2(parser, obj)
+        if err:
+            errors.append(err)
+
+    for obj in rgbdeformationtrackdefs:
+        err = encode_rgbdeformationtrackdef(parser, obj)
         if err:
             errors.append(err)
 
@@ -1052,6 +1110,10 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     # ------------------------------------------------
     # Write full quail folder structure
     # ------------------------------------------------
+
+    if os.path.basename(folder_path).lower().startswith("_objects"):
+        return write_objects_folder(parser, export_objects, folder_path)
+
     err = write_quail_folder(parser, export_objects, folder_path)
 
     if err:

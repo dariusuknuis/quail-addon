@@ -12,6 +12,7 @@ from .simplespritedef import decode_simplespritedef
 from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
 from .polyhedrondefinition import decode_polyhedrondefinition
+from .light import decode_light
 from .worldtree import decode_worldtree
 from .region import decode_region
 from .dmspritedefinition import decode_dmspritedefinition
@@ -172,6 +173,14 @@ def wce_decode(path: str):
         ctx.parent = base_parent
 
         err = decode_worldtree(ctx, worldtree)
+        if err:
+            error(err)
+
+    for _, light in parser.pointlights.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_light(ctx, light)
         if err:
             error(err)
 

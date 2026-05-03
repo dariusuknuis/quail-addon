@@ -8,6 +8,14 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
 
     col = ctx.collection
 
+    # ----------------------------------------
+    # Rename collection if RGB tracks exist
+    # ----------------------------------------
+
+    if getattr(ctx.parser, "rgbdeformationtrackdefs", None):
+        if len(ctx.parser.rgbdeformationtrackdefs) > 0:
+            col.name = "_objects"
+
     # Tag collection
     col["quaildef"] = "worlddef"
 
