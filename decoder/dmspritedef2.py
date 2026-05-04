@@ -50,11 +50,6 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     props.usecenteroffset = bool(sprite.usecenteroffset)
 
-    x, y, z = sprite.centeroffset
-    props.center_x = x
-    props.center_y = y
-    props.center_z = z
-
     props.materialpalette = bpy.data.objects.get(sprite.materialpalette)
 
     props.dmtrack = sprite.dmtrackinst

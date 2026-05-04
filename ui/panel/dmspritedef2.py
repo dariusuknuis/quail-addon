@@ -160,26 +160,18 @@ def update_centeroffset(self, context):
     if not obj or obj.get("quaildef") != "dmspritedef2":
         return
 
-    arm = obj
-
     if self.usecenteroffset:
-        arm.location[0] = self.center_x
-        arm.location[1] = self.center_y
-        arm.location[2] = self.center_z
+        obj.lock_location = (False, False, False)
     else:
-        arm.location[0] = 0.0
-        arm.location[1] = 0.0
-        arm.location[2] = 0.0
+        obj.location = (0.0, 0.0, 0.0)
+        obj.lock_location = (True, True, True)
 
 # =========================================================
 # PROPERTY GROUPS
 # =========================================================
 class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
 
-    usecenteroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
-    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
-    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
-    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+    usecenteroffset: BoolProperty(name="Use Center Offset (Location)", default=False, update=update_centeroffset)
 
     materialpalette: PointerProperty(
         name="Material Palette",
@@ -247,10 +239,6 @@ def draw_dmspritedef2_in_transform(self, context):
     box.label(text="DMSPRITEDEF2")
 
     box.prop(props, "usecenteroffset")
-    row = box.row(align=True)
-    row.prop(props, "center_x")
-    row.prop(props, "center_y")
-    row.prop(props, "center_z")
 
     box.prop(props, "materialpalette")
 

@@ -36,16 +36,11 @@ def update_centeroffset(self, context):
     if not obj or obj.get("quaildef") != "dmspritedefinition":
         return
 
-    arm = obj
-
     if self.hascenter:
-        arm.location[0] = self.center_x
-        arm.location[1] = self.center_y
-        arm.location[2] = self.center_z
+        obj.lock_location = (False, False, False)
     else:
-        arm.location[0] = 0.0
-        arm.location[1] = 0.0
-        arm.location[2] = 0.0
+        obj.location = (0.0, 0.0, 0.0)
+        obj.lock_location = (True, True, True)
 
 # =========================================================
 # PROPERTY GROUPS
@@ -63,10 +58,7 @@ class QuailDMSpriteDefinitionProperties(bpy.types.PropertyGroup):
 
     fragment3: IntProperty(name="Fragment3")
 
-    hascenter: BoolProperty(name="Center", default=False, update=update_centeroffset)
-    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
-    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
-    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+    hascenter: BoolProperty(name="Has Center (Location)", default=False, update=update_centeroffset)
 
     hasparams1: BoolProperty(name="Params1", default=False)
     params1_x: FloatProperty(name="X", default=0.0)
@@ -102,11 +94,6 @@ def draw_dmspritedefinition_in_transform(self, context):
     box.prop(props, "fragment3")
 
     box.prop(props, "hascenter")
-    if props.hascenter:
-        row = box.row(align=True)
-        row.prop(props, "center_x")
-        row.prop(props, "center_y")
-        row.prop(props, "center_z")
 
     box.prop(props, "hasparams1")
     if props.hasparams1:

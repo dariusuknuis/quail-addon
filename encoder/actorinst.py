@@ -27,7 +27,13 @@ def encode_actorinst(parser, obj) -> str:
     if props.sprite:
         wce_inst.sprite = props.sprite.name
     else:
-        wce_inst.sprite = ""
+        name = obj.name.upper().split(".")[0]
+
+        if name.endswith("_ACTORINST"):
+            base = name[:-len("_ACTORINST")]
+            wce_inst.sprite = f"{base}_ACTORDEF"
+        else:
+            wce_inst.sprite = ""
 
     # -------------------------
     # Current Action

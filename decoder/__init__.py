@@ -15,6 +15,7 @@ from .polyhedrondefinition import decode_polyhedrondefinition
 from .light import decode_light
 from .worldtree import decode_worldtree
 from .region import decode_region
+from .sprite3ddef import decode_sprite3ddef
 from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
 from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations
@@ -149,6 +150,14 @@ def wce_decode(path: str, parent_collection=None):
         ctx.parent = base_parent
 
         err = decode_polyhedrondefinition(ctx, polyhdef)
+        if err:
+            error(err)
+
+    for _, sprite3ddef in parser.sprite3ddefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_sprite3ddef(ctx, sprite3ddef)
         if err:
             error(err)
 

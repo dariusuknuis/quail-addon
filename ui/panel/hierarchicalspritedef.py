@@ -109,13 +109,10 @@ def update_centeroffset(self, context):
     arm = obj
 
     if self.has_centeroffset:
-        arm.location[0] = self.center_x
-        arm.location[1] = self.center_y
-        arm.location[2] = self.center_z
+        arm.lock_location = (False, False, False)
     else:
-        arm.location[0] = 0.0
-        arm.location[1] = 0.0
-        arm.location[2] = 0.0
+        arm.location = (0.0, 0.0, 0.0)
+        arm.lock_location = (True, True, True)
 
 def update_dag_sprite(self, context):
 
@@ -337,10 +334,7 @@ class QuailHierarchicalSpriteProperties(bpy.types.PropertyGroup):
         update=update_polyhedron
     )
 
-    has_centeroffset: BoolProperty(name="Center Offset", default=False, update=update_centeroffset)
-    center_x: FloatProperty(name="X", default=0.0, update=update_centeroffset)
-    center_y: FloatProperty(name="Y", default=0.0, update=update_centeroffset)
-    center_z: FloatProperty(name="Z", default=0.0, update=update_centeroffset)
+    has_centeroffset: BoolProperty(name="Has Center Offset (Location)", default=False, update=update_centeroffset)
 
     has_boundingradius: BoolProperty(
         name="Bounding Radius",
@@ -418,11 +412,6 @@ def draw_hierarchicalspritedef_in_transform(self, context):
     box.prop(props, "polyhedron")
 
     box.prop(props, "has_centeroffset")
-    if props.has_centeroffset:
-        row = box.row(align=True)
-        row.prop(props, "center_x")
-        row.prop(props, "center_y")
-        row.prop(props, "center_z")
 
     box.prop(props, "has_boundingradius")
     if props.has_boundingradius:

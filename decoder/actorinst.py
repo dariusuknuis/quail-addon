@@ -2,6 +2,10 @@ import bpy, math
 from .context import Context
 from ..wce.actorinst import actorinst
 
+import bpy, math
+from .context import Context
+from ..wce.actorinst import actorinst
+
 def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
     # ------------------------------------------------
@@ -26,29 +30,74 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
     props = obj.quail_actorinst
 
+    # =================================================
+    # RGB TRACK PATH
+    # =================================================
     if inst.dmrgbtrack:
+
+        # ----------------------------------------
+        # Validate ACTORDEF sprite type (STRICT)
+        # ----------------------------------------
+        actor_def = ctx.parser.actordefs.get(sprite_tag)
+
+        if actor_def:
+            lod_tag = None
+
+            for action in actor_def.actions:
+                for lod in action.action.levelsofdetails:
+                    lod_tag = lod.levelofdetail.sprite
+                    break
+                if lod_tag:
+                    break
+
+            if lod_tag and "DMSPRITEDEF" not in lod_tag.upper():
+                raise RuntimeError(
+                    f"ACTORDEF '{sprite_tag}' refers to '{lod_tag}' which is not a DMSPRITEDEF "
+                    f"(invalid for RGB track '{inst.dmrgbtrack}')"
+                )
+
+        # ----------------------------------------
+        # Try to get source mesh
+        # ----------------------------------------
         sprite_col = bpy.data.collections.get(sprite_tag)
 
-        if not sprite_col:
-            return f"actorinst refers to collection {sprite_tag} but not found"
-
-        # find a mesh inside the collection
         src_obj = None
-        for o in sprite_col.objects:
-            if o.type == 'MESH':
-                src_obj = o
-                break
+        if sprite_col:
+            for o in sprite_col.objects:
+                if o.type == 'MESH':
+                    src_obj = o
+                    break
 
-        if not src_obj:
-            return f"No mesh found in {sprite_tag}"
+        # ----------------------------------------
+        # Get RGB track
+        # ----------------------------------------
+        rgb_track = ctx.parser.rgbdeformationtrackdefs.get(inst.dmrgbtrack)
 
-        new_obj = src_obj.copy()
-        new_obj.data = src_obj.data.copy()
+        # =================================================
+        # CASE 1: SOURCE MESH EXISTS → copy
+        # =================================================
+        if src_obj:
+            new_obj = src_obj.copy()
+            new_obj.data = src_obj.data.copy()
+
+        # =================================================
+        # CASE 2: MISSING MESH → BUILD DUMMY
+        # =================================================
+        else:
+            mesh = bpy.data.meshes.new(inst.dmrgbtrack or "RGBTRACK")
+
+            verts = []
+            if rgb_track and rgb_track.rgbdeformationframes:
+                verts = [(0, 0, 0)] * len(rgb_track.rgbdeformationframes[0].rgbas)
+
+            mesh.from_pydata(verts, [], [])
+            mesh.update()
+
+            new_obj = bpy.data.objects.new(mesh.name, mesh)
 
         # ----------------------------------------
         # Naming + tagging
         # ----------------------------------------
-
         track_name = inst.dmrgbtrack or "RGBTRACK"
 
         new_obj.name = track_name
@@ -62,18 +111,9 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
         new_obj.lock_rotation = (True, True, True)
         new_obj.lock_scale = (True, True, True)
 
-        # new_obj.hide_select = True
-
-        # ----------------------------------------
-        # Get RGB track
-        # ----------------------------------------
-
-        rgb_track = ctx.parser.rgbdeformationtrackdefs.get(inst.dmrgbtrack)
-
         # ----------------------------------------
         # Populate RGBDEFORMATIONTRACKDEF props
         # ----------------------------------------
-
         if rgb_track:
             props.has_dmrgbtack = True
             track_props = new_obj.quail_rgbdeformationtrackdef
@@ -85,9 +125,8 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
             track_props.numframes = len(rgb_track.rgbdeformationframes)
 
         # ----------------------------------------
-        # Create color attribute (frame 0 only)
+        # Create color attribute
         # ----------------------------------------
-
         mesh = new_obj.data
         frame_index = 0
         attr_name = f"rgbatrack_{frame_index:03d}"
@@ -99,13 +138,11 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
         )
 
         # ----------------------------------------
-        # Fill attribute from rgb track
+        # Fill attribute
         # ----------------------------------------
-
         if rgb_track and rgb_track.rgbdeformationframes:
 
             frame = rgb_track.rgbdeformationframes[0]
-
             count = min(len(mesh.vertices), len(frame.rgbas))
 
             for i in range(count):
@@ -119,11 +156,9 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
                 )
 
         # ----------------------------------------
-        # Assign material (copy + set attribute name)
+        # Assign material if exists
         # ----------------------------------------
-
         if new_obj.material_slots:
-
             base_mat = new_obj.material_slots[0].material
             if base_mat:
                 mat = base_mat.copy()
@@ -134,10 +169,10 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
                 new_obj.material_slots[0].material = mat
 
+    # =================================================
+    # NON-RGB PATH (unchanged)
+    # =================================================
     else:
-        # ------------------------------------------------
-        # COLLECTION INSTANCE
-        # ------------------------------------------------
         obj.instance_type = 'COLLECTION'
 
         sprite_col = bpy.data.collections.get(sprite_tag)
@@ -146,7 +181,7 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
         obj.instance_collection = sprite_col
 
-    props.sprite = sprite_col
+    props.sprite = sprite_col if 'sprite_col' in locals() else None
 
     # ------------------------------------------------
     # Current Action
@@ -166,14 +201,13 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
         x, y, z, rz, ry, rx = inst.location
 
-        # ADD THIS
         obj.location = (x, y, z)
 
         scale = (2 * math.pi) / 512.0
         obj.rotation_euler = (
-            ry * scale,  # X
-            rx * scale,  # Y
-            rz * scale,  # Z
+            ry * scale,
+            rx * scale,
+            rz * scale,
         )
     else:
         props.has_location = False

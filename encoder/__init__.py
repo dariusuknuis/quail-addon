@@ -592,12 +592,59 @@ def write_lights_folder(parser, export_objects, root_path):
 
     return ""
 
-def write_quail_folder(parser, export_objects, root_path):
+def find_child_collections(parent_col):
+    objects_col = None
+    lights_col = None
+
+    if not parent_col:
+        return objects_col, lights_col
+
+    for child in parent_col.children:
+        name = child.name.lower()
+
+        if name == "_objects":
+            objects_col = child
+
+        elif name == "_lights":
+            lights_col = child
+
+    return objects_col, lights_col
+
+def write_quail_folder(parser, export_objects, root_path, context):
 
     print("Writing quail folder:", root_path)
 
     if parser.worlddef and parser.worlddef.zone:
-        return write_zone_folder(parser, export_objects, root_path)
+
+        # ----------------------------------------
+        # Find child collections
+        # ----------------------------------------
+        col = context.collection if context else None
+        objects_col, lights_col = find_child_collections(col)
+        # ----------------------------------------
+        # Write main zone
+        # ----------------------------------------
+        write_zone_folder(parser, export_objects, root_path)
+
+        # ----------------------------------------
+        # Write _objects if present
+        # ----------------------------------------
+        if objects_col:
+            objects_path = os.path.join(root_path, "_objects")
+
+            obj_export = gather_export_objects([objects_col], parser)
+            write_objects_folder(parser, obj_export, objects_path)
+
+        # ----------------------------------------
+        # Write _lights if present
+        # ----------------------------------------
+        if lights_col:
+            lights_path = os.path.join(root_path, "_lights")
+
+            light_export = gather_export_objects([lights_col], parser)
+            write_lights_folder(parser, light_export, lights_path)
+
+        return ""
 
     os.makedirs(root_path, exist_ok=True)
 
@@ -1238,7 +1285,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     if os.path.basename(folder_path).lower().startswith("_lights"):
         return write_lights_folder(parser, export_objects, folder_path)
 
-    err = write_quail_folder(parser, export_objects, folder_path)
+    err = write_quail_folder(parser, export_objects, folder_path, context)
 
     if err:
         return err

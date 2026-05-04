@@ -34,24 +34,12 @@ def encode_dmspritedef2(parser, obj) -> str:
             for bone in arm.data.bones:
                 bone_matrices[bone.name] = arm.matrix_world @ bone.matrix_local
 
-    # ----------------------------------------
-    # Tag
-    # ----------------------------------------
     wce_sprite.tag = obj.name
 
-    # ----------------------------------------
-    # Center Offset
-    # ----------------------------------------
+    loc = obj.location
     wce_sprite.usecenteroffset = 1 if props.usecenteroffset else 0
-    wce_sprite.centeroffset = (
-        float(props.center_x),
-        float(props.center_y),
-        float(props.center_z),
-    )
+    wce_sprite.centeroffset = (loc.x, loc.y, loc.z)
 
-    # ----------------------------------------
-    # Vertices
-    # ----------------------------------------
     wce_sprite.vertices = []
     for v in mesh.vertices:
 

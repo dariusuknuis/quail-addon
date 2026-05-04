@@ -58,7 +58,6 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     # CENTER
     if sprite.center:
         props.hascenter = True
-        props.center_x, props.center_y, props.center_z = sprite.center
     else:
         props.hascenter = False
 

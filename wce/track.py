@@ -65,6 +65,4 @@ class track:
         w.write(f"\tREVERSE {self.reverse}\n")
         w.write(f"\tSLEEP? {('NULL' if self.sleep is None else self.sleep)}\n")
 
-        w.write("\n")
-
         return ""

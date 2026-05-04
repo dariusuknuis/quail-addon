@@ -77,11 +77,7 @@ def decode_hierarchicalspritedef(ctx: Context, sprite: hierarchicalspritedef) ->
 
     if sprite.centeroffset is not None:
         props.has_centeroffset = True
-
-        x, y, z = sprite.centeroffset
-        props.center_x = x
-        props.center_y = y
-        props.center_z = z
+        arm_obj.location = sprite.centeroffset
     else:
         props.has_centeroffset = False
 
