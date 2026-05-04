@@ -3,105 +3,7 @@
 import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
-from ...common.rendermethod import apply_userdefined, sync_rendermethod_node, apply_transparent
-
-def update_userdefined(self, context):
-    if not self.use_userdefined:
-        return
-    apply_userdefined(self, self.userdefined_index)
-    mat = self.id_data
-    # mat = context.material
-    if not mat:
-        return
-
-def update_rendermethod_node(self, context):
-    mat = self.id_data
-    if not isinstance(mat, bpy.types.Material):
-        return
-
-    sync_rendermethod_node(mat)
-
-def update_transparent(self, context):
-    if not self.transparent_override:
-        return
-    apply_transparent(self)
-    mat = getattr(context, "material", None)
-    if mat is None:
-        return
-
-def sprite_items(self, context):
-    items = [("NONE", "<None>", "")]
-
-    for ng in bpy.data.node_groups:
-        if ng.get("quaildef") == "simplespritedef":
-            items.append((ng.name, ng.name, ""))
-
-    return items
-
-def update_simplesprite(self, context):
-
-    valid = [i[0] for i in sprite_items(self, context)]
-
-    if not self.simplespritetag or self.simplespritetag not in valid:
-        self.simplespritetag = valid[0] if valid else "NONE"
-        return
-
-    mat = self.id_data
-    if not isinstance(mat, bpy.types.Material):
-        return
-
-    if not mat.use_nodes or not mat.node_tree:
-        return
-
-    nodes = mat.node_tree.nodes
-    links = mat.node_tree.links
-
-    # --------------------------------------------
-    # Find RENDERMETHOD node
-    # --------------------------------------------
-    rm_node = None
-    for n in nodes:
-        if n.type == "GROUP" and n.node_tree and n.node_tree.name == "RENDERMETHOD":
-            rm_node = n
-            break
-
-    if not rm_node:
-        return
-
-    # --------------------------------------------
-    # Remove existing sprite node
-    # --------------------------------------------
-    for n in list(nodes):
-        if n.get("quail_sprite_node"):
-            nodes.remove(n)
-
-    # If cleared in panel, stop here
-    if not self.simplespritetag or self.simplespritetag == "NONE":
-        return
-
-    sprite_group = bpy.data.node_groups.get(self.simplespritetag)
-    if not sprite_group:
-        return
-
-    # --------------------------------------------
-    # Create new sprite node
-    # --------------------------------------------
-    sprite_node = nodes.new("ShaderNodeGroup")
-    sprite_node.node_tree = sprite_group
-    sprite_node.location = (-400, 0)
-    sprite_node["quail_sprite_node"] = True
-
-    links.new(sprite_node.outputs["sRGB Texture"], rm_node.inputs["sRGB Texture"])
-    links.new(sprite_node.outputs["Alpha"], rm_node.inputs["Alpha"])
-
-def update_twosided(self, context):
-    mat = self.id_data
-    if not isinstance(mat, bpy.types.Material):
-        return
-
-    # Two-Sided ON  → disable culling
-    # Two-Sided OFF → enable culling
-    mat.use_backface_culling = not self.twosided
+from ...common.s3dmaterial import update_userdefined, update_rendermethod_node, update_transparent, update_simplesprite, update_twosided, sprite_items
 
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
@@ -319,7 +221,7 @@ def add_default_quaildef(self, context):
     material.quail_materialdefinition.uvshiftperms = (0.0, 0.0)
     material.quail_materialdefinition.twosided = False
 
-def draw_materialdefinition_in_transform(self, context):
+def draw_materialdefinition_panel(self, context):
     obj = context.object
     if not obj or not obj.active_material:
         return
@@ -437,19 +339,19 @@ def register():
     # Attach the panel to the UI
     try:
         import _cycles
-        bpy.types.CYCLES_MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
+        bpy.types.CYCLES_MATERIAL_PT_surface.prepend(draw_materialdefinition_panel)
     except (AttributeError, ImportError):
         pass
 
     try:
-        bpy.types.EEVEE_MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
+        bpy.types.EEVEE_MATERIAL_PT_surface.prepend(draw_materialdefinition_panel)
     except AttributeError:
         pass
 
     try:
-        bpy.types.MATERIAL_PT_surface.prepend(draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_surface.prepend(draw_materialdefinition_panel)
     except AttributeError:
-        bpy.types.MATERIAL_PT_viewport.prepend(draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_viewport.prepend(draw_materialdefinition_panel)
 
 def unregister():
     # Only unregister things we manually registered
@@ -457,21 +359,21 @@ def unregister():
 
     # Remove from panels
     try:
-        bpy.types.CYCLES_MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
+        bpy.types.CYCLES_MATERIAL_PT_surface.remove(draw_materialdefinition_panel)
     except AttributeError:
         pass
 
     try:
-        bpy.types.EEVEE_MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
+        bpy.types.EEVEE_MATERIAL_PT_surface.remove(draw_materialdefinition_panel)
     except AttributeError:
         pass
 
     try:
-        bpy.types.MATERIAL_PT_surface.remove(draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_surface.remove(draw_materialdefinition_panel)
     except AttributeError:
         pass
 
     try:
-        bpy.types.MATERIAL_PT_viewport.remove(draw_materialdefinition_in_transform)
+        bpy.types.MATERIAL_PT_viewport.remove(draw_materialdefinition_panel)
     except AttributeError:
         pass

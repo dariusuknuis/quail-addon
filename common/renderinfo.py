@@ -1,22 +1,24 @@
-# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
-
 import bpy
-from ..wce.materialdefinition import materialdefinition
-from .context import Context
-from ..common.rendermethod import apply_userdefined, apply_transparent, parse_rendermethod_string, create_rendermethod_nodegroup
+from .rendermethod import parse_rendermethod_string, create_rendermethod_nodegroup, apply_userdefined, apply_transparent
 
-def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
-    if material.tag in bpy.data.materials:
-        return ""
-    mat = bpy.data.materials.new(material.tag)
-    mat['quaildef'] = 'materialdefinition'
+def build_renderinfo_material(sprite_tag: str, node_index: int, node) -> bpy.types.Material:
 
-    # --------------------------------------------------
-    # Parse RenderMethod
-    # --------------------------------------------------
-    parsed = parse_rendermethod_string(material.rendermethod)
+    mat_name = f"{sprite_tag}_NODE{node_index}_RENDERINFO"
 
-    props = mat.quail_materialdefinition
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(mat_name)
+
+    mat['quaildef'] = 'renderinfo'
+
+    ri = node.bspnode.renderinfo
+    parsed = parse_rendermethod_string(node.bspnode.rendermethod)
+
+    props = mat.quail_renderinfo
+
+    # --------------------------------------------
+    # RenderMethod logic
+    # --------------------------------------------
 
     if parsed["use_userdefined"]:
         props.use_userdefined = True
@@ -44,47 +46,60 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.additive = parsed["additive"]
         props.dynamic = parsed["dynamic"]
         props.prelit = parsed["prelit"]
+    # --------------------------------------------
+    # RenderInfo-specific values
+    # --------------------------------------------
 
-    props.rgbpen = (
-        material.rgbpen[0] / 255.0,
-        material.rgbpen[1] / 255.0,
-        material.rgbpen[2] / 255.0,
-    )
-    props.brightness = material.brightness
-    props.scaledambient = material.scaledambient
-    tag = material.simplespriteinst.simplespritetag
+    if ri.pen is not None:
+        v = ri.pen / 255.0
+        props.rgbpen = (v, v, v)
+    else:
+        props.rgbpen = (1.0, 1.0, 1.0)
+
+    if ri.brightness is not None:
+        props.has_brightness = True
+        props.brightness = ri.brightness
+    else:
+        props.has_brightness = False
+        props.brightness = 0.0
+
+    if ri.scaledambient is not None:
+        props.has_scaledambient = True
+        props.scaledambient = ri.scaledambient
+    else:
+        props.has_scaledambient = False
+        props.scaledambient = 0.0
+
+    tag = ri.simplespriteinst.simplespritetag
     if tag:
         props.simplespritetag = tag
-    props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
-    props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
-    if material.uvshiftperms is not None:
-        props.has_uvshiftperms = True
-        props.uvshiftperms = material.uvshiftperms
+        props.has_simplesprite = True
     else:
-        props.has_uvshiftperms = False
-        props.uvshiftperms = (0.0, 0.0)
-    props.twosided = material.twosided == 1
+        props.has_simplesprite = False
+
+    props.simplespritehaveskipframes = bool(ri.simplespriteinst.simplespritehaveskipframes)
+    props.simplespriteskipframes = bool(ri.simplespriteinst.simplespriteskipframes == 1)
+
+    props.twosided = bool(ri.twosided)
+
+    # --------------------------------------------
+    # Build node tree
+    # --------------------------------------------
 
     mat.use_nodes = True
-
-    if mat.node_tree is None:
-        return f"material {material.tag} has no node tree"
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
 
-    # Clear default nodes
     for n in nodes:
         nodes.remove(n)
 
-    # Create RenderMethod group
     group_tree = create_rendermethod_nodegroup()
 
     group_node = nodes.new("ShaderNodeGroup")
     group_node.node_tree = group_tree
     group_node.location = (0, 0)
 
-    # Hide internal control inputs (panel-controlled only)
     hide_inputs = {
         "Masked",
         "AlphaBlend",
@@ -98,13 +113,13 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         if socket.name in hide_inputs:
             socket.hide = True
 
-    # Apply values to group inputs
     group_node.inputs["sRGB Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
     group_node.inputs["Masked"].default_value = float(props.masked)
     group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
     group_node.inputs["Opacity"].default_value = props.opacity
     group_node.inputs["Additive"].default_value = float(props.additive)
     group_node.inputs["TextureIndex"].default_value = float(props.texture_index)
+
     drawstyle_map = {
         "DRAW0": 0.0,
         "DRAW1": 1.0,
@@ -116,13 +131,11 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.drawstyle, 0.0
     )
 
-    # Add Material Output
     output = nodes.new("ShaderNodeOutputMaterial")
     output.location = (300, 0)
 
     links.new(group_node.outputs["Shader"], output.inputs["Surface"])
 
-    # Backface culling
     mat.use_backface_culling = not props.twosided
 
     if props.simplespritetag:
@@ -131,10 +144,8 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
             sprite_node = nodes.new("ShaderNodeGroup")
             sprite_node.node_tree = sprite_group
             sprite_node.location = (-400, 0)
-            # if "Frame Index" in sprite_node.inputs:
-            #     sprite_node.inputs["Frame Index"].hide = True
 
             links.new(sprite_node.outputs["sRGB Texture"], group_node.inputs["sRGB Texture"])
             links.new(sprite_node.outputs["Alpha"], group_node.inputs["Alpha"])
 
-    return ""
+    return mat
