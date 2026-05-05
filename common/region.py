@@ -186,9 +186,8 @@ def decode_vislist(vislistbytes, ranges):
             i += 1
 
         else:
-            idx = (ranges[i+1] << 8) | ranges[i]
-            regions.append(idx + 1)
-            i += 2
+            regions.append(ranges[i])
+            i += 1
             continue
 
     return regions
