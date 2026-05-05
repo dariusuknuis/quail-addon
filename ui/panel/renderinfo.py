@@ -89,14 +89,8 @@ class QuailRenderInfoProperties(bpy.types.PropertyGroup):
         update=update_rendermethod_node
     )
 
-    rgbpen: FloatVectorProperty(
-        name="RGB",
-        subtype='COLOR',
-        size=3,
-        min=0.0,
-        max=1.0,
-        default=(1.0, 1.0, 1.0)
-    )
+    has_pen: BoolProperty(name="Pen",default=True)
+    pen: IntProperty(name="Pen Index", default=0)
 
     has_brightness: BoolProperty(default=False)
     brightness: FloatProperty(default=1.0)
@@ -177,7 +171,10 @@ def draw_renderinfo_panel(self, context):
     line.label(text="────────────────────────────")
 
     row = box.row()
-    row.prop(props, "rgbpen")
+
+    box.prop(props, "has_pen")
+    if props.has_pen:
+        box.prop(props, "pen")
 
     box.prop(props, "has_brightness")
     if props.has_brightness:

@@ -16,6 +16,7 @@ from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .track import encode_track
 from .dmspritedef2 import encode_dmspritedef2
+from .sprite3ddef import encode_sprite3ddef
 from .rgbdeformationtrackdef import encode_rgbdeformationtrackdef
 from .polyhedrondefinition import encode_polyhedrondefinition
 from .materialpalette import encode_materialpalette
@@ -420,6 +421,34 @@ def write_zone_folder(parser, export_objects, root_path):
         for wt in parser.worldtrees.values():
             wt.write(w)
             w.write("\n")
+
+        sprite = parser.sprite3ddefs.get("CAMERA_DUMMY")
+
+        if sprite:
+            sprite.write(w)
+            w.write("\n")
+
+            matched_actordef = None
+
+            for actordef in parser.actordefs.values():
+                for action in actordef.actions:
+                    for lod in action.action.levelsofdetails:
+                        if lod.levelofdetail.sprite == sprite.tag:
+                            matched_actordef = actordef
+                            break
+                    if matched_actordef:
+                        break
+                if matched_actordef:
+                    break
+
+            if matched_actordef:
+                matched_actordef.write(w)
+                w.write("\n")
+
+                for actorinst in parser.actorinsts.values():
+                    if actorinst.sprite == matched_actordef.tag:
+                        actorinst.write(w)
+                        w.write("\n")
 
     with open(os.path.join(zone_dir, "_root.wce"), "w") as w:
         w.write('INCLUDE "ZONE.WCE"\n')
@@ -1114,6 +1143,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     materialdefs = []
     materialpalettes = []
     polyhedrons = []
+    sprite3ddefs = []
     dmsprite_defs = []
     dmsprite2_defs = []
     rgbdeformationtrackdefs = []
@@ -1157,6 +1187,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "dmspritedef2":
             dmsprite2_defs.append(obj)
+
+        elif qdef == "sprite3ddef":
+            sprite3ddefs.append(obj)
 
         elif qdef == "rgbdeformationtrackdef":
             rgbdeformationtrackdefs.append(obj)
@@ -1237,6 +1270,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     for obj in rgbdeformationtrackdefs:
         err = encode_rgbdeformationtrackdef(parser, obj)
+        if err:
+            errors.append(err)
+
+    for obj in sprite3ddefs:
+        err = encode_sprite3ddef(parser, obj)
         if err:
             errors.append(err)
 

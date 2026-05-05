@@ -13,6 +13,7 @@ from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
 from .polyhedrondefinition import decode_polyhedrondefinition
 from .light import decode_light
+from .zone import decode_zone
 from .worldtree import decode_worldtree
 from .region import decode_region
 from .sprite3ddef import decode_sprite3ddef
@@ -27,6 +28,7 @@ from ..logger.error import error
 from .context import Context
 from ..common import state
 from ..common.region import resolve_region_visibility
+from ..common.bsp import build_bsp
 import os
 
 def find_assets_root(start_path: str) -> str | None:
@@ -104,6 +106,9 @@ def wce_decode(path: str, parent_collection=None):
     base_parent = None
 
     ctx = Context(parser, base_collection, base_parent)
+
+    if not ctx.parser.bsp_root:
+        build_bsp(ctx.parser)
 
     for _, worlddef in parser.worlddefs.items():
         ctx.collection = base_collection
@@ -192,6 +197,14 @@ def wce_decode(path: str, parent_collection=None):
         ctx.parent = base_parent
 
         err = decode_worldtree(ctx, worldtree)
+        if err:
+            error(err)
+
+    for _, zone in parser.zones.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_zone(ctx, zone)
         if err:
             error(err)
 

@@ -51,10 +51,11 @@ def build_renderinfo_material(sprite_tag: str, node_index: int, node) -> bpy.typ
     # --------------------------------------------
 
     if ri.pen is not None:
-        v = ri.pen / 255.0
-        props.rgbpen = (v, v, v)
+        props.has_pen = True
+        props.pen = ri.pen
     else:
-        props.rgbpen = (1.0, 1.0, 1.0)
+        props.has_pen = False
+        props.pen = 0
 
     if ri.brightness is not None:
         props.has_brightness = True

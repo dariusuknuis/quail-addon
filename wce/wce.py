@@ -78,6 +78,8 @@ class wce:
     zones:dict[str, zone]
     variationmaterialtags: set[str]
     _dmrgbtrack_map: dict[str, str]
+    bsp_root: object | None
+    region_to_leaf: dict[str, object]
 
 
     def _instantiate_definition(self, cls, tag, r):
@@ -131,6 +133,8 @@ class wce:
         self.zones = {}
         self.variationmaterialtags = set()
         self._dmrgbtrack_map = {}
+        self.bsp_root = None
+        self.region_to_leaf = {}
 
 
     def parse_definitions(self, current_path:str, r:io.TextIOWrapper):

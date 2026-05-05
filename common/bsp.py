@@ -1,6 +1,69 @@
 import bpy
 import math
 import mathutils
+from mathutils import Vector
+
+class BSPNode:
+    def __init__(self):
+        self.normal = None
+        self.d = None
+
+        self.front = None
+        self.back = None
+        self.parent = None
+
+        self.region_tag = None
+
+
+def build_bsp(parser):
+
+    if getattr(parser, "bsp_root", None):
+        return
+
+    tree = next(iter(parser.worldtrees.values()), None)
+    if not tree:
+        return
+
+    nodes = {}
+
+    # create nodes (1-based)
+    for i, raw in enumerate(tree.worldnodes, start=1):
+
+        n = BSPNode()
+
+        nx, ny, nz, d = raw.normalabcd
+        n.normal = Vector((nx, ny, nz))
+        n.d = d
+
+        if raw.worldregiontag and raw.worldregiontag != "NULL":
+            n.region_tag = raw.worldregiontag
+
+        nodes[i] = n
+
+    # link
+    for i, raw in enumerate(tree.worldnodes, start=1):
+
+        node = nodes[i]
+
+        ft = raw.fronttree
+        bt = raw.backtree
+
+        if ft > 0:
+            node.front = nodes[ft]
+            node.front.parent = node
+
+        if bt > 0:
+            node.back = nodes[bt]
+            node.back.parent = node
+
+    # map leaves
+    parser.region_to_leaf = {}
+
+    for node in nodes.values():
+        if node.region_tag and node.front is None and node.back is None:
+            parser.region_to_leaf[node.region_tag] = node
+
+    parser.bsp_root = nodes[1]
 
 def create_zone_bounds_intersect_geometry_node():
 

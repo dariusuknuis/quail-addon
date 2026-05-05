@@ -15,6 +15,8 @@ def decode_sprite3ddef(ctx: Context, sprite: sprite3ddef) -> str:
     obj['quaildef'] = 'sprite3ddef'
     obj.parent = ctx.parent
 
+    props = obj.quail_sprite3ddef
+
     # ------------------------------------------------
     # Vertices
     # ------------------------------------------------
@@ -66,8 +68,34 @@ def decode_sprite3ddef(ctx: Context, sprite: sprite3ddef) -> str:
             poly.material_index = face_material_indices[poly_index]
 
     # ------------------------------------------------
+    # Gouraud flag
+    # ------------------------------------------------
+
+    props.enablegouraud2 = bool(sprite.enablegouraud2)
+
+    # ------------------------------------------------
+    # Center Offset
+    # ------------------------------------------------
+
+    if sprite.centeroffset is not None:
+        props.hascenteroffset = True
+        obj.location = sprite.centeroffset
+        obj.lock_location = (False, False, False)
+    else:
+        props.hascenteroffset = False
+        obj.location = (0.0, 0.0, 0.0)
+        obj.lock_location = (True, True, True)
+
+    # ------------------------------------------------
     # Bounding radius
     # ------------------------------------------------
+
+    if sprite.boundingradius is not None:
+        props.hasboundingradius = True
+        props.boundingradius = sprite.boundingradius
+    else:
+        props.hasboundingradius = False
+        props.boundingradius = 1.0
 
     apply_bounding_radius_geo(
         parent_obj=obj,
