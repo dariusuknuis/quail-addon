@@ -212,7 +212,7 @@ def create_rendermethod_nodegroup():
     group_input.location = (-1255, 135)
 
     group_output = nodes.new("NodeGroupOutput")
-    group_output.location = (1428, 12)
+    group_output.location = (1728, 12)
 
     def add_input(name, socket_type):
         group.interface.new_socket(
@@ -233,6 +233,7 @@ def create_rendermethod_nodegroup():
     # -----------------------------------------
     add_input("sRGB Texture", "NodeSocketColor")
     add_input("Alpha", "NodeSocketFloat")
+    add_input("PassableDisplay", "NodeSocketFloat") # Not really part of Rendermethod, but for displaying passable face flag
 
     add_input("Masked", "NodeSocketFloat")
     add_input("AlphaBlend", "NodeSocketFloat")
@@ -256,7 +257,7 @@ def create_rendermethod_nodegroup():
     # Base Principled Shader
     # -----------------------------------------
     principled = nodes.new("ShaderNodeBsdfPrincipled")
-    principled.location = (1108, 15)
+    principled.location = (1408, 15)
     principled.inputs["Metallic"].default_value = 0.0
     principled.inputs["Specular IOR Level"].default_value = 0.0
     principled.inputs["Roughness"].default_value = 1.0
@@ -363,7 +364,34 @@ def create_rendermethod_nodegroup():
     links.new(texture0.outputs[0], solid_override.inputs[0])
     links.new(inp["sRGB Texture"], solid_override.inputs[6])
 
-    links.new(solid_override.outputs[2], principled.inputs["Base Color"])
+    # ------------------------------------------------
+    # Passable flag stuff
+    # ------------------------------------------------
+    passable_attribute = nodes.new('ShaderNodeAttribute')
+    passable_attribute.name = 'Passable Attribute'
+    passable_attribute.label = 'PassableAttribute'
+    passable_attribute.attribute_name = "PASSABLE"
+    passable_attribute.location = (444, 732)
+
+    passable_effective = nodes.new("ShaderNodeMath")
+    passable_effective.name = 'Passable Effective'
+    passable_effective.label = 'PassableEffective'
+    passable_effective.operation = 'MULTIPLY'
+    passable_effective.location = (644, 732)
+    links.new(inp["PassableDisplay"], passable_effective.inputs[0])
+    links.new(passable_attribute.outputs[0], passable_effective.inputs[1])
+
+    passable_override = nodes.new('ShaderNodeMix')
+    passable_override.name = 'Passable Override'
+    passable_override.label = 'PassableOverride'
+    passable_override.data_type = 'RGBA'
+    passable_override.blend_type = 'COLOR'
+    passable_override.location = (1022, 529)
+    passable_override.inputs[7].default_value = (0.0, 1.0, 0.0, 1.0)
+    links.new(passable_effective.outputs[0], passable_override.inputs[0])
+    links.new(solid_override.outputs[2], passable_override.inputs[6])
+
+    links.new(passable_override.outputs[2], principled.inputs["Base Color"])
 
     # ------------------------------------------------
     # Transparent Toggle nodes
@@ -393,7 +421,27 @@ def create_rendermethod_nodegroup():
     links.new(trans_effective.outputs[0], trans_override.inputs[0])
     links.new(final_mix.outputs[0], trans_override.inputs[2])
 
-    links.new(trans_override.outputs[0], principled.inputs["Alpha"])
+    # ------------------------------------------------
+    # More Passable flag stuff
+    # ------------------------------------------------
+    passable_mix = nodes.new("ShaderNodeMix")
+    passable_mix.name = 'Passable Factor'
+    passable_mix.label = 'PassableFactor'
+    passable_mix.data_type = 'FLOAT'
+    passable_mix.location = (1124, 170)
+    passable_mix.inputs[2].default_value = 1
+    passable_mix.inputs[3].default_value = 0.5
+    links.new(passable_effective.outputs[0], passable_mix.inputs["Factor"])
+
+    passable_alpha = nodes.new("ShaderNodeMath")
+    passable_alpha.name = 'Passable Alpha'
+    passable_alpha.label = 'PassableAlpha'
+    passable_alpha.operation = 'MULTIPLY'
+    passable_alpha.location = (1224, 35)
+    links.new(passable_mix.outputs[0], passable_alpha.inputs[0])
+    links.new(trans_override.outputs[0], passable_alpha.inputs[1])
+
+    links.new(passable_alpha.outputs[0], principled.inputs["Alpha"])
 
     # ------------------------------------------------
     # Additive Toggle nodes

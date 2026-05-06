@@ -141,6 +141,23 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
 
+    # ----------------------------------------
+    # PASSABLE face attribute
+    # ----------------------------------------
+
+    passable_attr = mesh.attributes.new(
+        name="PASSABLE",
+        type='INT',
+        domain='FACE'
+    )
+
+    for i, face in enumerate(sprite.face2s):
+
+        if i >= len(passable_attr.data):
+            break
+
+        passable_attr.data[i].value = int(face.passable)
+
     if len(sprite.uvs) > 0:
         uvlayer = mesh.uv_layers.new()
         for triangle in mesh.polygons:
