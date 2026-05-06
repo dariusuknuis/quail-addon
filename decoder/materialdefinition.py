@@ -86,6 +86,7 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
 
     # Hide internal control inputs (panel-controlled only)
     hide_inputs = {
+        "PassableDisplay",
         "Masked",
         "AlphaBlend",
         "Additive",
@@ -115,6 +116,20 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     group_node.inputs["Drawstyle"].default_value = drawstyle_map.get(
         props.drawstyle, 0.0
     )
+
+    socket = group_node.inputs["PassableDisplay"]
+    fcu = socket.driver_add("default_value")
+    drv = fcu.driver
+    drv.type = 'SCRIPTED'
+
+    var = drv.variables.new()
+    var.name = "s"
+    tgt = var.targets[0]
+    tgt.id_type = 'SCENE'
+    tgt.id = bpy.context.scene
+    tgt.data_path = 'passable_display_enabled'
+
+    drv.expression = "s"
 
     # Add Material Output
     output = nodes.new("ShaderNodeOutputMaterial")
