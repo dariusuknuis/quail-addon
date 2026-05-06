@@ -1,7 +1,6 @@
 import bpy, bmesh
 from mathutils import Vector
-from ..common.zone import apply_zone_rules
-
+from ..common.zone import apply_zone_rules, ensure_zone_material
 
 def create_convex_from_planes(planes, size=10000.0):
 
@@ -185,11 +184,60 @@ def build_zone_mesh_from_bsp(obj, zone, ctx):
     bm.to_mesh(mesh)
     bm.free()
 
+    mesh.update()
+    mesh.validate(clean_customdata=False)
+
+    # -------------------------------------------------
+    # There are always more degenerates to get rid of...
+    # -------------------------------------------------
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+
+    bmesh.ops.dissolve_degenerate(
+        bm,
+        edges=[e for e in bm.edges if e.is_valid],
+        dist=0.002
+    )
+
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+
+    bmesh.ops.dissolve_limit(
+        bm,
+        angle_limit=0.05,
+        verts=[v for v in bm.verts if v.is_valid],
+        edges=[e for e in bm.edges if e.is_valid],
+    )
+
+    bm.normal_update()
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    mesh.update()
+    mesh.validate(clean_customdata=False)
+
 
 def decode_zone(ctx, z):
 
     obj = bpy.data.objects.new(z.tag, bpy.data.meshes.new(z.tag))
-    ctx.collection.objects.link(obj)
+
+    # ----------------------------------------
+    # Target collection
+    # ----------------------------------------
+    if hasattr(ctx, "zone_collection") and ctx.zone_collection:
+        target_collection = ctx.zone_collection
+    else:
+        target_collection = ctx.collection
+
+    target_collection.objects.link(obj)
 
     obj['quaildef'] = 'zone'
     obj.parent = ctx.parent
@@ -211,5 +259,7 @@ def decode_zone(ctx, z):
     build_zone_mesh_from_bsp(obj, z, ctx)
 
     apply_zone_rules(obj)
+
+    ensure_zone_material(obj)
 
     return ""

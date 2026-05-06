@@ -112,6 +112,20 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
                 lc.hide_viewport = True
 
         # ----------------------------------------
+        # ZONES collection
+        # ----------------------------------------
+
+        if len(ctx.parser.zones) > 0:
+
+            zone_collection = col.children.get("ZONES")
+
+            if not zone_collection:
+                zone_collection = bpy.data.collections.new("ZONES")
+                col.children.link(zone_collection)
+
+            ctx.zone_collection = zone_collection
+
+        # ----------------------------------------
         # Set 3D View clip distance
         # ----------------------------------------
         for window in bpy.context.window_manager.windows:
