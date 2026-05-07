@@ -17,6 +17,7 @@ from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .track import encode_track
 from .dmspritedef2 import encode_dmspritedef2
+from .dmspritedefinition import encode_dmspritedefinition
 from .sprite3ddef import encode_sprite3ddef
 from .rgbdeformationtrackdef import encode_rgbdeformationtrackdef
 from .polyhedrondefinition import encode_polyhedrondefinition
@@ -207,31 +208,90 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     local_objects = gather_export_objects([root_obj], parser)
     local_actions = gather_export_tracks(local_objects)
 
-    # Encode ONLY this model
-    encode_actordef(local_parser, root_obj)
+    print(f"\n[MODEL] {model_name}")
+    print("[LOCAL OBJECTS]")
+    for obj in local_objects:
+        if isinstance(obj, bpy.types.Object):
+            print(" ", obj.name, obj.get("quaildef"))
+
+    print("[LOCAL ACTIONS]")
+    for act in local_actions:
+        print(" ", act.name)
+
+    if root_obj.name in parser.actordefs:
+        local_parser.actordefs[root_obj.name] = (
+            parser.actordefs[root_obj.name]
+        )
 
     for obj in local_objects:
+
         qdef = obj.get("quaildef")
 
         if qdef == "hierarchicalspritedef":
-            encode_hierarchicalspritedef(local_parser, obj)
+            if obj.name in parser.hierarchicalspritedefs:
+                local_parser.hierarchicalspritedefs[obj.name] = (
+                    parser.hierarchicalspritedefs[obj.name]
+                )
 
         elif qdef == "dmspritedef2":
-            encode_dmspritedef2(local_parser, obj)
+            if obj.name in parser.dmspritedef2s:
+                sprite = parser.dmspritedef2s[obj.name]
+                local_parser.dmspritedef2s[obj.name] = sprite
 
+                dmtrack_tag = getattr(sprite, "dmtrackinst", "")
+                if dmtrack_tag and dmtrack_tag in parser.dmtrackdef2s:
+                    local_parser.dmtrackdef2s[dmtrack_tag] = (
+                        parser.dmtrackdef2s[dmtrack_tag]
+                    )
+
+        elif qdef == "dmspritedefinition":
+            if obj.name in parser.dmspritedefinitions:
+                local_parser.dmspritedefinitions[obj.name] = (
+                    parser.dmspritedefinitions[obj.name]
+                )
         elif qdef == "polyhedrondefinition":
-            encode_polyhedrondefinition(local_parser, obj)
+            if obj.name in parser.polyhedrondefinitions:
+                local_parser.polyhedrondefinitions[obj.name] = (
+                    parser.polyhedrondefinitions[obj.name]
+                )
 
         elif qdef == "materialpalette":
-            encode_materialpalette(local_parser, obj)
+            if obj.name in parser.materialpalettes:
+                local_parser.materialpalettes[obj.name] = (
+                    parser.materialpalettes[obj.name]
+                )
 
         elif qdef == "materialdefinition":
-            encode_materialdefinition(local_parser, obj)
+            if obj.name in parser.materialdefinitions:
+                local_parser.materialdefinitions[obj.name] = (
+                    parser.materialdefinitions[obj.name]
+                )
 
         elif qdef == "simplespritedef":
-            encode_simplespritedef(local_parser, obj)
+            if obj.name in parser.simplespritedefs:
+                local_parser.simplespritedefs[obj.name] = (
+                    parser.simplespritedefs[obj.name]
+            )
 
-    encode_track(local_parser, local_actions, bpy.context)
+    for action in local_actions:
+
+        print(f"[LOCAL ACTION] {action.name}")
+
+        for track in parser.tracks.values():
+
+            anim_name = getattr(track, "animation", "")
+
+            if anim_name.upper() != action.name.upper():
+                continue
+
+            print(f"[TRACK MATCH] {track.tag}")
+
+            local_parser.tracks[track.tag] = track
+
+            if track.trackdef in parser.trackdefinitions:
+                local_parser.trackdefinitions[track.trackdef] = (
+                    parser.trackdefinitions[track.trackdef]
+                )
 
     # ----------------------------------------
     # Write MODEL WCE
@@ -259,7 +319,11 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
             obj.write(w)
             w.write("\n")
 
-        for t in parser.tracks.values():
+        for obj in local_parser.dmspritedefinitions.values():
+            obj.write(w)
+            w.write("\n")
+
+        for t in local_parser.tracks.values():
             if t.is_pose:
                 t.write(w)
                 w.write("\n")
@@ -738,14 +802,34 @@ def write_quail_folder(parser, export_objects, root_path, context):
     return ""
 
 def get_root_objects(export_objects):
+
     roots = []
+
+    # ----------------------------------------
+    # Build set of objects owned by ACTORDEFs
+    # ----------------------------------------
+
+    actordef_owned = set()
+
+    for obj in export_objects:
+
+        if not isinstance(obj, bpy.types.Collection):
+            continue
+
+        if obj.get("quaildef") != "actordef":
+            continue
+
+        for child in obj.all_objects:
+            actordef_owned.add(child)
 
     # ----------------------------------------
     # FIRST: collect DMSPRITEDEFs used by regions
     # ----------------------------------------
+
     region_sprite_tags = set()
 
     for obj in export_objects:
+
         if not isinstance(obj, bpy.types.Object):
             continue
 
@@ -753,21 +837,30 @@ def get_root_objects(export_objects):
             continue
 
         props = obj.quail_region
+
         if props.sprite:
             region_sprite_tags.add(props.sprite)
 
     # ----------------------------------------
     # MAIN ROOT LOGIC
     # ----------------------------------------
+
     for obj in export_objects:
 
         # ----------------------------------------
         # ACTORDEF collections → ROOT
         # ----------------------------------------
+
         if isinstance(obj, bpy.types.Collection):
+
             if obj.get("quaildef") == "actordef":
                 roots.append(obj)
+
             continue
+
+        # ----------------------------------------
+        # Must be object
+        # ----------------------------------------
 
         if not isinstance(obj, bpy.types.Object):
             continue
@@ -775,27 +868,39 @@ def get_root_objects(export_objects):
         qdef = obj.get("quaildef")
 
         # ----------------------------------------
-        # SKIP world structure (always)
+        # SKIP world structure
         # ----------------------------------------
+
         if qdef in {"worldnode", "region"}:
             continue
 
         # ----------------------------------------
-        # SKIP DMSPRITEDEFs ONLY if used by regions
-        # ----------------------------------------
-        if qdef in {"dmspritedef2", "dmspritedefinition"}:
-            if obj.name in region_sprite_tags:
-                continue
-
-        # ----------------------------------------
         # Skip palettes
         # ----------------------------------------
+
         if qdef == "materialpalette":
             continue
 
         # ----------------------------------------
+        # Skip objects already owned by ACTORDEFs
+        # ----------------------------------------
+
+        if obj in actordef_owned:
+            continue
+
+        # ----------------------------------------
+        # SKIP DMSPRITEDEFs used by regions
+        # ----------------------------------------
+
+        if qdef in {"dmspritedef2", "dmspritedefinition"}:
+
+            if obj.name in region_sprite_tags:
+                continue
+
+        # ----------------------------------------
         # Root condition
         # ----------------------------------------
+
         if obj.parent is None:
             roots.append(obj)
 
@@ -844,6 +949,7 @@ def gather_export_tracks(export_objects):
 
             # Match "_AVI", "_HUM", etc
             if action.name.endswith(f"_{model_code}"):
+                print(f"[TRACK MATCH] action={action.name} model={model_code}")
                 actions.add(action)
 
     return actions
@@ -1275,11 +1381,10 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-
-    # for obj in dmsprite_defs:
-    #     err = encode_dmspritedefinition(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in dmsprite_defs:
+        err = encode_dmspritedefinition(parser, obj)
+        if err:
+            errors.append(err)
 
     for obj in dmsprite2_defs:
         err = encode_dmspritedef2(parser, obj)

@@ -132,6 +132,36 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
 
+    # ----------------------------------------
+    # DMFACE FLAG + DATA
+    # ----------------------------------------
+
+    flag_attr = mesh.attributes.new(
+        name="FLAG",
+        type='INT',
+        domain='FACE'
+    )
+
+    data_attr = mesh.color_attributes.new(
+        name="DATA",
+        type='BYTE_COLOR',
+        domain='FACE'
+    )
+
+    for i, face in enumerate(sprite.faces):
+
+        if i >= len(mesh.polygons):
+            break
+
+        flag_attr.data[i].value = face.flag
+
+        data_attr.data[i].color = (
+            face.data[0],
+            face.data[1],
+            face.data[2],
+            face.data[3],
+        )
+
     if len(sprite.texcoords) > 0:
         uvlayer = mesh.uv_layers.new()
         for triangle in mesh.polygons:

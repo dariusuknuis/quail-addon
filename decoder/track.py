@@ -53,14 +53,17 @@ class TrackParseState:
         self.currentAniModelCode = ""
         self.previousAnimations = {}
 class Track:
-    def __init__(self, inst, definition):
+    def __init__(self, inst, definition, folder=""):
 
         self.tag = inst.tag
+        self.folder = folder
         self.interpolate = inst.interpolate
         self.reverse = inst.reverse
         self.sleep = inst.sleep
 
         self.frames = []
+
+        prev_quat = None
 
         for f in definition.frames:
 
@@ -112,7 +115,12 @@ def _try_build_track(name):
     if not definition:
         return
 
-    _tracks[name] = Track(inst, definition)
+    folder = ""
+
+    if hasattr(inst, "folder"):
+        folder = inst.folder
+
+    _tracks[name] = Track(inst, definition, folder)
 
 
 def decode_trackdefinition(ctx, trackdef):
@@ -128,6 +136,8 @@ def decode_trackdefinition(ctx, trackdef):
 
 
 def decode_trackinstance(ctx, trackinst):
+
+    trackinst.folder = ctx.parser.folders.get(trackinst.tag, "")
 
     _trackinsts[trackinst.tag] = trackinst
 
@@ -295,13 +305,16 @@ def build_wld_animations():
             if not ani_prefix or not model_code:
                 continue
 
-            action_name = f"{ani_prefix}_{model_code}"
+            action_name = f"{ani_prefix}_{model_code}".upper()
 
         else:
-            # Pose / armature track
-            model_code = track_name[:3]
 
-            action_name = f"POS_{model_code}"
+            model_code = track.folder
+
+            if not model_code:
+                model_code = track_name[:3]
+
+            action_name = f"POS_{model_code}".upper()
 
         tracks_by_action.setdefault(action_name, []).append(track)
 
@@ -316,7 +329,7 @@ def build_wld_animations():
         armature_obj = None
 
         for obj in bpy.data.objects:
-            if obj.type == 'ARMATURE' and obj.name.startswith(model_code):
+            if obj.type == 'ARMATURE' and obj.name.lower().startswith(model_code.lower()):
                 armature_obj = obj
                 break
 
@@ -435,7 +448,21 @@ def build_wld_animations():
 
                 pose_matrix = rest_inv @ local_anim
 
-                pose_bone.matrix_basis = pose_matrix
+                loc2, rot2, scale2 = pose_matrix.decompose()
+
+                # -----------------------------------------
+                # Quaternion continuity fix AFTER decompose
+                # -----------------------------------------
+
+                if current_frame > 1:
+
+                    prev_rot = pose_bone.rotation_quaternion.copy()
+
+                    if prev_rot.dot(rot2) < 0.0:
+                        rot2.negate()
+
+                pose_bone.location = loc2
+                pose_bone.rotation_quaternion = rot2
 
                 pose_bone.scale = (scale, scale, scale)
 

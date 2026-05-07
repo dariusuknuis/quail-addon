@@ -80,6 +80,7 @@ class wce:
     _dmrgbtrack_map: dict[str, str]
     bsp_root: object | None
     region_to_leaf: dict[str, object]
+    folders: dict[str, str]
 
 
     def _instantiate_definition(self, cls, tag, r):
@@ -135,6 +136,7 @@ class wce:
         self._dmrgbtrack_map = {}
         self.bsp_root = None
         self.region_to_leaf = {}
+        self.folders = {}
 
 
     def parse_definitions(self, current_path:str, r:io.TextIOWrapper):
@@ -142,6 +144,8 @@ class wce:
         current_dir = current_path
         if os.path.isfile(current_dir):
             current_dir = os.path.dirname(current_dir)
+
+        folder_name = os.path.basename(current_dir)
         defs = {}
 
         line_number = 0
@@ -173,6 +177,7 @@ class wce:
             if line.startswith(actordef.definition()):
                 try:
                     self.actordefs[tag] = self._instantiate_definition(actordef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} actordef: {e}")
                 continue
@@ -187,6 +192,7 @@ class wce:
                         key = f"__actorinst_{len(self.actorinsts)}"
 
                     self.actorinsts[key] = inst
+                    self.folders[key] = folder_name
 
                 except Exception as e:
                     raise Exception(f"{path_cursor} actorinst: {e}")
@@ -195,6 +201,7 @@ class wce:
             if line.startswith(ambientlight.definition()):
                 try:
                     self.ambientlights[tag] = self._instantiate_definition(ambientlight, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} ambientlight: {e}")
                 continue
@@ -202,6 +209,7 @@ class wce:
             if line.startswith(blitspritedef.definition()):
                 try:
                     self.blitspritedefs[tag] = self._instantiate_definition(blitspritedef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} blitspritedef: {e}")
                 continue
@@ -209,6 +217,7 @@ class wce:
             if line.startswith(dmspritedef2.definition()):
                 try:
                     self.dmspritedef2s[tag] = self._instantiate_definition(dmspritedef2, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmspritedef2: {e}")
                 continue
@@ -216,6 +225,7 @@ class wce:
             if line.startswith(dmspritedefinition.definition()):
                 try:
                     self.dmspritedefinitions[tag] = self._instantiate_definition(dmspritedefinition, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmspritedefinition: {e}")
                 continue
@@ -223,6 +233,7 @@ class wce:
             if line.startswith(dmtrackdef2.definition()):
                 try:
                     self.dmtrackdef2s[tag] = self._instantiate_definition(dmtrackdef2, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} dmtrackdef2: {e}")
                 continue
@@ -230,6 +241,7 @@ class wce:
             if line.startswith(eqganidef.definition()):
                 try:
                     self.eqganidefs[tag] = self._instantiate_definition(eqganidef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqganidef: {e}")
                 continue
@@ -237,6 +249,7 @@ class wce:
             if line.startswith(eqglayerdef.definition()):
                 try:
                     self.eqglayerdefs[tag] = self._instantiate_definition(eqglayerdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqglayerdef: {e}")
                 continue
@@ -244,6 +257,7 @@ class wce:
             if line.startswith(eqgmodeldef.definition()):
                 try:
                     self.eqgmodeldefs[tag] = self._instantiate_definition(eqgmodeldef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgmodeldef: {e}")
                 continue
@@ -251,6 +265,7 @@ class wce:
             if line.startswith(eqgloddef.definition()):
                 try:
                     self.eqgloddefs[tag] = self._instantiate_definition(eqgloddef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgloddef: {e}")
                 continue
@@ -258,6 +273,7 @@ class wce:
             if line.startswith(eqgskinnedmodeldef.definition()):
                 try:
                     self.eqgskinnedmodeldefs[tag] = self._instantiate_definition(eqgskinnedmodeldef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgskinnedmodeldef: {e}")
                 continue
@@ -265,6 +281,7 @@ class wce:
             if line.startswith(eqgterdef.definition()):
                 try:
                     self.eqgterdefs[tag] = self._instantiate_definition(eqgterdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgterdef: {e}")
                 continue
@@ -272,6 +289,7 @@ class wce:
             if line.startswith(eqgparticlepointdef.definition()):
                 try:
                     self.eqgparticlepointdefs[tag] = self._instantiate_definition(eqgparticlepointdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlepointdef: {e}")
                 continue
@@ -279,6 +297,7 @@ class wce:
             if line.startswith(eqgparticlerenderdef.definition()):
                 try:
                     self.eqgparticlerenderdefs[tag] = self._instantiate_definition(eqgparticlerenderdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgparticlerenderdef: {e}")
                 continue
@@ -286,6 +305,7 @@ class wce:
             if line.startswith(eqgzondef.definition()):
                 try:
                     self.eqgzondefs[tag] = self._instantiate_definition(eqgzondef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqgzondef: {e}")
                 continue
@@ -293,6 +313,7 @@ class wce:
             if line.startswith(globalambientlightdef.definition()):
                 try:
                     self.globalambientlightdefs[tag] = self._instantiate_definition(globalambientlightdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} globalambientlightdef: {e}")
                 continue
@@ -300,6 +321,7 @@ class wce:
             if line.startswith(hierarchicalspritedef.definition()):
                 try:
                     self.hierarchicalspritedefs[tag] = self._instantiate_definition(hierarchicalspritedef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} hierarchicalspritedef: {e}")
                 continue
@@ -307,6 +329,7 @@ class wce:
             if line.startswith(lightdefinition.definition()):
                 try:
                     self.lightdefinitions[tag] = self._instantiate_definition(lightdefinition, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} lightdefinition: {e}")
                 continue
@@ -314,6 +337,7 @@ class wce:
             if line.startswith(materialdefinition.definition()):
                 try:
                     self.materialdefinitions[tag] = self._instantiate_definition(materialdefinition, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} materialdefinition: {e}")
                 continue
@@ -321,6 +345,7 @@ class wce:
             if line.startswith(materialpalette.definition()):
                 try:
                     self.materialpalettes[tag] = self._instantiate_definition(materialpalette, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} materialpalette: {e}")
                 continue
@@ -328,6 +353,7 @@ class wce:
             if line.startswith(particleclouddef.definition()):
                 try:
                     self.particleclouddefs[tag] = self._instantiate_definition(particleclouddef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} particleclouddef: {e}")
                 continue
@@ -341,7 +367,7 @@ class wce:
                         key = f"__pointlight_{len(self.pointlights)}"
 
                     self.pointlights[key] = inst
-
+                    self.folders[key] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} pointlight: {e}")
                 continue
@@ -349,6 +375,7 @@ class wce:
             if line.startswith(polyhedrondefinition.definition()):
                 try:
                     self.polyhedrondefinitions[tag] = self._instantiate_definition(polyhedrondefinition, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} polyhedrondefinition: {e}")
                 continue
@@ -356,6 +383,7 @@ class wce:
             if line.startswith(region.definition()):
                 try:
                     self.regions[tag] = self._instantiate_definition(region, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} region: {e}")
                 continue
@@ -363,6 +391,7 @@ class wce:
             if line.startswith(rgbdeformationtrackdef.definition()):
                 try:
                     self.rgbdeformationtrackdefs[tag] = self._instantiate_definition(rgbdeformationtrackdef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} rgbdeformationtrackdef: {e}")
                 continue
@@ -370,6 +399,7 @@ class wce:
             if line.startswith(simplespritedef.definition()):
                 try:
                     self.simplespritedefs[tag] = self._instantiate_definition(simplespritedef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} simplespritedef: {e}")
                 continue
@@ -377,6 +407,7 @@ class wce:
             if line.startswith(sprite2ddef.definition()):
                 try:
                     self.sprite2ddefs[tag] = self._instantiate_definition(sprite2ddef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} sprite2ddef: {e}")
                 continue
@@ -384,6 +415,7 @@ class wce:
             if line.startswith(sprite3ddef.definition()):
                 try:
                     self.sprite3ddefs[tag] = self._instantiate_definition(sprite3ddef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} sprite3ddef: {e}")
                 continue
@@ -391,6 +423,7 @@ class wce:
             if line.startswith(trackdefinition.definition()):
                 try:
                     self.trackdefinitions[tag] = self._instantiate_definition(trackdefinition, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} trackdefinition: {e}")
                 continue
@@ -398,6 +431,7 @@ class wce:
             if line.startswith(trackinstance.definition()):
                 try:
                     self.trackinstances[tag] = self._instantiate_definition(trackinstance, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} trackinstance: {e}")
                 continue
@@ -405,6 +439,7 @@ class wce:
             if line.startswith(worlddef.definition()):
                 try:
                     self.worlddefs[tag] = self._instantiate_definition(worlddef, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} worlddef: {e}")
                 continue
@@ -412,6 +447,7 @@ class wce:
             if line.startswith(worldtree.definition()):
                 try:
                     self.worldtrees[tag] = self._instantiate_definition(worldtree, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} worldtree: {e}")
                 continue
@@ -419,6 +455,7 @@ class wce:
             if line.startswith(zone.definition()):
                 try:
                     self.zones[tag] = self._instantiate_definition(zone, tag, r)
+                    self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} zone: {e}")
                 continue
