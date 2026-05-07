@@ -11,6 +11,7 @@ from .globalambientlightdef import encode_globalambientlightdef
 from .worldtree import encode_worldtree
 from .light import encode_light
 from .region import encode_region
+from .zone import encode_zone
 from .actorinst import encode_actorinst
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
@@ -250,6 +251,10 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
             obj.write(w)
             w.write("\n")
 
+        for obj in local_parser.dmtrackdef2s.values():
+            obj.write(w)
+            w.write("\n")
+
         for obj in local_parser.dmspritedef2s.values():
             obj.write(w)
             w.write("\n")
@@ -449,6 +454,10 @@ def write_zone_folder(parser, export_objects, root_path):
                     if actorinst.sprite == matched_actordef.tag:
                         actorinst.write(w)
                         w.write("\n")
+
+        for zone in parser.zones.values():
+            zone.write(w)
+            w.write("\n")
 
     with open(os.path.join(zone_dir, "_root.wce"), "w") as w:
         w.write('INCLUDE "ZONE.WCE"\n')
@@ -1149,6 +1158,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     rgbdeformationtrackdefs = []
     lights = []
     regions = []
+    zones = []
     tracks = []
     hierarchicalsprites = []
     eqgmodels = []
@@ -1178,6 +1188,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "light":
             lights.append(obj)
+
+        elif qdef == "zone":
+            zones.append(obj)
 
         elif qdef == "region":
             regions.append(obj)
@@ -1244,6 +1257,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     for obj in lights:
         err = encode_light(parser, obj)
+        if err:
+            errors.append(err)
+
+    for obj in zones:
+        err = encode_zone(parser, obj)
         if err:
             errors.append(err)
 

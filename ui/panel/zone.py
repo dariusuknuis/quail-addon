@@ -2,7 +2,7 @@
 
 import bpy
 from bpy.props import EnumProperty, BoolProperty, StringProperty, CollectionProperty, IntProperty, PointerProperty
-from ...common.zone import apply_zone_rules
+from ...common.zone import apply_zone_rules, ensure_zone_material
 
 ZONE_TYPE_ITEMS = [
     ('DR', "Dry", ""),
@@ -13,6 +13,14 @@ ZONE_TYPE_ITEMS = [
     ('W2', "Water v2", ""),
     ('W3', "Water v3", ""),
 ]
+
+def update_zone_material(self, context):
+    obj = context.object
+
+    if not obj or obj.get("quaildef") != "zone":
+        return
+
+    ensure_zone_material(obj)
 
 def update_zone_name(self, context):
     obj = context.object
@@ -140,12 +148,13 @@ class QuailZoneProperties(bpy.types.PropertyGroup):
     zone_type: EnumProperty(
         name="Zone Type",
         items=ZONE_TYPE_ITEMS,
-        default='DR'
+        default='DR',
+        update=update_zone_material
     )
 
-    is_pvp: BoolProperty(name="PvP", default=False)
-    has_tp: BoolProperty(name="Teleport (TP)", default=False)
-    slippery: BoolProperty(name="Slippery", default=False)
+    is_pvp: BoolProperty(name="PvP", default=False, update=update_zone_material)
+    has_tp: BoolProperty(name="Teleport (TP)", default=False, update=update_zone_material)
+    slippery: BoolProperty(name="Slippery", default=False, update=update_zone_material)
 
     userdata: StringProperty(name="User Data", default="")
 

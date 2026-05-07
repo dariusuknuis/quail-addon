@@ -336,12 +336,22 @@ def apply_overlays(mat, base_bsdf, overlays):
         tree.links.new(prev_out, out.inputs['Surface'])
 
 def ensure_zone_material(obj):
-    source = get_zone_source(obj)
-    prefix = source[:2]
+    props = obj.quail_zone
+
+    prefix = props.zone_type
 
     base_name, hexcol, alpha = ZONE_MAT_MAP.get(prefix, ZONE_MAT_MAP["DR"])
 
-    overlay_codes = get_zone_overlay_codes(source)
+    overlay_codes = []
+
+    if props.is_pvp:
+        overlay_codes.append("PVP")
+
+    if props.has_tp:
+        overlay_codes.append("TP")
+
+    if props.slippery:
+        overlay_codes.append("SLP")
 
     base_key = base_name[:-5]
     suffix = "".join(f"_{c}" for c in overlay_codes)

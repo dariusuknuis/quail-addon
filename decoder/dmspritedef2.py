@@ -9,6 +9,7 @@ from ..common.region import is_region_mesh, is_zone_collection
 from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
+from .dmtrackdef2 import decode_dmtrackdef2
 
 def find_hsprite_for_mesh(parser, mesh_name):
 
@@ -306,6 +307,20 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
                 vg.add([vertex_index], 1.0, 'REPLACE')
 
             vertex_index += 1
+
+    # ------------------------------------------------
+    # Create DMTRACKDEF2 shape keys
+    # ------------------------------------------------
+
+    if sprite.dmtrackinst:
+        dmtrack = ctx.parser.dmtrackdef2s.get(sprite.dmtrackinst)
+
+        if dmtrack:
+            err = decode_dmtrackdef2(ctx, obj, dmtrack)
+            if err:
+                return err
+        else:
+            print(f"{obj.name}: DMTRACKDEF2 not found: {sprite.dmtrackinst}")
 
     bounds = (
         sprite.boundingboxmin,

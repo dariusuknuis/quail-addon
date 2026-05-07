@@ -1,6 +1,7 @@
 import bpy
 import mathutils
 from ..wce.dmspritedef2 import dmspritedef2
+from .dmtrackdef2 import encode_dmtrackdef2
 
 def encode_dmspritedef2(parser, obj) -> str:
 
@@ -310,6 +311,20 @@ def encode_dmspritedef2(parser, obj) -> str:
     wce_sprite.fpscale = props.fpscale
     wce_sprite.usevertexcoloralpha = 1 if props.usevertexcoloralpha else 0
     wce_sprite.spritedefpolyhedron = 1 if props.spritedefpolyhedron else 0
+
+    # ----------------------------------------
+    # DMTRACKDEF2 shape key animation
+    # ----------------------------------------
+    if mesh.shape_keys and mesh.shape_keys.get("quaildef") == "dmtrackdef2":
+
+        err = encode_dmtrackdef2(parser, obj)
+        if err:
+            return err
+
+        key_props = mesh.shape_keys.quail_dmtrackdef2
+
+        if key_props.tag:
+            wce_sprite.dmtrackinst = key_props.tag
 
     # ----------------------------------------
     # Store

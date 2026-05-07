@@ -1,3 +1,6 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
+
+
 import bpy
 import bmesh
 from bpy.props import FloatVectorProperty
@@ -14,6 +17,23 @@ VALID_QUAILDEFS = {
 }
 
 # ---------- helpers ----------
+
+def _get_vertex_normal_modifier(obj):
+
+    for mod in obj.modifiers:
+
+        if mod.type != 'NODES':
+            continue
+
+        if not mod.node_group:
+            continue
+
+        if mod.node_group.name != "VERTEX_NORMALS":
+            continue
+
+        return mod
+
+    return None
 
 def _in_edit_vertex_mode(context):
 
@@ -315,6 +335,17 @@ class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
         row = layout.row()
         row.label(text=f"Layer: '{LAYER_NAME}' " + ("✓" if layer else "✗"))
 
+        mod = _get_vertex_normal_modifier(ob)
+
+        if mod:
+
+            layout.prop(
+                mod,
+                '["Socket_1"]',
+                text="Show Normals"
+            )
+
+
         col = layout.column(align=True)
         # 1) direction widget (normalized preview)
         col.prop(context.scene, "vertex_normals_edit_vec", text="Direction")
@@ -352,12 +383,10 @@ class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
 
 # ---------- register ----------
 
-def register_eqg_wld_normal_editor():
+def register():
 
     register_props()
 
-def unregister_eqg_wld_normal_editor():
-    unregister_props()
+def unregister():
 
-if __name__ == "__main__":
-    register_eqg_wld_normal_editor()
+    unregister_props()
