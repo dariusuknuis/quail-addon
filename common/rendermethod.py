@@ -75,7 +75,7 @@ def apply_userdefined(props, index: int):
     props.prelit = prelit
     props.opacity = opacity
 
-def sync_rendermethod_node(mat):
+def sync_rendermethod_node(mat, props):
     if not mat or not mat.node_tree:
         return
 
@@ -88,8 +88,6 @@ def sync_rendermethod_node(mat):
 
     if not group_node:
         return
-
-    props = mat.quail_materialdefinition
 
     group_node.inputs["Masked"].default_value = float(props.masked)
     group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
@@ -250,6 +248,15 @@ def create_rendermethod_nodegroup():
 
     add_output("Shader", "NodeSocketShader")
 
+    # Transparent blit flag addon
+    transparent_blit = group.interface.new_socket(
+        name="Transparent Blit",
+        in_out='INPUT',
+        socket_type="NodeSocketFloat"
+    )
+
+    transparent_blit.default_value = 1.0
+
     inp = group_input.outputs
     out = group_output.inputs
 
@@ -318,7 +325,6 @@ def create_rendermethod_nodegroup():
     mask_mix.data_type = 'FLOAT'
     mask_mix.location = (444, 332)
     mask_mix.inputs[2].default_value = 1
-    links.new(mask_allow.outputs[0], mask_mix.inputs["Factor"])
     links.new(inp["Alpha"], mask_mix.inputs[3])
 
     # ------------------------------------------------
@@ -453,6 +459,18 @@ def create_rendermethod_nodegroup():
     rgb_to_bw.location = (-939, -94)
     links.new(inp["sRGB Texture"], rgb_to_bw.inputs[0])
 
+    black_range = nodes.new("ShaderNodeMapRange")
+    black_range.name = 'Blackness Range'
+    black_range.label = 'BlacknessRange'
+    black_range.location = (-760, -94)
+    black_range.clamp = True
+    black_range.inputs["From Min"].default_value = 0.0
+    black_range.inputs["From Max"].default_value = 0.03
+    black_range.inputs["To Min"].default_value = 0.0
+    black_range.inputs["To Max"].default_value = 1.0
+
+    links.new(rgb_to_bw.outputs[0], black_range.inputs["Value"])
+
     # EmissionStrength = Additive * FinalAlpha * 0.75
     add_effective = nodes.new("ShaderNodeMath")
     add_effective.name = 'Additive Effective'
@@ -469,7 +487,7 @@ def create_rendermethod_nodegroup():
     additive_enabled.location = (-619, -288)
     additive_enabled.inputs[2].default_value = 1
     links.new(add_effective.outputs[0], additive_enabled.inputs["Factor"])
-    links.new(rgb_to_bw.outputs[0], additive_enabled.inputs[3])
+    links.new(black_range.outputs[0], additive_enabled.inputs[3])
 
     additive_blend = nodes.new("ShaderNodeMath")
     additive_blend.name = 'Additive Blend'
@@ -517,6 +535,19 @@ def create_rendermethod_nodegroup():
     links.new(add_color.outputs[2], saturation.inputs[4])
 
     links.new(saturation.outputs[0], principled.inputs["Emission Color"])
+
+    # ------------------------------------------------
+    # Transparent Blit Override (Prevents masked)
+    # ------------------------------------------------
+
+    trans_blit_flag = nodes.new("ShaderNodeMath")
+    trans_blit_flag.name = 'Transparent Blit Flag'
+    trans_blit_flag.label = 'TransparentBlitFlag'
+    trans_blit_flag.operation = 'MULTIPLY'
+    trans_blit_flag.location = (265, 406)
+    links.new(inp["Transparent Blit"], trans_blit_flag.inputs[0])
+    links.new(mask_allow.outputs[0], trans_blit_flag.inputs[1])
+    links.new(trans_blit_flag.outputs[0], mask_mix.inputs["Factor"])
 
     # ------------------------------------------------
     # Output

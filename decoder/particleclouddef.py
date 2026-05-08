@@ -5,31 +5,36 @@ import mathutils
 from ..wce.particleclouddef import particleclouddef
 from .context import Context
 
+
 def decode_particleclouddef(ctx: Context, cloud: particleclouddef) -> str:
 
     # ------------------------------------------------
-    # Create emitter mesh
+    # Already exists
     # ------------------------------------------------
 
-    mesh = bpy.data.meshes.new(cloud.tag + "_EMITTER")
+    if cloud.tag in bpy.data.objects:
+        return ""
 
-    # Tiny triangle so Blender can emit particles
-    verts = [
-        (0.0, 0.0, 0.0),
-        (0.001, 0.0, 0.0),
-        (0.0, 0.001, 0.0),
-    ]
+    # ------------------------------------------------
+    # Create emitter object
+    # ------------------------------------------------
 
-    faces = [(0, 1, 2)]
+    emitter_mesh = bpy.data.meshes.new(cloud.tag)
 
-    mesh.from_pydata(verts, [], faces)
-    mesh.update()
+    emitter_mesh.from_pydata(
+        [(0.0, 0.0, 0.0)],
+        [],
+        []
+    )
 
-    obj = bpy.data.objects.new(cloud.tag, mesh)
+    emitter_mesh.update()
+
+    obj = bpy.data.objects.new(
+        cloud.tag,
+        emitter_mesh
+    )
 
     ctx.collection.objects.link(obj)
-
-    obj.parent = ctx.parent
 
     obj["quaildef"] = "particleclouddef"
 
@@ -49,179 +54,324 @@ def decode_particleclouddef(ctx: Context, cloud: particleclouddef) -> str:
     obj["spawnvelocitymultiplier"] = cloud.spawnvelocitymultiplier
     obj["spawnrate"] = cloud.spawnrate
     obj["spawnscale"] = cloud.spawnscale
+    obj["spawnvelocity"] = cloud.spawnvelocity
+    obj["spawnnormal"] = cloud.spawnnormal
 
     # ------------------------------------------------
-    # Create particle render object
+    # Resolve blittag
     # ------------------------------------------------
 
-    particle_mesh = bpy.data.meshes.new(cloud.tag + "_PARTICLE")
+    blit_obj = None
 
-    pverts = [
-        (-0.5, -0.5, 0.0),
-        ( 0.5, -0.5, 0.0),
-        ( 0.5,  0.5, 0.0),
-        (-0.5,  0.5, 0.0),
-    ]
-
-    pfaces = [(0, 1, 2, 3)]
-
-    particle_mesh.from_pydata(pverts, [], pfaces)
-    particle_mesh.update()
-
-    particle_obj = bpy.data.objects.new(
-        cloud.tag + "_PARTICLE",
-        particle_mesh
-    )
-
-    ctx.collection.objects.link(particle_obj)
-
-    particle_obj.hide_render = True
-    particle_obj.hide_viewport = True
+    if cloud.blittag:
+        blit_obj = bpy.data.objects.get(cloud.blittag)
 
     # ------------------------------------------------
-    # Resolve blittag -> sprite
-    # ------------------------------------------------
-
-    image = None
-
-    blit = ctx.parser.blitspritedefs.get(cloud.blittag)
-
-    if blit:
-
-        sprite = ctx.parser.simplespritedefs.get(blit.sprite)
-
-        if sprite and len(sprite.frames) > 0:
-
-            frame = sprite.frames[0]
-
-            if len(frame.files) > 0:
-
-                filename = frame.files[0].file
-
-                image = bpy.data.images.get(filename)
-
-    # ------------------------------------------------
-    # Material
-    # ------------------------------------------------
-
-    mat = bpy.data.materials.new(cloud.tag + "_MAT")
-
-    mat.use_nodes = True
-    mat.blend_method = 'BLEND'
-    # mat.shadow_method = 'NONE'
-
-    nodes = mat.node_tree.nodes
-    links = mat.node_tree.links
-
-    nodes.clear()
-
-    output = nodes.new("ShaderNodeOutputMaterial")
-    output.location = (500, 0)
-
-    transparent = nodes.new("ShaderNodeBsdfTransparent")
-    transparent.location = (200, -100)
-
-    emission = nodes.new("ShaderNodeEmission")
-    emission.location = (200, 100)
-
-    mix = nodes.new("ShaderNodeMixShader")
-    mix.location = (350, 0)
-
-    tex = nodes.new("ShaderNodeTexImage")
-    tex.location = (-300, 100)
-
-    if image:
-        tex.image = image
-
-    tint = cloud.tint
-
-    emission.inputs["Color"].default_value = (
-        tint[0] / 255.0,
-        tint[1] / 255.0,
-        tint[2] / 255.0,
-        tint[3] / 255.0,
-    )
-
-    emission.inputs["Strength"].default_value = 1.0
-
-    links.new(tex.outputs["Color"], emission.inputs["Color"])
-    links.new(tex.outputs["Alpha"], mix.inputs["Fac"])
-
-    links.new(transparent.outputs["BSDF"], mix.inputs[1])
-    links.new(emission.outputs["Emission"], mix.inputs[2])
-
-    links.new(mix.outputs["Shader"], output.inputs["Surface"])
-
-    particle_obj.data.materials.append(mat)
-
-    # ------------------------------------------------
-    # Particle system
+    # Particle Settings
     # ------------------------------------------------
 
     modifier = obj.modifiers.new(
-        name="ParticleCloud",
+        name=cloud.tag,
         type='PARTICLE_SYSTEM'
     )
 
     psys = modifier.particle_system
-    settings = bpy.data.particles.new(cloud.tag + "_SETTINGS")
+
+    settings = bpy.data.particles.new(cloud.tag)
 
     psys.settings = settings
+
+    # ------------------------------------------------
+    # FPS conversion
+    # ------------------------------------------------
+
+    fps = bpy.context.scene.render.fps
+
+    lifespan_seconds = max(
+        cloud.lifespan / 1000.0,
+        0.001
+    )
+
+    lifetime_frames = max(
+        lifespan_seconds * fps,
+        1.0
+    )
+
+    spawn_interval_frames = max(
+        (cloud.spawnrate / 1000.0) * fps,
+        1.0
+    )
+
+    # ------------------------------------------------
+    # Core
+    # ------------------------------------------------
 
     settings.count = max(cloud.size, 1)
 
     settings.frame_start = 1
-    settings.frame_end = max(cloud.duration, 1)
 
-    settings.lifetime = max(cloud.lifespan / 100.0, 1.0)
+    # Emit particles gradually based on EQ SpawnRate
+    settings.frame_end = (
+        settings.frame_start +
+        (spawn_interval_frames * max(cloud.size - 1, 0))
+    )
 
-    settings.emit_from = 'FACE'
-
-    settings.render_type = 'OBJECT'
-    settings.instance_object = particle_obj
+    # EQ lifespan -> Blender frames
+    settings.lifetime = lifetime_frames
 
     settings.physics_type = 'NEWTON'
 
-    settings.normal_factor = cloud.spawnvelocitymultiplier
+    settings.use_modifier_stack = True
 
-    vel = mathutils.Vector(cloud.spawnvelocity)
-
-    settings.factor_random = vel.length
-
-    settings.particle_size = max(cloud.spawnscale, 0.001)
-
-    settings.use_rotations = False
-
-    settings.effector_weights.all = 1.0
-    settings.effector_weights.gravity = cloud.gravity
-
-    settings.use_emit_random = True
+    # EQ behaves more deterministic
+    settings.use_emit_random = False
 
     settings.distribution = 'RAND'
 
-    settings.use_modifier_stack = True
+    settings.particle_size = max(
+        cloud.spawnscale,
+        0.001
+    )
 
     # ------------------------------------------------
-    # Spawn shape approximation
+    # Particle Types
     # ------------------------------------------------
 
-    if cloud.movement == "SPHERE":
+    # ------------------------------------------------
+    # Type 1 / 2
+    # Point / trail particles
+    # ------------------------------------------------
+
+    if cloud.particletype in (1, 2):
+
+        settings.render_type = 'HALO'
+
+        settings.halo.size = max(
+            cloud.spawnscale,
+            0.01
+        )
+
+    # ------------------------------------------------
+    # Type 3 / 4
+    # Billboard blitsprites
+    # ------------------------------------------------
+
+    elif cloud.particletype in (3, 4):
+
+        settings.render_type = 'OBJECT'
+
+        if blit_obj:
+            settings.instance_object = blit_obj
+
+        settings.use_rotation_instance = True
+
+        # Type 4 is XY aligned in EQ
+        if cloud.particletype == 4:
+            settings.rotation_mode = 'GLOB_Z'
+
+    # ------------------------------------------------
+    # Spawn Type
+    # ------------------------------------------------
+
+    # BOX
+    if cloud.movement == "BOX":
+
         settings.emit_from = 'VOLUME'
 
+    # SPHERE
+    elif cloud.movement == "SPHERE":
+
+        settings.emit_from = 'VOLUME'
+
+    # PLANE
     elif cloud.movement == "PLANE":
+
         settings.emit_from = 'FACE'
 
-    elif cloud.movement == "DISK":
-        settings.emit_from = 'FACE'
-
+    # STREAM
     elif cloud.movement == "STREAM":
+
+        settings.emit_from = 'VERT'
+
+    # DISK
+    elif cloud.movement == "DISK":
+
+        settings.emit_from = 'FACE'
+
+    else:
+
         settings.emit_from = 'VERT'
 
     # ------------------------------------------------
-    # Brownian motion
+    # Spawn Normal (EQ "up direction")
+    # ------------------------------------------------
+
+    spawn_normal = mathutils.Vector(cloud.spawnnormal)
+
+    settings.object_align_factor[0] = spawn_normal.x
+    settings.object_align_factor[1] = spawn_normal.y
+    settings.object_align_factor[2] = spawn_normal.z
+
+    # ------------------------------------------------
+    # Velocity
+    # ------------------------------------------------
+
+    vel = mathutils.Vector(cloud.spawnvelocity)
+
+    # ------------------------------------------------
+    # BOX
+    # Random spawn position in volume
+    # Directional movement from SpawnVelocity
+    # ------------------------------------------------
+
+    if cloud.movement == "BOX":
+
+        velocity = vel * cloud.spawnvelocitymultiplier
+
+        settings.normal_factor = velocity.length
+
+        if velocity.length > 0.0:
+
+            velocity.normalize()
+
+            settings.object_align_factor[0] = velocity.x
+            settings.object_align_factor[1] = velocity.y
+            settings.object_align_factor[2] = velocity.z
+
+        settings.factor_random = 0.0
+
+    # ------------------------------------------------
+    # SPHERE
+    # Random direction
+    # Speed ONLY from SpawnVelocityMultiplier
+    # Ignore XYZ SpawnVelocity
+    # ------------------------------------------------
+
+    elif cloud.movement == "SPHERE":
+
+        settings.normal_factor = 0.0
+
+        settings.object_align_factor[0] = 0.0
+        settings.object_align_factor[1] = 0.0
+        settings.object_align_factor[2] = 0.0
+
+        settings.factor_random = (
+            cloud.spawnvelocitymultiplier
+        )
+
+    # ------------------------------------------------
+    # PLANE
+    # Random planar movement from SpawnVelocity
+    # SpawnVelocityMultiplier alone does nothing
+    # ------------------------------------------------
+
+    elif cloud.movement == "PLANE":
+
+        settings.normal_factor = vel.length
+
+        if vel.length > 0.0:
+
+            velocity = vel.normalized()
+
+            settings.object_align_factor[0] = velocity.x
+            settings.object_align_factor[1] = velocity.y
+            settings.object_align_factor[2] = velocity.z
+
+        settings.factor_random = 1.0
+
+    # ------------------------------------------------
+    # STREAM
+    # Directional movement from SpawnVelocity
+    # SpawnVelocityMultiplier scales velocity
+    # SpawnAngle controls spread
+    # ------------------------------------------------
+
+    elif cloud.movement == "STREAM":
+
+        velocity = vel * cloud.spawnvelocitymultiplier
+
+        settings.normal_factor = velocity.length
+
+        if velocity.length > 0.0:
+
+            velocity.normalize()
+
+            settings.object_align_factor[0] = velocity.x
+            settings.object_align_factor[1] = velocity.y
+            settings.object_align_factor[2] = velocity.z
+
+        settings.factor_random = max(
+            min(cloud.spawnangle / 90.0, 1.0),
+            0.0
+        )
+
+    # ------------------------------------------------
+    # DISK
+    # Spawn randomly on disk surface
+    # Directional movement from SpawnVelocity
+    # SpawnVelocityMultiplier alone does nothing
+    # ------------------------------------------------
+
+    elif cloud.movement == "DISK":
+
+        settings.normal_factor = vel.length
+
+        if vel.length > 0.0:
+
+            velocity = vel.normalized()
+
+            settings.object_align_factor[0] = velocity.x
+            settings.object_align_factor[1] = velocity.y
+            settings.object_align_factor[2] = velocity.z
+
+        settings.factor_random = 0.0
+
+    # ------------------------------------------------
+    # Fallback
+    # ------------------------------------------------
+
+    else:
+
+        settings.normal_factor = 0.0
+        settings.factor_random = 0.0
+
+    # ------------------------------------------------
+    # Gravity
+    # ------------------------------------------------
+
+    # EQ uses actual acceleration values
+    # Blender uses Earth gravity scale multiplier
+
+    if cloud.movement in {
+        "BOX",
+        "SPHERE",
+        "PLANE",
+        "STREAM",
+        "DISK",
+    }:
+
+        settings.effector_weights.gravity = (
+            cloud.gravity / 9.81
+        )
+
+    else:
+
+        settings.effector_weights.gravity = 0.0
+
+    # ------------------------------------------------
+    # Spawn Radius
+    # ------------------------------------------------
+
+    if cloud.spawnradius > 0.0:
+
+        obj.empty_display_size = cloud.spawnradius
+
+    # ------------------------------------------------
+    # Brownian
     # ------------------------------------------------
 
     if cloud.brownian:
+
         settings.brownian_factor = 1.0
 
     # ------------------------------------------------
@@ -229,17 +379,20 @@ def decode_particleclouddef(ctx: Context, cloud: particleclouddef) -> str:
     # ------------------------------------------------
 
     if cloud.fade:
-        settings.use_die_on_collision = False
+
+        # Fade over lifetime
+        settings.use_rotations = False
 
     # ------------------------------------------------
-    # Spawn radius visualization
+    # Object Relative
     # ------------------------------------------------
 
-    if cloud.spawnradius > 0.0:
-        obj.empty_display_size = cloud.spawnradius
+    if cloud.objectrelative:
+
+        settings.use_rotations = True
 
     # ------------------------------------------------
-    # Bounding box helpers
+    # Spawn boxes
     # ------------------------------------------------
 
     if cloud.spawnboxmin and cloud.spawnboxmax:
@@ -251,5 +404,30 @@ def decode_particleclouddef(ctx: Context, cloud: particleclouddef) -> str:
 
         obj["boxmin"] = cloud.boxmin
         obj["boxmax"] = cloud.boxmax
+
+    # ------------------------------------------------
+    # Visual helper mesh scaling
+    # ------------------------------------------------
+
+    if cloud.movement == "BOX":
+
+        if cloud.spawnboxmin and cloud.spawnboxmax:
+
+            minv = mathutils.Vector(cloud.spawnboxmin)
+            maxv = mathutils.Vector(cloud.spawnboxmax)
+
+            center = (minv + maxv) * 0.5
+            scale = (maxv - minv) * 0.5
+
+            obj.location = center
+            obj.scale = scale
+
+    elif cloud.spawnradius > 0.0:
+
+        obj.scale = (
+            cloud.spawnradius,
+            cloud.spawnradius,
+            cloud.spawnradius
+        )
 
     return ""

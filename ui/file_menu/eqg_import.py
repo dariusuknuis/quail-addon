@@ -137,8 +137,6 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
                 bpy.data.meshes.remove(mesh)
 
             for obj in bpy.data.objects:
-                if obj.type == 'CAMERA':
-                    continue
                 bpy.data.objects.remove(obj)
 
             for arm in bpy.data.armatures:
@@ -177,6 +175,16 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
 
             main_collection = bpy.data.collections.new(root_name)
             context.scene.collection.children.link(main_collection)
+
+            cam_data = bpy.data.cameras.new("Camera")
+            cam_obj = bpy.data.objects.new("Camera", cam_data)
+
+            context.scene.collection.objects.link(cam_obj)
+
+            cam_obj.location = (0.0, -6.0, 3.0)
+            cam_obj.rotation_euler = (1.109319, 0.0, 0.0)
+
+            context.scene.camera = cam_obj
 
             wce_decode(decode_path, main_collection)
 

@@ -7,6 +7,122 @@ from .context import Context
 from ..common.rendermethod import apply_userdefined, apply_transparent, parse_rendermethod_string, create_rendermethod_nodegroup
 
 
+def create_blitsprite_billboard_geo():
+
+    geo_name = "BLITSPRITE_BILLBOARD"
+
+    geo_group = bpy.data.node_groups.get(geo_name)
+
+    if geo_group:
+        return geo_group
+
+    geo_group = bpy.data.node_groups.new(
+        geo_name,
+        'GeometryNodeTree'
+    )
+
+    nodes = geo_group.nodes
+    links = geo_group.links
+
+    nodes.clear()
+
+    # ------------------------------------------------
+    # Interface
+    # ------------------------------------------------
+
+    geo_group.interface.new_socket(
+        name="Geometry",
+        in_out='INPUT',
+        socket_type='NodeSocketGeometry'
+    )
+
+    geo_group.interface.new_socket(
+        name="Geometry",
+        in_out='OUTPUT',
+        socket_type='NodeSocketGeometry'
+    )
+
+    # ------------------------------------------------
+    # Nodes
+    # ------------------------------------------------
+
+    group_input = nodes.new("NodeGroupInput")
+    group_input.location = (-1200, 0)
+
+    group_output = nodes.new("NodeGroupOutput")
+    group_output.location = (800, 0)
+
+    active_cam = nodes.new("GeometryNodeInputActiveCamera")
+    active_cam.location = (-1200, -300)
+
+    cam_info = nodes.new("GeometryNodeObjectInfo")
+    cam_info.location = (-1000, -300)
+
+    self_obj = nodes.new("GeometryNodeSelfObject")
+    self_obj.location = (-1200, -600)
+
+    self_info = nodes.new("GeometryNodeObjectInfo")
+    self_info.location = (-1000, -600)
+
+    subtract = nodes.new("ShaderNodeVectorMath")
+    subtract.operation = 'SUBTRACT'
+    subtract.location = (-700, -400)
+
+    align = nodes.new("FunctionNodeAlignRotationToVector")
+    align.location = (-400, -400)
+
+    # Plane faces Y axis
+    align.axis = 'Y'
+
+    transform = nodes.new("GeometryNodeTransform")
+    transform.location = (200, 0)
+
+    # ------------------------------------------------
+    # Links
+    # ------------------------------------------------
+
+    links.new(
+        active_cam.outputs["Active Camera"],
+        cam_info.inputs["Object"]
+    )
+
+    links.new(
+        self_obj.outputs["Self Object"],
+        self_info.inputs["Object"]
+    )
+
+    links.new(
+        cam_info.outputs["Location"],
+        subtract.inputs[0]
+    )
+
+    links.new(
+        self_info.outputs["Location"],
+        subtract.inputs[1]
+    )
+
+    links.new(
+        subtract.outputs["Vector"],
+        align.inputs["Vector"]
+    )
+
+    links.new(
+        group_input.outputs["Geometry"],
+        transform.inputs["Geometry"]
+    )
+
+    links.new(
+        align.outputs["Rotation"],
+        transform.inputs["Rotation"]
+    )
+
+    links.new(
+        transform.outputs["Geometry"],
+        group_output.inputs["Geometry"]
+    )
+
+    return geo_group
+
 def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
 
     # --------------------------------------------------
@@ -135,6 +251,7 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
         "Opacity",
         "Drawstyle",
         "TextureIndex",
+        "Transparent Blit",
     }
 
     for socket in group_node.inputs:
@@ -147,6 +264,7 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
     group_node.inputs["Opacity"].default_value = props.opacity
     group_node.inputs["Additive"].default_value = float(props.additive)
     group_node.inputs["TextureIndex"].default_value = float(props.texture_index)
+    group_node.inputs["Transparent Blit"].default_value = float(sprite.transparent)
     drawstyle_map = {
         "DRAW0": 0.0,
         "DRAW1": 1.0,
@@ -172,10 +290,10 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
 
     tag = sprite.sprite
     if tag:
-        props.spritetag = tag
+        props.simplespritetag = tag
 
-    if props.spritetag:
-        sprite_group = bpy.data.node_groups.get(props.spritetag)
+    if props.simplespritetag:
+        sprite_group = bpy.data.node_groups.get(props.simplespritetag)
         if sprite_group:
             sprite_node = nodes.new("ShaderNodeGroup")
             sprite_node.node_tree = sprite_group
@@ -193,17 +311,16 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
     props.transparent = bool(sprite.transparent)
 
     # --------------------------------------------------
-    # Billboard constraint
+    # Billboard Geometry Nodes
     # --------------------------------------------------
 
-    cam = bpy.context.scene.camera
+    geo_group = create_blitsprite_billboard_geo()
 
-    if cam:
+    mod = obj.modifiers.new(
+        name="Billboard",
+        type='NODES'
+    )
 
-        c = obj.constraints.new('TRACK_TO')
-
-        c.target = cam
-        c.track_axis = 'TRACK_NEGATIVE_Y'
-        c.up_axis = 'UP_Z'
+    mod.node_group = geo_group
 
     return ""

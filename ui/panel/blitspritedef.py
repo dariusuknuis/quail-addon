@@ -16,7 +16,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
     # Sprite
     # --------------------------------------------------
 
-    spritetag: EnumProperty(
+    simplespritetag: EnumProperty(
         name="SimpleSprite",
         description="Select a SimpleSprite node group",
         items=sprite_items,
@@ -193,7 +193,7 @@ def draw_blitspritedef_panel(self, context):
 
     box.label(text="Sprite")
 
-    box.prop(props, "spritetag")
+    box.prop(props, "simplespritetag")
 
     # --------------------------------------------------
     # Separator

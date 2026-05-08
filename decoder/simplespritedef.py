@@ -233,6 +233,8 @@ def create_blur_node_group(blur_node_group):
 
 def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
 
+    print(f"[FRAME GROUP] create_frame_nodegroup: {frame.frame_name} rebuild={force_rebuild}")
+
     group = bpy.data.node_groups.get(frame.frame_name)
 
     if group and not force_rebuild:
@@ -573,6 +575,8 @@ def build_texture_atlas(images, name="atlas", padding=2):
             alpha=True
         )
 
+    atlas.alpha_mode = 'CHANNEL_PACKED'
+
     atlas_pixels = [0.0] * (atlas_width * atlas_height * 4)
 
     # --------------------------------------------------
@@ -694,12 +698,12 @@ def add_texture_animation(simplesprite_node):
     # --------------------------------------------------
     atlas = build_texture_atlas(images, name=f"{simplesprite_node.name}_atlas")
 
-    for img in images:
-        if img and not img.packed_file:
-            try:
-                img.reload()
-            except:
-                pass
+    # for img in images:
+    #     if img and not img.packed_file:
+    #         try:
+    #             img.reload()
+    #         except:
+    #             pass
 
     # --------------------------------------------------
     # 3. CREATE / RESET TEXANIM GROUP
@@ -758,7 +762,6 @@ def add_texture_animation(simplesprite_node):
     # --------------------------------------------------
     tex = gnodes.new("ShaderNodeTexImage")
     tex.image = atlas
-    tex.interpolation = 'Closest'
     tex.extension = 'REPEAT'
     tex.location = (600, 0)
 
@@ -857,7 +860,6 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
         'ShaderNodeTree'
     )
     simplesprite_node['quaildef'] = 'simplespritedef'
-    # state.QUAIL_UPDATING = True
 
     props = simplesprite_node.quail_simplesprite
 
@@ -995,7 +997,5 @@ def decode_simplespritedef(ctx: Context, simplesprite: simplespritedef) -> str:
 
     if props.has_sleep:
         add_texture_animation(simplesprite_node)
-
-    # state.QUAIL_UPDATING = False
 
     return ""

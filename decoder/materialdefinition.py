@@ -93,6 +93,7 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         "Opacity",
         "Drawstyle",
         "TextureIndex",
+        "Transparent Blit",
     }
 
     for socket in group_node.inputs:
@@ -106,6 +107,7 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
     group_node.inputs["Opacity"].default_value = props.opacity
     group_node.inputs["Additive"].default_value = float(props.additive)
     group_node.inputs["TextureIndex"].default_value = float(props.texture_index)
+    group_node.inputs["Transparent Blit"].default_value = 1.0
     drawstyle_map = {
         "DRAW0": 0.0,
         "DRAW1": 1.0,

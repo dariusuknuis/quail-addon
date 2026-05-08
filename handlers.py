@@ -1,4 +1,4 @@
-import bpy
+import bpy, random
 from .common import state
 
 # =========================================================
@@ -101,6 +101,31 @@ class QuailHandlers:
             sync_panel_from_armature(obj)
             break
 
+    @staticmethod
+    def particle_seed_handler(scene):
+
+        if scene.frame_current != 1:
+            return
+
+        for obj in bpy.data.objects:
+
+            if obj.get("quaildef") != "particleclouddef":
+                continue
+
+            for modifier in obj.modifiers:
+
+                if modifier.type != 'PARTICLE_SYSTEM':
+                    continue
+
+                psys = modifier.particle_system
+
+                if not psys:
+                    continue
+
+                psys.seed = random.randint(0, 1000000)
+
+        bpy.context.view_layer.update()
+
 
     @staticmethod
     @bpy.app.handlers.persistent
@@ -114,9 +139,19 @@ class QuailHandlers:
         if QuailHandlers.depsgraph_handler not in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.append(QuailHandlers.depsgraph_handler)
 
+        if QuailHandlers.particle_seed_handler not in bpy.app.handlers.frame_change_pre:
+            bpy.app.handlers.frame_change_pre.append(
+                QuailHandlers.particle_seed_handler
+            )
+
     @staticmethod
     def unregister():
         bpy.app.handlers.save_pre.remove(QuailHandlers.save_pre_handler)
         bpy.app.handlers.load_post.remove(QuailHandlers.load_handler)
         if QuailHandlers.depsgraph_handler in bpy.app.handlers.depsgraph_update_post:
             bpy.app.handlers.depsgraph_update_post.remove(QuailHandlers.depsgraph_handler)
+
+        if QuailHandlers.particle_seed_handler in bpy.app.handlers.frame_change_pre:
+            bpy.app.handlers.frame_change_pre.remove(
+                QuailHandlers.particle_seed_handler
+            )

@@ -36,11 +36,28 @@ def update_userdefined(self, context):
         return
 
 def update_rendermethod_node(self, context):
-    mat = self.id_data
-    if not isinstance(mat, bpy.types.Material):
+
+    id_data = self.id_data
+
+    # MaterialDefinition
+
+    if isinstance(id_data, bpy.types.Material):
+
+        mat = id_data
+
+    # BlitSpriteDef
+
+    elif isinstance(id_data, bpy.types.Object):
+
+        mat = id_data.active_material
+
+        if not mat:
+            return
+
+    else:
         return
 
-    sync_rendermethod_node(mat)
+    sync_rendermethod_node(mat, self)
 
 def update_transparent(self, context):
     if not self.transparent_override:
@@ -67,8 +84,19 @@ def update_simplesprite(self, context):
         self.simplespritetag = valid[0] if valid else "NONE"
         return
 
-    mat = self.id_data
-    if not isinstance(mat, bpy.types.Material):
+    id_data = self.id_data
+
+    if isinstance(id_data, bpy.types.Material):
+        mat = id_data
+
+    elif isinstance(id_data, bpy.types.Object):
+
+        mat = id_data.active_material
+
+        if not mat:
+            return
+
+    else:
         return
 
     if not mat.use_nodes or not mat.node_tree:

@@ -135,11 +135,44 @@ def attach_object_to_dag(obj, arm, dag_tag):
     if not obj or not arm or not dag_tag:
         return
 
-    # Parent to armature object
+    # ------------------------------------------------
+    # Particle clouds get INSTANCED
+    # ------------------------------------------------
+
+    is_particlecloud = (
+        obj.get("quaildef") == "particleclouddef"
+    )
+
+    if is_particlecloud:
+
+        inst = obj.copy()
+
+        # linked duplicate
+        inst.data = obj.data
+
+        inst.name = f"{obj.name}_{dag_tag}"
+
+        if obj.animation_data:
+            inst.animation_data_clear()
+
+        # link to same collections
+        for col in obj.users_collection:
+            col.objects.link(inst)
+
+        obj = inst
+
+    # ------------------------------------------------
+    # Parent to armature
+    # ------------------------------------------------
+
     obj.parent = arm
 
+    # ------------------------------------------------
     # Remove existing constraint for this DAG
-    for c in obj.constraints:
+    # ------------------------------------------------
+
+    for c in list(obj.constraints):
+
         if (
             c.type == 'CHILD_OF' and
             c.target == arm and
@@ -147,11 +180,32 @@ def attach_object_to_dag(obj, arm, dag_tag):
         ):
             obj.constraints.remove(c)
 
-    # Create constraint
+    # ------------------------------------------------
+    # Create Child Of constraint
+    # ------------------------------------------------
+
     con = obj.constraints.new('CHILD_OF')
+
     con.name = f"HS_{dag_tag}"
     con.target = arm
     con.subtarget = dag_tag
 
-    # IMPORTANT: do NOT leave stale inverse
+    # ------------------------------------------------
+    # Clear inverse
+    # ------------------------------------------------
+
     con.inverse_matrix.identity()
+
+    bpy.context.view_layer.update()
+
+    # ------------------------------------------------
+    # ONLY particle clouds snap directly to bone
+    # ------------------------------------------------
+
+    if is_particlecloud:
+
+        obj.location = (0.0, 0.0, 0.0)
+        obj.rotation_euler = (0.0, 0.0, 0.0)
+        obj.scale = (1.0, 1.0, 1.0)
+
+        bpy.context.view_layer.update()
