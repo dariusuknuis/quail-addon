@@ -1,22 +1,83 @@
-# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportAttributeAccessIssue=false
+# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false
 
 import bpy
-from ..wce.materialdefinition import materialdefinition
+import bmesh
+from ..wce.blitspritedef import blitspritedef
 from .context import Context
 from ..common.rendermethod import apply_userdefined, apply_transparent, parse_rendermethod_string, create_rendermethod_nodegroup
 
-def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
-    if material.tag in bpy.data.materials:
+
+def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
+
+    # --------------------------------------------------
+    # Already exists
+    # --------------------------------------------------
+
+    if sprite.tag in bpy.data.objects:
         return ""
-    mat = bpy.data.materials.new(material.tag)
-    mat['quaildef'] = 'materialdefinition'
+
+    # Image size
+
+    width = 64
+    height = 64
+
+    aspect = width / height
 
     # --------------------------------------------------
-    # Parse RenderMethod
+    # Create mesh plane
     # --------------------------------------------------
-    parsed = parse_rendermethod_string(material.rendermethod)
 
-    props = mat.quail_materialdefinition
+    mesh = bpy.data.meshes.new(sprite.tag)
+
+    bm = bmesh.new()
+
+    sx = aspect * 0.5
+    sy = 0.5
+
+    verts = [
+        bm.verts.new((-sx, 0.0, -sy)),
+        bm.verts.new(( sx, 0.0, -sy)),
+        bm.verts.new(( sx, 0.0,  sy)),
+        bm.verts.new((-sx, 0.0,  sy)),
+    ]
+
+    bm.faces.new(verts)
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    obj = bpy.data.objects.new(sprite.tag, mesh)
+
+    obj["quaildef"] = "blitspritedef"
+
+    ctx.collection.objects.link(obj)
+
+    props = obj.quail_blitspritedef
+
+    # --------------------------------------------------
+    # UVs
+    # --------------------------------------------------
+
+    mesh.uv_layers.new(name="UVMap")
+
+    uv_layer = mesh.uv_layers.active
+
+    uv_layer.data[0].uv = (0.0, 0.0)
+    uv_layer.data[1].uv = (1.0, 0.0)
+    uv_layer.data[2].uv = (1.0, 1.0)
+    uv_layer.data[3].uv = (0.0, 1.0)
+
+    # --------------------------------------------------
+    # Material
+    # --------------------------------------------------
+
+    mat = bpy.data.materials.new(sprite.tag)
+
+    mat["quaildef"] = "blitspritematerial"
+
+    mesh.materials.append(mat)
+
+    parsed = parse_rendermethod_string(sprite.rendermethod)
 
     if parsed["use_userdefined"]:
         props.use_userdefined = True
@@ -45,46 +106,27 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.dynamic = parsed["dynamic"]
         props.prelit = parsed["prelit"]
 
-    props.rgbpen = (
-        material.rgbpen[0] / 255.0,
-        material.rgbpen[1] / 255.0,
-        material.rgbpen[2] / 255.0,
-    )
-    props.brightness = material.brightness
-    props.scaledambient = material.scaledambient
-    tag = material.simplespriteinst.simplespritetag
-    if tag:
-        props.simplespritetag = tag
-    props.simplespritehaveskipframes = material.simplespriteinst.simplespritehaveskipframes == 1
-    props.simplespriteskipframes = material.simplespriteinst.simplespriteskipframes == 1
-    if material.uvshiftperms is not None:
-        props.has_uvshiftperms = True
-        props.uvshiftperms = material.uvshiftperms
-    else:
-        props.has_uvshiftperms = False
-        props.uvshiftperms = (0.0, 0.0)
-    props.twosided = material.twosided == 1
-
     mat.use_nodes = True
 
     if mat.node_tree is None:
-        return f"material {material.tag} has no node tree"
+        return f"material {sprite.tag} has no node tree"
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
 
-    # Clear default nodes
     for n in nodes:
         nodes.remove(n)
 
-    # Create RenderMethod group
+    # --------------------------------------------------
+    # RenderMethod nodegroup
+    # --------------------------------------------------
+
     group_tree = create_rendermethod_nodegroup()
 
     group_node = nodes.new("ShaderNodeGroup")
     group_node.node_tree = group_tree
     group_node.location = (0, 0)
 
-    # Hide internal control inputs (panel-controlled only)
     hide_inputs = {
         "PassableDisplay",
         "Masked",
@@ -99,7 +141,6 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         if socket.name in hide_inputs:
             socket.hide = True
 
-    # Apply values to group inputs
     group_node.inputs["sRGB Texture"].default_value = (1.0, 1.0, 1.0, 1.0)
     group_node.inputs["Masked"].default_value = float(props.masked)
     group_node.inputs["AlphaBlend"].default_value = float(props.alphablend)
@@ -117,31 +158,24 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
         props.drawstyle, 0.0
     )
 
-    socket = group_node.inputs["PassableDisplay"]
-    fcu = socket.driver_add("default_value")
-    drv = fcu.driver
-    drv.type = 'SCRIPTED'
-
-    var = drv.variables.new()
-    var.name = "s"
-    tgt = var.targets[0]
-    tgt.id_type = 'SCENE'
-    tgt.id = bpy.context.scene
-    tgt.data_path = 'passable_display_enabled'
-
-    drv.expression = "s"
-
-    # Add Material Output
     output = nodes.new("ShaderNodeOutputMaterial")
     output.location = (300, 0)
 
-    links.new(group_node.outputs["Shader"], output.inputs["Surface"])
+    links.new(
+        group_node.outputs["Shader"],
+        output.inputs["Surface"]
+    )
 
-    # Backface culling
-    mat.use_backface_culling = not props.twosided
+    # --------------------------------------------------
+    # SIMPLESPRITE nodegroup
+    # --------------------------------------------------
 
-    if props.simplespritetag:
-        sprite_group = bpy.data.node_groups.get(props.simplespritetag)
+    tag = sprite.sprite
+    if tag:
+        props.spritetag = tag
+
+    if props.spritetag:
+        sprite_group = bpy.data.node_groups.get(props.spritetag)
         if sprite_group:
             sprite_node = nodes.new("ShaderNodeGroup")
             sprite_node.node_tree = sprite_group
@@ -149,5 +183,27 @@ def decode_materialdefinition(ctx:Context, material:materialdefinition) -> str:
 
             links.new(sprite_node.outputs["sRGB Texture"], group_node.inputs["sRGB Texture"])
             links.new(sprite_node.outputs["Alpha"], group_node.inputs["Alpha"])
+
+    # --------------------------------------------------
+    # Transparency
+    # --------------------------------------------------
+
+    mat.blend_method = 'BLEND'
+    mat.use_backface_culling = False
+    props.transparent = bool(sprite.transparent)
+
+    # --------------------------------------------------
+    # Billboard constraint
+    # --------------------------------------------------
+
+    cam = bpy.context.scene.camera
+
+    if cam:
+
+        c = obj.constraints.new('TRACK_TO')
+
+        c.target = cam
+        c.track_axis = 'TRACK_NEGATIVE_Y'
+        c.up_axis = 'UP_Z'
 
     return ""

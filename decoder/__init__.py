@@ -9,6 +9,7 @@ from .globalambientlightdef import decode_globalambientlightdef
 from .actordef import decode_actordef
 from .actorinst import decode_actorinst
 from .simplespritedef import decode_simplespritedef
+from .blitspritedef import decode_blitspritedef
 from .materialdefinition import decode_materialdefinition
 from .materialpalette import decode_materialpalette
 from .polyhedrondefinition import decode_polyhedrondefinition
@@ -132,6 +133,14 @@ def wce_decode(path: str, parent_collection=None):
         ctx.parent = base_parent
 
         err = decode_simplespritedef(ctx, spritedef)
+        if err:
+            error(err)
+
+    for _, blitspritedef in parser.blitspritedefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_blitspritedef(ctx, blitspritedef)
         if err:
             error(err)
 

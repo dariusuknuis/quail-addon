@@ -137,6 +137,8 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
                 bpy.data.meshes.remove(mesh)
 
             for obj in bpy.data.objects:
+                if obj.type == 'CAMERA':
+                    continue
                 bpy.data.objects.remove(obj)
 
             for arm in bpy.data.armatures:
