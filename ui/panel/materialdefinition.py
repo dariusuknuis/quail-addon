@@ -4,6 +4,7 @@ import bpy
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
 from ...common.s3dmaterial import update_userdefined, update_rendermethod_node, update_transparent, update_simplesprite, update_twosided, sprite_items
+from ...common.rendermethod import create_rendermethod_nodegroup
 
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
@@ -191,35 +192,96 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         return context.object and context.object.active_material
 
     def execute(self, context):
+
         material = context.object.active_material
+
         if not material:
             return {'CANCELLED'}
-        material['quaildef'] = 'materialdefinition'
-        material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
-        material.quail_materialdefinition.rgbpen = (1.0, 1.0, 1.0)
-        material.quail_materialdefinition.brightness = 1
-        material.quail_materialdefinition.scaledambient = 1
-        material.quail_materialdefinition.simplespritehaveskipframes = True
-        material.quail_materialdefinition.simplespriteskipframes = True
-        material.quail_materialdefinition.uvshiftperms = (0.0, 0.0)
-        material.quail_materialdefinition.twosided = False
-        return {'FINISHED'}
 
-def add_default_quaildef(self, context):
-    obj = context.object
-    if not obj or not obj.active_material:
-        return
-    material = obj.active_material
-    if not material.get('quaildef') == 'materialdefinition':
-        return
-    material.quail_materialdefinition.rendermethod = 'TRANSPARENT'
-    material.quail_materialdefinition.rgbpen = (1.0, 1.0, 1.0)
-    material.quail_materialdefinition.brightness = 1
-    material.quail_materialdefinition.scaledambient = 1
-    material.quail_materialdefinition.simplespritehaveskipframes = True
-    material.quail_materialdefinition.simplespriteskipframes = True
-    material.quail_materialdefinition.uvshiftperms = (0.0, 0.0)
-    material.quail_materialdefinition.twosided = False
+        # ------------------------------------------------
+        # Rename
+        # ------------------------------------------------
+
+        base_name = material.name.upper()
+
+        if not base_name.endswith("_MDF"):
+            material.name = f"{base_name}_MDF"
+
+        # ------------------------------------------------
+        # Tag
+        # ------------------------------------------------
+
+        material['quaildef'] = 'materialdefinition'
+
+        props = material.quail_materialdefinition
+
+        # ------------------------------------------------
+        # Defaults
+        # ------------------------------------------------
+
+        props.transparent_override = True
+        props.rgbpen = (1.0, 1.0, 1.0)
+        props.brightness = 1
+        props.scaledambient = 1
+        props.simplespritehaveskipframes = False
+        props.simplespriteskipframes = False
+        props.has_uvshiftperms = True
+        props.uvshiftperms = (0.0, 0.0)
+        props.twosided = False
+
+        # ------------------------------------------------
+        # Build material node tree
+        # ------------------------------------------------
+
+        material.use_nodes = True
+
+        if not material.node_tree:
+            return {'CANCELLED'}
+
+        nodes = material.node_tree.nodes
+        links = material.node_tree.links
+
+        nodes.clear()
+
+        group_tree = create_rendermethod_nodegroup()
+
+        group_node = nodes.new("ShaderNodeGroup")
+        group_node.node_tree = group_tree
+        group_node.location = (0, 0)
+
+        output = nodes.new("ShaderNodeOutputMaterial")
+        output.location = (300, 0)
+
+        links.new(
+            group_node.outputs["Shader"],
+            output.inputs["Surface"]
+        )
+
+        hide_inputs = {
+            "PassableDisplay",
+            "Masked",
+            "AlphaBlend",
+            "Additive",
+            "Opacity",
+            "Drawstyle",
+            "TextureIndex",
+            "Transparent Blit",
+            "Particle Tint",
+        }
+
+        for socket in group_node.inputs:
+            if socket.name in hide_inputs:
+                socket.hide = True
+
+        # ------------------------------------------------
+        # Apply panel-driven settings
+        # ------------------------------------------------
+
+        update_rendermethod_node(props, context)
+        update_simplesprite(props, context)
+        update_twosided(props, context)
+
+        return {'FINISHED'}
 
 def draw_materialdefinition_panel(self, context):
     obj = context.object

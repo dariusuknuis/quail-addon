@@ -16,6 +16,8 @@ from .actorinst import encode_actorinst
 from .actordef import encode_actordef
 from .hierarchicalspritedef import encode_hierarchicalspritedef
 from .track import encode_track
+from .particleclouddef import encode_particleclouddef
+from .blitspritedef import encode_blitspritedef
 from .dmspritedef2 import encode_dmspritedef2
 from .dmspritedefinition import encode_dmspritedefinition
 from .sprite3ddef import encode_sprite3ddef
@@ -233,6 +235,18 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
                     parser.hierarchicalspritedefs[obj.name]
                 )
 
+        if qdef == "particleclouddef":
+            if obj.name in parser.particleclouddefs:
+                local_parser.particleclouddefs[obj.name] = (
+                    parser.particleclouddefs[obj.name]
+                )
+
+        if qdef == "blitspritedef":
+            if obj.name in parser.blitspritedefs:
+                local_parser.blitspritedefs[obj.name] = (
+                    parser.blitspritedefs[obj.name]
+                )
+
         elif qdef == "dmspritedef2":
             if obj.name in parser.dmspritedef2s:
                 sprite = parser.dmspritedef2s[obj.name]
@@ -323,6 +337,12 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
             obj.write(w)
             w.write("\n")
 
+        write_blitsprites_and_sprites(local_parser, w)
+
+        for obj in local_parser.particleclouddefs.values():
+            obj.write(w)
+            w.write("\n")
+
         for t in local_parser.tracks.values():
             if t.is_pose:
                 t.write(w)
@@ -355,6 +375,48 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
             w.write("INCLUDE \"MATERIAL_SETS/_ROOT.WCE\"\n")
 
         w.write(f"INCLUDE \"{model_name.upper()}.WCE\"\n")
+
+def write_blitsprites_and_sprites(parser, w):
+
+    written_sprites = set()
+
+    for tag in parser.simplespritedefs.keys():
+
+        if tag in written_sprites:
+            continue
+
+    # ----------------------------------------
+    # BLITSPRITEDEFS
+    # ----------------------------------------
+
+    for tag, blit in parser.blitspritedefs.items():
+
+        sprite_tag = blit.sprite
+
+        # ----------------------------------------
+        # SIMPLESPRITEDEF
+        # ----------------------------------------
+
+        if sprite_tag:
+
+            sprite = parser.simplespritedefs.get(
+                sprite_tag
+            )
+
+            if (
+                sprite and
+                sprite_tag not in written_sprites
+            ):
+
+                sprite.write(w)
+                w.write("\n")
+
+                written_sprites.add(
+                    sprite_tag
+                )
+
+        blit.write(w)
+        w.write("\n")
 
 def write_ambientlightdef(w, parser):
 
@@ -1033,13 +1095,54 @@ def gather_export_objects(root_objects, parser):
         # ----------------------------------------
         if qdef == "dmspritedef2":
             props = obj.quail_dmspritedef2
+
             if props.materialpalette:
                 add(props.materialpalette)
 
         elif qdef == "dmspritedefinition":
             props = obj.quail_dmspritedefinition
+
             if props.materialpalette:
                 add(props.materialpalette)
+
+        # ----------------------------------------
+        # BLITSPRITEDEF → SIMPLESPRITEDEF
+        # ----------------------------------------
+        elif qdef == "blitspritedef":
+
+            if not obj.data:
+                continue
+
+            if not obj.data.materials:
+                continue
+
+            mat = obj.data.materials[0]
+
+            if not mat:
+                continue
+
+            if mat.get("quaildef") != "blitspritematerial":
+                continue
+
+            props = obj.quail_blitspritedef
+
+            sprite_tag = props.simplespritetag
+
+            if sprite_tag and sprite_tag != "NONE":
+
+                sprite = bpy.data.node_groups.get(
+                    sprite_tag
+                )
+
+                if sprite:
+                    add(sprite)
+
+                else:
+                    print(
+                        f"WARNING: Missing SimpleSpriteDef "
+                        f"'{sprite_tag}' for blitsprite "
+                        f"'{obj.name}'"
+                    )
 
         # ----------------------------------------
         # MATERIALPALETTE → MATERIALDEFINITION → SIMPLESPRITEDEF
@@ -1048,41 +1151,75 @@ def gather_export_objects(root_objects, parser):
             props = obj.quail_materialpalette
 
             for item in props.materials:
+
                 mat = item.material
+
                 if not mat:
                     continue
 
+                # ----------------------------------------
                 # Add Blender Material
+                # ----------------------------------------
+
                 add(mat)
 
                 # ----------------------------------------
                 # MATERIALDEFINITION
                 # ----------------------------------------
-                if mat.get("quaildef") == "materialdefinition":
-                    palette_material_tags.add(mat.name)
 
-                    mprops = mat.quail_materialdefinition
-                    sprite_tag = mprops.simplespritetag
+                if mat.get("quaildef") == "materialdefinition":
+
+                    palette_material_tags.add(
+                        mat.name
+                    )
+
+                    mprops = (
+                        mat.quail_materialdefinition
+                    )
+
+                    sprite_tag = (
+                        mprops.simplespritetag
+                    )
 
                     # ----------------------------------------
                     # SIMPLESPRITEDEF (NodeTree)
                     # ----------------------------------------
-                    if sprite_tag and sprite_tag != "NONE":
-                        sprite = bpy.data.node_groups.get(sprite_tag)
+
+                    if (
+                        sprite_tag and
+                        sprite_tag != "NONE"
+                    ):
+
+                        sprite = (
+                            bpy.data.node_groups.get(
+                                sprite_tag
+                            )
+                        )
 
                         if sprite:
+
                             add(sprite)
+
                         else:
+
                             print(
-                                f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' "
-                                f"for material '{mat.name}'"
+                                f"WARNING: Missing "
+                                f"SimpleSpriteDef "
+                                f"'{sprite_tag}' "
+                                f"for material "
+                                f"'{mat.name}'"
                             )
+
             # ----------------------------------------
             # SECOND: detect AND ADD variation materials
             # ----------------------------------------
+
             for mat in bpy.data.materials:
 
-                if mat.get("quaildef") != "materialdefinition":
+                if (
+                    mat.get("quaildef") !=
+                    "materialdefinition"
+                ):
                     continue
 
                 tag = mat.name
@@ -1095,33 +1232,63 @@ def gather_export_objects(root_objects, parser):
                     continue
 
                 prefix = material_tag_parse(tag)
+
                 if not prefix:
                     continue
 
+                # ----------------------------------------
                 # match against palette materials
+                # ----------------------------------------
+
                 for palette_tag in palette_material_tags:
+
                     if palette_tag.startswith(prefix):
 
                         if mat in visited:
                             continue
 
-                        parser.variationmaterialtags.add(tag)
+                        parser.variationmaterialtags.add(
+                            tag
+                        )
 
                         add(mat)
 
-                        # add its sprite too (same as normal path)
-                        mprops = mat.quail_materialdefinition
-                        sprite_tag = mprops.simplespritetag
+                        # ----------------------------------------
+                        # add its sprite too
+                        # ----------------------------------------
 
-                        if sprite_tag and sprite_tag != "NONE":
-                            sprite = bpy.data.node_groups.get(sprite_tag)
+                        mprops = (
+                            mat.quail_materialdefinition
+                        )
+
+                        sprite_tag = (
+                            mprops.simplespritetag
+                        )
+
+                        if (
+                            sprite_tag and
+                            sprite_tag != "NONE"
+                        ):
+
+                            sprite = (
+                                bpy.data.node_groups.get(
+                                    sprite_tag
+                                )
+                            )
 
                             if sprite:
+
                                 add(sprite)
+
                             else:
+
                                 print(
-                                    f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' "
-                                    f"for variation material '{mat.name}'"
+                                    f"WARNING: Missing "
+                                    f"SimpleSpriteDef "
+                                    f"'{sprite_tag}' "
+                                    f"for variation "
+                                    f"material "
+                                    f"'{mat.name}'"
                                 )
 
                         break
@@ -1257,6 +1424,8 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     simplesprites = []
     materialdefs = []
     materialpalettes = []
+    particleclouddefs = []
+    blitspritedefs = []
     polyhedrons = []
     sprite3ddefs = []
     dmsprite_defs = []
@@ -1291,6 +1460,12 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
         elif qdef == "hierarchicalspritedef":
             hierarchicalsprites.append(obj)
+
+        elif qdef == "particleclouddef":
+            particleclouddefs.append(obj)
+
+        elif qdef == "blitspritedef":
+            blitspritedefs.append(obj)
 
         elif qdef == "light":
             lights.append(obj)
@@ -1360,6 +1535,16 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     err = encode_track(parser, export_actions, context)
     if err:
         errors.append(err)
+
+    for obj in particleclouddefs:
+        err = encode_particleclouddef(parser, obj)
+        if err:
+            errors.append(err)
+
+    for obj in blitspritedefs:
+        err = encode_blitspritedef(parser, obj)
+        if err:
+            errors.append(err)
 
     for obj in lights:
         err = encode_light(parser, obj)

@@ -109,7 +109,10 @@ class QuailHandlers:
 
         for obj in bpy.data.objects:
 
-            if obj.get("quaildef") != "particleclouddef":
+            if obj.get("quaildef") not in {
+                "particleclouddef",
+                "particlecloudinst",
+            }:
                 continue
 
             for modifier in obj.modifiers:

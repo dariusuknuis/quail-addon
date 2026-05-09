@@ -152,6 +152,8 @@ def attach_object_to_dag(obj, arm, dag_tag):
 
         inst.name = f"{obj.name}_{dag_tag}"
 
+        inst["quaildef"] = "particlecloudinst"
+
         if obj.animation_data:
             inst.animation_data_clear()
 

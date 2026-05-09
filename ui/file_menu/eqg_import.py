@@ -130,26 +130,34 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
         # Clear scene if requested
         # ---------------------------------------------------------
         if is_scene_cleared:
-            for collection in bpy.data.collections:
-                bpy.data.collections.remove(collection)
 
-            for mesh in bpy.data.meshes:
-                bpy.data.meshes.remove(mesh)
-
-            for obj in bpy.data.objects:
+            for obj in list(bpy.data.objects):
                 bpy.data.objects.remove(obj)
 
-            for arm in bpy.data.armatures:
+            for collection in list(bpy.data.collections):
+
+                if collection == context.scene.collection:
+                    continue
+
+                bpy.data.collections.remove(collection)
+
+            for mesh in list(bpy.data.meshes):
+                bpy.data.meshes.remove(mesh)
+
+            for arm in list(bpy.data.armatures):
                 bpy.data.armatures.remove(arm)
 
-            for mat in bpy.data.materials:
+            for mat in list(bpy.data.materials):
                 bpy.data.materials.remove(mat)
 
-            for img in bpy.data.images:
+            for img in list(bpy.data.images):
                 bpy.data.images.remove(img)
 
-            for action in bpy.data.actions:
+            for action in list(bpy.data.actions):
                 bpy.data.actions.remove(action)
+
+            for cam in list(bpy.data.cameras):
+                bpy.data.cameras.remove(cam)
 
         # ---------------------------------------------------------
         # Scene tweaks (optional)
@@ -171,25 +179,29 @@ def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modif
 
         if os.path.isdir(decode_path):
 
-            root_name = os.path.splitext(os.path.basename(decode_path))[0]
+            root_name = os.path.splitext(
+                os.path.basename(decode_path)
+            )[0]
 
-            main_collection = bpy.data.collections.new(root_name)
-            context.scene.collection.children.link(main_collection)
+            main_collection = bpy.data.collections.new(
+                root_name
+            )
 
-            cam_data = bpy.data.cameras.new("Camera")
-            cam_obj = bpy.data.objects.new("Camera", cam_data)
-
-            context.scene.collection.objects.link(cam_obj)
-
-            cam_obj.location = (0.0, -6.0, 3.0)
-            cam_obj.rotation_euler = (1.109319, 0.0, 0.0)
-
-            context.scene.camera = cam_obj
+            context.scene.collection.children.link(
+                main_collection
+            )
 
             wce_decode(decode_path, main_collection)
 
-            objects_path = os.path.join(decode_path, "_objects")
-            lights_path = os.path.join(decode_path, "_lights")
+            objects_path = os.path.join(
+                decode_path,
+                "_objects"
+            )
+
+            lights_path = os.path.join(
+                decode_path,
+                "_lights"
+            )
 
             if os.path.exists(objects_path):
                 wce_decode(objects_path, main_collection)

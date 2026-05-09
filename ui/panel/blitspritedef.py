@@ -4,7 +4,221 @@
 import bpy
 from bpy.props import BoolProperty, PointerProperty, IntProperty, EnumProperty, StringProperty, FloatProperty
 from ...common.s3dmaterial import update_userdefined, update_rendermethod_node, update_transparent, update_simplesprite, sprite_items
+from ...common import state
 
+def update_blit_and_particle_trans(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    update_transparent(self, context)
+
+    obj = self.id_data
+
+    if not obj:
+        return
+
+    if obj.get("quaildef") != "blitspritedef":
+        return
+
+    propagate_particleblits(obj)
+
+def update_blit_and_particle_ud(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    update_userdefined(self, context)
+
+    obj = self.id_data
+
+    if not obj:
+        return
+
+    if obj.get("quaildef") != "blitspritedef":
+        return
+
+    propagate_particleblits(obj)
+
+def update_blit_and_particle_ss(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    update_simplesprite(self, context)
+
+    obj = self.id_data
+
+    if not obj:
+        return
+
+    if obj.get("quaildef") != "blitspritedef":
+        return
+
+    propagate_particleblits(obj)
+
+def update_blit_and_particle_rm(self, context):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    print("UPDATE:", context.object.name if context.object else None)
+
+    update_rendermethod_node(self, context)
+
+    obj = self.id_data
+
+    if not obj:
+        return
+
+    if obj.get("quaildef") != "blitspritedef":
+        return
+
+    propagate_particleblits(obj)
+
+def propagate_particleblits(source_obj):
+
+    if state.QUAIL_UPDATING:
+        return
+
+    print("PROPAGATE:", source_obj.name)
+
+    if not source_obj:
+        return
+
+    source_props = source_obj.quail_blitspritedef
+
+    for obj in bpy.data.objects:
+
+        if obj.get("quaildef") != "particleblit":
+            continue
+
+        particle_props = obj.quail_particleblit
+
+        if particle_props.sourceblit.name != source_obj.name:
+            continue
+
+        # ----------------------------------------
+        # Copy property values
+        # ----------------------------------------
+        print("MATCH:", obj.name, particle_props.sourceblit.name)
+
+        props = obj.quail_blitspritedef
+
+        print(
+            "COPY SIMPLESPRITE:",
+            obj.name,
+            "->",
+            source_props.simplespritetag
+        )
+
+        if props.simplespritetag != source_props.simplespritetag:
+            props.simplespritetag = source_props.simplespritetag
+
+        if props.transparent_override != source_props.transparent_override:
+            props.transparent_override = source_props.transparent_override
+
+        if props.use_userdefined != source_props.use_userdefined:
+            props.use_userdefined = source_props.use_userdefined
+
+        if props.userdefined_index != source_props.userdefined_index:
+            props.userdefined_index = source_props.userdefined_index
+
+        if props.drawstyle != source_props.drawstyle:
+            props.drawstyle = source_props.drawstyle
+
+        if props.lighting != source_props.lighting:
+            props.lighting = source_props.lighting
+
+        if props.shading != source_props.shading:
+            props.shading = source_props.shading
+
+        if props.texture_index != source_props.texture_index:
+            props.texture_index = source_props.texture_index
+
+        if props.masked != source_props.masked:
+            props.masked = source_props.masked
+
+        if props.alphablend != source_props.alphablend:
+            props.alphablend = source_props.alphablend
+
+        if props.additive != source_props.additive:
+            props.additive = source_props.additive
+
+        if props.dynamic != source_props.dynamic:
+            props.dynamic = source_props.dynamic
+
+        if props.prelit != source_props.prelit:
+            props.prelit = source_props.prelit
+
+        if props.opacity != source_props.opacity:
+            props.opacity = source_props.opacity
+
+        if props.transparent != source_props.transparent:
+            props.transparent = source_props.transparent
+
+        # ----------------------------------------
+        # Copy material node settings
+        # but preserve Particle Tint
+        # ----------------------------------------
+
+        if not source_obj.data.materials:
+            continue
+
+        if not obj.data.materials:
+            continue
+
+        src_mat = source_obj.data.materials[0]
+        dst_mat = obj.data.materials[0]
+
+        if not src_mat.use_nodes or not dst_mat.use_nodes:
+            continue
+
+        src_nodes = src_mat.node_tree.nodes
+        dst_nodes = dst_mat.node_tree.nodes
+
+        src_group = None
+        dst_group = None
+
+        for n in src_nodes:
+            if (
+                n.type == 'GROUP' and
+                n.node_tree and
+                n.node_tree.name == "RENDERMETHOD"
+            ):
+                src_group = n
+                break
+
+        for n in dst_nodes:
+            if (
+                n.type == 'GROUP' and
+                n.node_tree and
+                n.node_tree.name == "RENDERMETHOD"
+            ):
+                dst_group = n
+                break
+
+        if not src_group or not dst_group:
+            continue
+
+        # # preserve tint
+        # tint = dst_group.inputs["Particle Tint"].default_value[:]
+
+        # # copy everything except tint
+        # for inp in src_group.inputs:
+
+        #     if inp.name == "Particle Tint":
+        #         continue
+
+        #     if inp.name not in dst_group.inputs:
+        #         continue
+
+        #     try:
+        #         dst_group.inputs[inp.name].default_value = inp.default_value
+        #     except:
+        #         pass
+
+        # dst_group.inputs["Particle Tint"].default_value = tint
 
 # ----------------------------------------------------------
 # Property Group
@@ -20,7 +234,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
         name="SimpleSprite",
         description="Select a SimpleSprite node group",
         items=sprite_items,
-        update=update_simplesprite
+        update=update_blit_and_particle_ss
     )
 
     # --------------------------------------------------
@@ -31,7 +245,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
         name="Transparent Override",
         description="Force material to behave as fully transparent",
         default=False,
-        update=update_transparent
+        update=update_blit_and_particle_trans
     )
 
     # --------------------------------------------------
@@ -41,7 +255,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
     use_userdefined: BoolProperty(
         name="Userdefined",
         default=False,
-        update=update_userdefined
+        update=update_blit_and_particle_ud
     )
 
     userdefined_index: IntProperty(
@@ -49,7 +263,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
         min=1,
         max=41,
         default=2,
-        update=update_userdefined
+        update=update_blit_and_particle_ud
     )
 
     # --------------------------------------------------
@@ -65,7 +279,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
             ('SOLIDFILL', "SolidFill", ""),
         ],
         default='SOLIDFILL',
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     # --------------------------------------------------
@@ -85,7 +299,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
             ('LIGHT7', "Light7", ""),
         ],
         default='AMBIENT',
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     # --------------------------------------------------
@@ -101,7 +315,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
             ('GOURAUD2', "Gouraud2", ""),
         ],
         default='GOURAUD1',
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     # --------------------------------------------------
@@ -113,7 +327,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
         min=0,
         max=255,
         default=5,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     # --------------------------------------------------
@@ -123,31 +337,31 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
     masked: BoolProperty(
         name="Masked Transparency",
         default=False,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     alphablend: BoolProperty(
         name="Alpha Blend",
         default=False,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     additive: BoolProperty(
         name="Additive",
         default=False,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     dynamic: BoolProperty(
         name="Dynamic Lighting",
         default=False,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     prelit: BoolProperty(
         name="Prelit",
         default=False,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     opacity: FloatProperty(
@@ -155,7 +369,7 @@ class QuailBlitSpriteDefProperties(bpy.types.PropertyGroup):
         min=0.0,
         max=93.75,
         default=50.0,
-        update=update_rendermethod_node
+        update=update_blit_and_particle_rm
     )
 
     # Transparent BlitSprite flag

@@ -324,18 +324,30 @@ class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        return _in_edit_vertex_mode(context)
+
+        obj = context.active_object
+
+        if not obj:
+            return False
+
+        if obj.type != 'MESH':
+            return False
+
+        if obj.get("quaildef") not in VALID_QUAILDEFS:
+            return False
+
+        return True
 
     def draw(self, context):
+
         layout = self.layout
         ob = context.active_object
-        me = ob.data
-
-        bm, layer = _get_bm_and_layer(me)
-        row = layout.row()
-        row.label(text=f"Layer: '{LAYER_NAME}' " + ("✓" if layer else "✗"))
 
         mod = _get_vertex_normal_modifier(ob)
+
+        # ----------------------------------------
+        # Always visible
+        # ----------------------------------------
 
         if mod:
 
@@ -344,6 +356,20 @@ class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
                 '["Socket_1"]',
                 text="Show Normals"
             )
+
+        # ----------------------------------------
+        # Remaining UI only in edit vertex mode
+        # ----------------------------------------
+
+        if not _in_edit_vertex_mode(context):
+            return
+
+        me = ob.data
+
+        bm, layer = _get_bm_and_layer(me)
+
+        row = layout.row()
+        row.label(text=f"Layer: '{LAYER_NAME}' " + ("✓" if layer else "✗"))
 
 
         col = layout.column(align=True)

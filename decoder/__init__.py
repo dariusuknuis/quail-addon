@@ -68,6 +68,52 @@ def wce_decode(path: str, parent_collection=None):
 
     state.QUAIL_UPDATING = True
 
+    # ------------------------------------------------
+    # Ensure scene camera exists
+    # ------------------------------------------------
+
+    if not bpy.context.scene.camera:
+
+        cam_data = bpy.data.cameras.new("Camera")
+
+        cam_obj = bpy.data.objects.new(
+            "Camera",
+            cam_data
+        )
+
+        bpy.context.scene.collection.objects.link(
+            cam_obj
+        )
+
+        cam_obj.location = (0.0, -6.0, 3.0)
+
+        cam_obj.rotation_euler = (
+            1.109319,
+            0.0,
+            0.0
+        )
+
+        bpy.context.scene.camera = cam_obj
+
+        # ------------------------------------------------
+        # Viewport camera settings
+        # ------------------------------------------------
+
+        for window in bpy.context.window_manager.windows:
+
+            for area in window.screen.areas:
+
+                if area.type != 'VIEW_3D':
+                    continue
+
+                for space in area.spaces:
+
+                    if space.type != 'VIEW_3D':
+                        continue
+
+                    space.overlay.show_camera_passepartout = False
+                    space.lock_camera = True
+
     if os.path.isfile(path) and path.lower().endswith(".wce"):
         # Single WCE file
         root_path = path
@@ -300,6 +346,102 @@ def wce_decode(path: str, parent_collection=None):
         if err:
             error(err)
 
+    organize_collections(parser, base_collection)
+
     ensure_material_fake_users()
 
     state.QUAIL_UPDATING = False
+
+def organize_collections(parser, base_collection):
+
+    # ------------------------------------------------
+    # Build folder -> actordef collection lookup
+    # ------------------------------------------------
+
+    folder_to_collection = {}
+
+    for actordef_tag in parser.actordefs.keys():
+
+        folder = parser.folders.get(actordef_tag)
+
+        if not folder:
+            continue
+
+        collection = bpy.data.collections.get(actordef_tag)
+
+        if not collection:
+            continue
+
+        folder_to_collection[folder.lower()] = collection
+
+    # ------------------------------------------------
+    # Move supported quaildefs
+    # ------------------------------------------------
+
+    supported_defs = {
+        "blitspritedef",
+        "materialpalette",
+        "particleclouddef",
+        "particleblit",
+    }
+
+    for obj in bpy.data.objects:
+
+        quaildef = obj.get("quaildef")
+
+        if quaildef not in supported_defs:
+            continue
+
+        tag = obj.name
+
+        # ------------------------------------------------
+        # Particle blits inherit folder from parent cloud
+        # ------------------------------------------------
+
+        if quaildef == "particleblit":
+
+            parent = obj.parent
+
+            if not parent:
+                continue
+
+            folder = parser.folders.get(parent.name)
+
+        else:
+
+            folder = parser.folders.get(tag)
+
+        if not folder:
+            continue
+
+        target_collection = folder_to_collection.get(
+            folder.lower()
+        )
+
+        if not target_collection:
+            continue
+
+        # already linked
+        if target_collection in obj.users_collection:
+            continue
+
+        # ------------------------------------------------
+        # Link into target collection
+        # ------------------------------------------------
+
+        target_collection.objects.link(obj)
+
+        # ------------------------------------------------
+        # Remove from other collections
+        # except scene root
+        # ------------------------------------------------
+
+        for col in list(obj.users_collection):
+
+            if col == target_collection:
+                continue
+
+            try:
+                col.objects.unlink(obj)
+            except:
+                pass

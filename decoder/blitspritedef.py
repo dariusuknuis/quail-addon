@@ -73,6 +73,7 @@ def create_blitsprite_billboard_geo():
 
     # Plane faces Y axis
     align.axis = 'Y'
+    align.pivot_axis = 'Z'
 
     transform = nodes.new("GeometryNodeTransform")
     transform.location = (200, 0)
@@ -178,10 +179,10 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
 
     uv_layer = mesh.uv_layers.active
 
-    uv_layer.data[0].uv = (0.0, 0.0)
-    uv_layer.data[1].uv = (1.0, 0.0)
-    uv_layer.data[2].uv = (1.0, 1.0)
-    uv_layer.data[3].uv = (0.0, 1.0)
+    uv_layer.data[0].uv = (1.0, 0.0)
+    uv_layer.data[1].uv = (0.0, 0.0)
+    uv_layer.data[2].uv = (0.0, 1.0)
+    uv_layer.data[3].uv = (1.0, 1.0)
 
     # --------------------------------------------------
     # Material
@@ -324,5 +325,7 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
     )
 
     mod.node_group = geo_group
+
+    obj.hide_set(True)
 
     return ""
