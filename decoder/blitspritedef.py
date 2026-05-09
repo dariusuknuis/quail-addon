@@ -252,6 +252,7 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
         "Drawstyle",
         "TextureIndex",
         "Transparent Blit",
+        "Particle Tint",
     }
 
     for socket in group_node.inputs:
@@ -265,6 +266,7 @@ def decode_blitspritedef(ctx: Context, sprite: blitspritedef) -> str:
     group_node.inputs["Additive"].default_value = float(props.additive)
     group_node.inputs["TextureIndex"].default_value = float(props.texture_index)
     group_node.inputs["Transparent Blit"].default_value = float(sprite.transparent)
+    group_node.inputs["Particle Tint"].default_value = (1.0, 1.0, 1.0, 1.0)
     drawstyle_map = {
         "DRAW0": 0.0,
         "DRAW1": 1.0,

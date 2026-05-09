@@ -207,10 +207,10 @@ def create_rendermethod_nodegroup():
     # Group Input / Output
     # -----------------------------------------
     group_input = nodes.new("NodeGroupInput")
-    group_input.location = (-1255, 135)
+    group_input.location = (-1555, 135)
 
     group_output = nodes.new("NodeGroupOutput")
-    group_output.location = (1728, 12)
+    group_output.location = (1928, 12)
 
     def add_input(name, socket_type):
         group.interface.new_socket(
@@ -256,6 +256,15 @@ def create_rendermethod_nodegroup():
     )
 
     transparent_blit.default_value = 1.0
+
+    # Particle Cloud Tint
+    particle_tint = group.interface.new_socket(
+        name="Particle Tint",
+        in_out='INPUT',
+        socket_type="NodeSocketColor"
+    )
+
+    particle_tint.default_value = (1.0, 1.0, 1.0, 1.0)
 
     inp = group_input.outputs
     out = group_output.inputs
@@ -385,7 +394,7 @@ def create_rendermethod_nodegroup():
     passable_effective.operation = 'MULTIPLY'
     passable_effective.location = (644, 732)
     links.new(inp["PassableDisplay"], passable_effective.inputs[0])
-    links.new(passable_attribute.outputs[0], passable_effective.inputs[1])
+    links.new(passable_attribute.outputs[2], passable_effective.inputs[1])
 
     passable_override = nodes.new('ShaderNodeMix')
     passable_override.name = 'Passable Override'
@@ -396,8 +405,6 @@ def create_rendermethod_nodegroup():
     passable_override.inputs[7].default_value = (0.0, 1.0, 0.0, 1.0)
     links.new(passable_effective.outputs[0], passable_override.inputs[0])
     links.new(solid_override.outputs[2], passable_override.inputs[6])
-
-    links.new(passable_override.outputs[2], principled.inputs["Base Color"])
 
     # ------------------------------------------------
     # Transparent Toggle nodes
@@ -525,7 +532,6 @@ def create_rendermethod_nodegroup():
     add_color.location = (213, -345)
     add_color.inputs[0].default_value = 1.0
     links.new(inp["sRGB Texture"], add_color.inputs[6])
-    links.new(inp["sRGB Texture"], add_color.inputs[7])
 
     saturation = nodes.new('ShaderNodeHueSaturation')
     saturation.name = 'Saturation Adjust'
@@ -548,6 +554,72 @@ def create_rendermethod_nodegroup():
     links.new(inp["Transparent Blit"], trans_blit_flag.inputs[0])
     links.new(mask_allow.outputs[0], trans_blit_flag.inputs[1])
     links.new(trans_blit_flag.outputs[0], mask_mix.inputs["Factor"])
+
+    # ------------------------------------------------
+    # Particle Tint
+    # ------------------------------------------------
+
+    separate_color = nodes.new("ShaderNodeSeparateColor")
+    separate_color.name = 'Separate Color'
+    separate_color.label = 'SeparateColor'
+    separate_color.mode = 'RGB'
+    separate_color.location = (-1355, 335)
+    links.new(inp["Particle Tint"], separate_color.inputs[0])
+
+    add_r_g = nodes.new("ShaderNodeMath")
+    add_r_g.name = 'Add Red&Green'
+    add_r_g.label = 'AddRedGreen'
+    add_r_g.operation = 'ADD'
+    add_r_g.location = (-1155, 355)
+    links.new(separate_color.outputs[0], add_r_g.inputs[0])
+    links.new(separate_color.outputs[1], add_r_g.inputs[1])
+
+    add_rg_b = nodes.new("ShaderNodeMath")
+    add_rg_b.name = 'Add Red/Green & Blue'
+    add_rg_b.label = 'AddRedGreenBlue'
+    add_rg_b.operation = 'ADD'
+    add_rg_b.location = (-955, 345)
+    links.new(add_r_g.outputs[0], add_rg_b.inputs[0])
+    links.new(separate_color.outputs[2], add_rg_b.inputs[1])
+
+    average_rgb = nodes.new("ShaderNodeMath")
+    average_rgb.name = 'Average RGB'
+    average_rgb.label = 'AverageRGB'
+    average_rgb.operation = 'DIVIDE'
+    average_rgb.location = (-755, 365)
+    average_rgb.inputs[1].default_value = 3.0
+    links.new(add_rg_b.outputs[0], average_rgb.inputs[0])
+
+    tint_factor = nodes.new("ShaderNodeMath")
+    tint_factor.name = 'Average RGB'
+    tint_factor.label = 'AverageRGB'
+    tint_factor.operation = 'SUBTRACT'
+    tint_factor.location = (-555, 465)
+    tint_factor.inputs[0].default_value = 1.0
+    links.new(average_rgb.outputs[0], tint_factor.inputs[1])
+
+    add_tint = nodes.new('ShaderNodeMix')
+    add_tint.name = 'Additive Tint'
+    add_tint.label = "AdditiveTint"
+    add_tint.data_type = 'RGBA'
+    add_tint.blend_type = 'MIX'
+    add_tint.location = (-100, -611)
+    links.new(tint_factor.outputs[0], add_tint.inputs[0])
+    links.new(inp["sRGB Texture"], add_tint.inputs[6])
+    links.new(inp["Particle Tint"], add_tint.inputs[7])
+    links.new(add_tint.outputs[2], add_color.inputs[7])
+
+    texture_tint = nodes.new('ShaderNodeMix')
+    texture_tint.name = 'Texture Tint'
+    texture_tint.label = "TextureTint"
+    texture_tint.data_type = 'RGBA'
+    texture_tint.blend_type = 'MIX'
+    texture_tint.location = (1322, 429)
+    links.new(tint_factor.outputs[0], texture_tint.inputs[0])
+    links.new(passable_override.outputs[2], texture_tint.inputs[6])
+    links.new(inp["Particle Tint"], texture_tint.inputs[7])
+
+    links.new(texture_tint.outputs[2], principled.inputs["Base Color"])
 
     # ------------------------------------------------
     # Output
