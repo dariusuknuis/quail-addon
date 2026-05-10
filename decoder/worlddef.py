@@ -2,15 +2,8 @@ import bpy
 from .context import Context
 from ..wce.worlddef import worlddef
 from ..common.region import is_region_mesh, create_world_bounds_from_regions
+from ..common import find_layer_collection
 
-def find_layer_collection(layer_coll, target):
-    if layer_coll.collection == target:
-        return layer_coll
-    for child in layer_coll.children:
-        found = find_layer_collection(child, target)
-        if found:
-            return found
-    return None
 
 def decode_worlddef(ctx: Context, wd: worlddef) -> str:
 

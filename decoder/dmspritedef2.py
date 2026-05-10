@@ -48,15 +48,10 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     # ------------------------------------------------
 
     props = obj.quail_dmspritedef2
-
     props.usecenteroffset = bool(sprite.usecenteroffset)
-
     props.materialpalette = bpy.data.objects.get(sprite.materialpalette)
-
     props.dmtrack = sprite.dmtrackinst
-
     props.dmrgbtrack = sprite.dmrgbtrack
-
     props.polyhedron = bpy.data.objects.get(sprite.sprite)
 
     props.useparams2 = bool(sprite.useparams2)
@@ -78,12 +73,9 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     props.useboundingradius = bool(sprite.useboundingradius)
     props.boundingradius = sprite.boundingradius
-
     props.fpscale = sprite.fpscale
     props.fpscale_prev = sprite.fpscale
-
     props.usevertexcoloralpha = bool(sprite.usevertexcoloralpha)
-
     props.spritedefpolyhedron = bool(sprite.spritedefpolyhedron)
 
     # ------------------------------------------------

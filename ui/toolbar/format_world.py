@@ -17,32 +17,6 @@ class OBJECT_OT_format_world(bpy.types.Operator):
             self.report({'WARNING'}, "World formatting was cancelled or failed")
         return result
 
-class VIEW3D_PT_EQ_world_tools(bpy.types.Panel):
-    bl_label = "EverQuest World Tools"
-    bl_idname = "VIEW3D_PT_EQ_world_tools"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'Quail'
-    bl_context = "objectmode"
-
-    def draw(self, context):
-        layout = self.layout
-        # layout.operator(
-        #     "object.generate_outdoor_world",
-        #     text="Generate Outdoor World",
-        #     icon='VIEW3D'
-        # )
-        # layout.operator(
-        #     "object.generate_radial_visibility",
-        #     text="Generate Radial Visibility",
-        #     icon='ONIONSKIN_ON'
-        # )
-        layout.operator(
-            "object.format_world",
-            text="Format World",
-            icon='OBJECT_DATA'
-        )
-
 def run_format_world():
 
     context = bpy.context
@@ -144,6 +118,9 @@ def run_format_world():
 
     bm.free()
 
+    # Tag as formatted terrain
+    joined["Formatted Terrain"] = True
+
     # --------------------------------------------------------
     # Smooth shading
     # --------------------------------------------------------
@@ -182,11 +159,6 @@ def run_format_world():
             bpy.data.objects.remove(obj, do_unlink=True)
         bpy.data.collections.remove(worldtree_col)
 
-    # --------------------------------------------------------
-    # Remove REGION_MESHES collection
-    # --------------------------------------------------------
-
-    # bpy.data.collections.remove(region_collection)
 
     print(f"[Format World] Created '{terrain_name}'")
 

@@ -79,3 +79,12 @@ def base_tag(tag: str) -> str:
             return base
 
     return tag
+
+def find_layer_collection(layer_coll, target):
+    if layer_coll.collection == target:
+        return layer_coll
+    for child in layer_coll.children:
+        found = find_layer_collection(child, target)
+        if found:
+            return found
+    return None
