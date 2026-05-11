@@ -2,7 +2,7 @@
 
 import bpy
 from bpy.props import FloatProperty, BoolProperty, IntProperty, StringProperty, CollectionProperty, PointerProperty
-from ...common.region import encode_vislist
+from ...common.region import rebuild_vislist_range
 
 def update_region_sphere(self, context):
     obj = context.object
@@ -24,40 +24,6 @@ def update_region_sphere(self, context):
 
     # Update radius (visual size)
     obj.empty_display_size = props.sphere_r
-
-def rebuild_vislist_range(obj):
-    props = obj.quail_region
-
-    for vis in props.vislists:
-        indices = []
-
-        # collect indices from region names
-        for item in vis.visible_regions:
-            name = item.region_name
-            if not name:
-                continue
-            if name.startswith("R"):
-                try:
-                    idx = int(name[1:])
-                    indices.append(idx)
-                except:
-                    pass
-
-        indices = sorted(set(indices))
-
-        # encode
-        if props.vislistbytes:
-            data = encode_vislist(indices)
-        else:
-            data = []
-            for rid in indices:
-                idx0 = rid - 1
-                data.append(idx0 & 0xFF)
-                data.append((idx0 >> 8) & 0xFF)
-
-        # rebuild RANGE string (with count)
-        full = [len(data)] + data
-        vis.range = " ".join(str(x) for x in full)
 
 class QUAIL_OT_remove_selected_from_vislist(bpy.types.Operator):
     bl_idname = "quail.remove_selected_from_vislist"

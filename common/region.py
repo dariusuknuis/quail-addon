@@ -241,3 +241,37 @@ def resolve_region_visibility():
                 if obj:
                     ref = vis.visible_regions.add()
                     ref.region_name = obj.name
+
+def rebuild_vislist_range(obj):
+    props = obj.quail_region
+
+    for vis in props.vislists:
+        indices = []
+
+        # collect indices from region names
+        for item in vis.visible_regions:
+            name = item.region_name
+            if not name:
+                continue
+            if name.startswith("R"):
+                try:
+                    idx = int(name[1:])
+                    indices.append(idx)
+                except:
+                    pass
+
+        indices = sorted(set(indices))
+
+        # encode
+        if props.vislistbytes:
+            data = encode_vislist(indices)
+        else:
+            data = []
+            for rid in indices:
+                idx0 = rid - 1
+                data.append(idx0 & 0xFF)
+                data.append((idx0 >> 8) & 0xFF)
+
+        # rebuild RANGE string (with count)
+        full = [len(data)] + data
+        vis.range = " ".join(str(x) for x in full)

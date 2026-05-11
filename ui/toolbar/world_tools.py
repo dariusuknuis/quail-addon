@@ -15,11 +15,16 @@ class VIEW3D_PT_EQ_world_tools(bpy.types.Panel):
             text="Generate Outdoor World",
             icon='VIEW3D'
         )
-        # layout.operator(
-        #     "object.generate_radial_visibility",
-        #     text="Generate Radial Visibility",
-        #     icon='ONIONSKIN_ON'
-        # )
+        layout.operator(
+            "object.generate_radial_visibility",
+            text="Generate Radial Visibility",
+            icon='ONIONSKIN_ON'
+        )
+        layout.operator(
+            "object.generate_los_visibility",
+            text="Generate Line-Of-Sight Visibility",
+            icon='ONIONSKIN_ON'
+        )
         layout.operator(
             "object.format_world",
             text="Format World",

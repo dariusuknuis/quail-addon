@@ -1,6 +1,7 @@
 # pyright: basic, reportGeneralTypeIssues=false
 
 import bpy
+from .finalize_region_meshes import finalize_region_meshes
 from ...common.bsp import BSPContext, normalize_bounds, create_world_volume, recursive_bsp_split, aabb_mesh_world, build_volume_planes, point_inside_convex
 from ...common.region import create_world_bounds_from_regions
 from ...common.math_helpers import aabb_mesh_local
@@ -335,6 +336,8 @@ def run_outdoor_bsp_split(target_size=282.0):
                     region_tag = f"R{region_index + 1:06d}"
                     item = props.regionlist.add()
                     item.region_name = region_tag
+
+                finalize_region_meshes(ctx.pending_region_meshes)
 
             print(f"Finished BSP world for {src.name}")
 
