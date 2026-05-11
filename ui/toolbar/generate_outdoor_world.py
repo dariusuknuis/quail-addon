@@ -326,9 +326,15 @@ def run_outdoor_bsp_split(target_size=282.0):
                             region_index - 1
                         )
 
-                zone["REGIONLIST"] = (
-                    "[" + ", ".join(map(str, region_idxs)) + "]"
-                )
+                props = zone.quail_zone
+
+                while len(props.regionlist) > 0:
+                    props.regionlist.remove(0)
+
+                for region_index in region_idxs:
+                    region_tag = f"R{region_index + 1:06d}"
+                    item = props.regionlist.add()
+                    item.region_name = region_tag
 
             print(f"Finished BSP world for {src.name}")
 

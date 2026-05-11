@@ -669,73 +669,158 @@ def volume_intersection_tests(zone_face, region_planes, bvh_vol, region_edges, z
 # ------------------------------------------------------------
 
 def zone_bsp_split(bm_geo, zone_obj, current_node, bm_vol, tol=1e-4, min_diag=0.1, used_planes=None):
-    """
-    Attempt to split bm_geo and bm_vol by the first zone‐face that truly
-    penetrates the region volume.  Returns
 
-        (geo_in, geo_out, vol_in, vol_out, world_normal, world_d, face_index)
+    # -------------------------------------------------
+    # Region AABB
+    # -------------------------------------------------
 
-    or None on failure.
-    """
+    vol_verts = [v.co.copy() for v in bm_vol.verts]
 
-    # 1) AABB cull
-    # --------------------------------
-    vol_verts = list(bm_vol.verts)
-    vol_ws    = [v.co for v in vol_verts]
-    if not vol_ws:
+    if not vol_verts:
         return None
 
-    rmin = Vector((min(v.x for v in vol_ws),
-                   min(v.y for v in vol_ws),
-                   min(v.z for v in vol_ws)))
-    rmax = Vector((max(v.x for v in vol_ws),
-                   max(v.y for v in vol_ws),
-                   max(v.z for v in vol_ws)))
+    rmin = Vector((
+        min(v.x for v in vol_verts),
+        min(v.y for v in vol_verts),
+        min(v.z for v in vol_verts),
+    ))
+
+    rmax = Vector((
+        max(v.x for v in vol_verts),
+        max(v.y for v in vol_verts),
+        max(v.z for v in vol_verts),
+    ))
+
+    # -------------------------------------------------
+    # Zone AABB
+    # -------------------------------------------------
+
     zmin, zmax = aabb_mesh_world(zone_obj)
+
     if not aabb_intersects(rmin, rmax, zmin, zmax):
         return None
 
-    # 2) Build BVH on the region‐volume triangles, plus collect its edges
-    # --------------------------------------------------------------------
-    bvh_vol = BVHTree.FromBMesh(bm_vol, epsilon=0.0)
+    # -------------------------------------------------
+    # Build convex planes
+    # -------------------------------------------------
 
-    region_edges = [
-        (e.verts[0].co, e.verts[1].co)
-        for e in bm_vol.edges
+    region_planes = build_volume_planes(bm_vol)
+    zone_planes = build_volume_planes(zone_obj)
+
+    zone_verts = [
+        zone_obj.matrix_world @ v.co
+        for v in zone_obj.data.vertices
     ]
 
-
-    # 3) Build half‐spaces for the convex region‐volume
     # -------------------------------------------------
-    region_planes = build_volume_planes(bm_vol)
+    # Full convex overlap test
+    # -------------------------------------------------
 
-    # zone BMesh once
-    bm_zon = bmesh.new(); bm_zon.from_mesh(zone_obj.data)
+    def convex_overlap(planes_a, verts_a, planes_b, verts_b):
+
+        # Is B fully outside any plane of A?
+        for n, d in planes_a:
+
+            outside = True
+
+            for v in verts_b:
+
+                if n.dot(v) + d <= -tol:
+                    outside = False
+                    break
+
+            if outside:
+                return False
+
+        # Is A fully outside any plane of B?
+        for n, d in planes_b:
+
+            outside = True
+
+            for v in verts_a:
+
+                if n.dot(v) + d <= -tol:
+                    outside = False
+                    break
+
+            if outside:
+                return False
+
+        return True
+
+    if not convex_overlap(region_planes, vol_verts, zone_planes, zone_verts):
+        return None
+
+    # -------------------------------------------------
+    # Zone BMesh
+    # -------------------------------------------------
+
+    bm_zon = bmesh.new()
+    bm_zon.from_mesh(zone_obj.data)
     bm_zon.faces.ensure_lookup_table()
+
     zone_wm3 = zone_obj.matrix_world.to_3x3()
     zone_wm4 = zone_obj.matrix_world
 
+    # -------------------------------------------------
+    # Find splitting face
+    # -------------------------------------------------
 
-    # 4) Scan each zone‐face until we find one that really penetrates
-    # ---------------------------------------------------------------
     splitter = None
-    already_used = used_planes.get(current_node, [])
-    for face in bm_zon.faces:
-        if not volume_intersection_tests(face, region_planes, bvh_vol, region_edges, zone_wm3, zone_wm4):
-            continue
 
-        # build world‐space plane
+    already_used = used_planes.get(current_node, [])
+
+    for face in bm_zon.faces:
+
+        # ---------------------------------------------
+        # Build world-space plane
+        # ---------------------------------------------
+
         n_ws = (zone_wm3 @ face.normal).normalized()
+
         p_ws = zone_wm4 @ face.calc_center_median()
+
         d_ws = -n_ws.dot(p_ws)
 
-        # **dedupe against used_planes**:
+        # ---------------------------------------------
+        # Dedupe against previously used planes
+        # ---------------------------------------------
+
         too_similar = False
+
         for (n0, d0) in already_used:
-            if n0.dot(n_ws) > 1.0 - 1e-4 and abs(d0 - d_ws) < tol:
+
+            if (
+                n0.dot(n_ws) > 1.0 - 1e-4 and
+                abs(d0 - d_ws) < tol
+            ):
                 too_similar = True
                 break
+
         if too_similar:
+            continue
+
+        # ---------------------------------------------
+        # Plane divides region test
+        # ---------------------------------------------
+
+        front = False
+        back = False
+
+        for v in vol_verts:
+
+            dist = n_ws.dot(v) + d_ws
+
+            if dist > tol:
+                front = True
+
+            elif dist < -tol:
+                back = True
+
+            if front and back:
+                break
+
+        if not (front and back):
             continue
 
         splitter = face
@@ -745,31 +830,68 @@ def zone_bsp_split(bm_geo, zone_obj, current_node, bm_vol, tol=1e-4, min_diag=0.
         bm_zon.free()
         return None
 
-    # 5) Build the split plane in both world and local space
-    # ------------------------------------------------------
-    plane_co_ws = zone_wm4 @ face.calc_center_median()
-    plane_no_ws = (zone_wm3 @ face.normal).normalized()
-    plane_d     = -plane_no_ws.dot(plane_co_ws)
+    # -------------------------------------------------
+    # Build split plane
+    # -------------------------------------------------
 
-    plane_co_l  = plane_co_ws.copy()
-    plane_no_l  = plane_no_ws.copy()
+    plane_co_ws = zone_wm4 @ splitter.calc_center_median()
+
+    plane_no_ws = (zone_wm3 @ splitter.normal).normalized()
+
+    plane_d = -plane_no_ws.dot(plane_co_ws)
+
+    plane_co_l = plane_co_ws.copy()
+    plane_no_l = plane_no_ws.copy()
 
     bm_zon.free()
 
-    geo_in, geo_out = terrain_split(bm_geo, plane_co_l, plane_no_l)
-    vol_in, vol_out = volume_split(bm_vol, plane_co_l, plane_no_l, tol)
+    # -------------------------------------------------
+    # Perform split
+    # -------------------------------------------------
 
-    # 8) Sanity‐check
-    # ---------------
+    geo_in, geo_out = terrain_split(
+        bm_geo,
+        plane_co_l,
+        plane_no_l
+    )
+
+    vol_in, vol_out = volume_split(
+        bm_vol,
+        plane_co_l,
+        plane_no_l,
+        tol
+    )
+
+    # -------------------------------------------------
+    # Sanity check
+    # -------------------------------------------------
+
     bi_min, bi_max = aabb_bmesh_local(vol_in)
+
     bo_min, bo_max = aabb_bmesh_local(vol_out)
-    if (bi_max - bi_min).length < min_diag or (bo_max - bo_min).length < min_diag:
+
+    if (
+        (bi_max - bi_min).length < min_diag or
+        (bo_max - bo_min).length < min_diag
+    ):
         return None
 
-    # 9) Return exactly what recursive_bsp_split expects
     # -------------------------------------------------
-    used_planes.setdefault(current_node, []).append((plane_no_ws.copy(), plane_d))
-    return geo_in, geo_out, vol_in, vol_out, plane_no_ws.copy(), plane_d
+    # Mark plane as used
+    # -------------------------------------------------
+
+    used_planes.setdefault(current_node, []).append(
+        (plane_no_ws.copy(), plane_d)
+    )
+
+    return (
+        geo_in,
+        geo_out,
+        vol_in,
+        vol_out,
+        plane_no_ws.copy(),
+        plane_d
+    )
 
 def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_planes=None, depth=0, depth_counters=None, backtree=False):
     """
