@@ -1,5 +1,7 @@
 import bpy
 import bmesh
+import random
+import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from ...common.region import rebuild_vislist_range
@@ -18,24 +20,31 @@ class OBJECT_OT_generate_los_visibility(bpy.types.Operator):
         min=0.0,
     )
 
-    sample_height_factor: bpy.props.FloatProperty(
-        name="Sample Height Factor",
-        description="Percent of cavity depth used for interior sampling",
-        default=0.35,
-        min=0.0,
-        max=1.0,
-    )
-
-    min_offset: bpy.props.FloatProperty(
-        name="Minimum Offset",
-        default=4.0,
+    standing_height: bpy.props.FloatProperty(
+        name="Standing Height",
+        description="Height above walkable surfaces",
+        default=32.0,
         min=0.0,
     )
 
-    max_offset: bpy.props.FloatProperty(
-        name="Maximum Offset",
-        default=64.0,
+    wall_offset: bpy.props.FloatProperty(
+        name="Wall Offset",
+        description="Distance projected away from walls",
+        default=8.0,
         min=0.0,
+    )
+
+    rays_per_point: bpy.props.IntProperty(
+        name="Rays Per Point",
+        default=128,
+        min=1,
+    )
+
+    min_hit_count: bpy.props.IntProperty(
+        name="Minimum Hit Count",
+        description="Minimum ray hits required to mark a region visible",
+        default=1,
+        min=1,
     )
 
     use_rle: bpy.props.BoolProperty(
@@ -53,9 +62,10 @@ class OBJECT_OT_generate_los_visibility(bpy.types.Operator):
 
             run_los_visibility(
                 self.search_radius,
-                self.sample_height_factor,
-                self.min_offset,
-                self.max_offset,
+                self.standing_height,
+                self.wall_offset,
+                self.rays_per_point,
+                self.min_hit_count,
                 self.use_rle
             )
 
@@ -72,14 +82,13 @@ class OBJECT_OT_generate_los_visibility(bpy.types.Operator):
 
 
 # ------------------------------------------------------------
-# Face sampling
+# Sample points from region
 # ------------------------------------------------------------
 
 def get_region_sample_points(
     region,
-    sample_height_factor=0.35,
-    min_offset=4.0,
-    max_offset=64.0
+    standing_height=32.0,
+    wall_offset=8.0
 ):
 
     samples = []
@@ -88,9 +97,7 @@ def get_region_sample_points(
 
     sprite_name = props.sprite
 
-    # --------------------------------------------------------
-    # Region mesh sampling
-    # --------------------------------------------------------
+    world_up = Vector((0, 0, 1))
 
     if sprite_name:
 
@@ -107,24 +114,9 @@ def get_region_sample_points(
             wm = mesh_obj.matrix_world
             wm3 = wm.to_3x3()
 
-            region_center = region.location
-
-            sphere_radius = max(
-                region.empty_display_size,
-                min_offset
-            )
-
             polys = mesh.polygons
 
-            step = max(1, len(polys) // 16)
-
-            classified = []
-
-            cavity_candidates = []
-
-            # ------------------------------------------------
-            # Classify faces
-            # ------------------------------------------------
+            step = max(1, len(polys) // 24)
 
             for i in range(0, len(polys), step):
 
@@ -133,315 +125,300 @@ def get_region_sample_points(
                 face_center = wm @ poly.center
 
                 try:
+                    face_normal = (wm3 @ poly.normal).normalized()
+                except:
+                    face_normal = world_up.copy()
 
-                    face_normal = (
-                        wm3 @ poly.normal
+                upness = face_normal.dot(world_up)
+
+                if upness >= 0.707:
+
+                    sample_dir = (
+                        (face_normal * 0.25) + (world_up * 0.75)
                     ).normalized()
 
-                except:
-
-                    face_normal = Vector((0, 0, 1))
-
-                to_center = (
-                    region_center - face_center
-                )
-
-                dist_to_center = to_center.length
-
-                if dist_to_center > 1e-6:
-                    to_center_dir = (
-                        to_center / dist_to_center
+                    samples.append(
+                        face_center + (sample_dir * standing_height)
                     )
-                else:
-                    to_center_dir = Vector((0, 0, 1))
-
-                # ------------------------------------------------
-                # dot > 0
-                # face points toward region center
-                # meaning region center is "in front" of face
-                # (interior/cavity-facing)
-                # ------------------------------------------------
-
-                dot = face_normal.dot(to_center_dir)
-
-                inward = (dot > 0.0)
-
-                classified.append((
-                    face_center,
-                    face_normal,
-                    inward,
-                    to_center_dir,
-                    dist_to_center
-                ))
-
-                # ------------------------------------------------
-                # Build cavity candidate
-                # ------------------------------------------------
-
-                if inward:
-
-                    edge_distance = max(
-                        0.0,
-                        sphere_radius - dist_to_center
-                    )
-
-                    cavity_depth = (
-                        edge_distance *
-                        sample_height_factor
-                    )
-
-                    cavity_depth = max(
-                        min_offset,
-                        min(cavity_depth, max_offset)
-                    )
-
-                    candidate = (
-                        face_center +
-                        (to_center_dir * cavity_depth)
-                    )
-
-                    cavity_candidates.append(candidate)
-
-            # ------------------------------------------------
-            # Shared cavity center
-            # ------------------------------------------------
-
-            cavity_center = region_center.copy()
-
-            if cavity_candidates:
-
-                cavity_center = (
-                    sum(cavity_candidates, Vector()) /
-                    len(cavity_candidates)
-                )
-
-            # ------------------------------------------------
-            # Final samples
-            # ------------------------------------------------
-
-            for (
-                face_center,
-                face_normal,
-                inward,
-                to_center_dir,
-                dist_to_center
-            ) in classified:
-
-                # ----------------------------------------
-                # Interior/cavity-facing faces
-                # ----------------------------------------
-
-                if inward:
-
-                    samples.append(cavity_center)
-
-                # ----------------------------------------
-                # Exterior-facing faces
-                # ----------------------------------------
 
                 else:
 
                     samples.append(
-                        face_center +
-                        (face_normal * min_offset)
+                        face_center + (face_normal * wall_offset)
                     )
-
-            # ------------------------------------------------
-            # Add cavity center
-            # ------------------------------------------------
-
-            samples.append(cavity_center)
-
-            # ------------------------------------------------
-            # Add region center
-            # ------------------------------------------------
-
-            samples.append(region_center)
 
             if samples:
                 return samples
 
-    # --------------------------------------------------------
-    # Empty-region fallback
-    # --------------------------------------------------------
-
-    center = region.location
-
-    r = max(
-        region.empty_display_size * 0.25,
-        1.0
+    # Fallback: region center only
+    samples.append(
+        region.location + Vector((0, 0, standing_height))
     )
-
-    samples.extend([
-        center,
-        center + Vector(( r, 0, 0)),
-        center + Vector((-r, 0, 0)),
-        center + Vector((0,  r, 0)),
-        center + Vector((0, -r, 0)),
-        center + Vector((0, 0,  r)),
-    ])
 
     return samples
 
 
 # ------------------------------------------------------------
-# Region mesh BVHs
+# Build a SINGLE merged WORLD-SPACE occluder BVH
+#
+# Merging all meshes into one BVH means one ray_cast call
+# per ray instead of N (one per mesh object). This is the
+# single biggest speed-up for scenes with multiple occluder
+# meshes.
 # ------------------------------------------------------------
 
-def build_occluder_bvhs():
+def build_occluder_bvh():
 
-    bvhs = []
-
-    region_mesh_collection = bpy.data.collections.get(
-        "REGION_MESHES"
-    )
+    region_mesh_collection = bpy.data.collections.get("REGION_MESHES")
 
     if not region_mesh_collection:
-        return []
+        return None
 
-    region_meshes = [
-        obj for obj in region_mesh_collection.objects
+    merged_bm = bmesh.new()
+
+    any_added = False
+
+    for obj in region_mesh_collection.objects:
+
         if (
-            obj.type == 'MESH'
-            and len(obj.data.polygons) > 0
-        )
-    ]
-
-    for obj in region_meshes:
-
-        bm = None
-
-        try:
-
-            bm = bmesh.new()
-
-            bm.from_mesh(obj.data)
-
-            bvh = BVHTree.FromBMesh(
-                bm,
-                epsilon=0.0
-            )
-
-            bvhs.append((
-                obj,
-                bvh,
-                obj.matrix_world,
-                obj.matrix_world.inverted()
-            ))
-
-        finally:
-
-            if bm:
-                bm.free()
-
-    return bvhs
-
-
-# ------------------------------------------------------------
-# Ray blocking
-# ------------------------------------------------------------
-
-def ray_blocked(start, end, bvhs, ignore_objects=None):
-
-    if ignore_objects is None:
-        ignore_objects = set()
-
-    direction = end - start
-
-    distance = direction.length
-
-    if distance <= 1e-6:
-        return False
-
-    direction.normalize()
-
-    epsilon = 0.05
-
-    start = start + (direction * epsilon)
-
-    max_distance = max(
-        0.0,
-        distance - (epsilon * 2.0)
-    )
-
-    for obj, bvh, wm, inv in bvhs:
-
-        if obj in ignore_objects:
+            obj.type != 'MESH'
+            or len(obj.data.polygons) == 0
+        ):
             continue
 
-        local_start = inv @ start
+        temp_bm = bmesh.new()
 
-        local_dir = (
-            inv.to_3x3() @ direction
-        ).normalized()
+        temp_bm.from_mesh(obj.data)
 
-        hit = bvh.ray_cast(
-            local_start,
-            local_dir,
-            max_distance
+        # Bake world transform into geometry
+        temp_bm.transform(obj.matrix_world)
+
+        # Append into merged bmesh
+        src_verts = [
+            merged_bm.verts.new(v.co)
+            for v in temp_bm.verts
+        ]
+
+        for face in temp_bm.faces:
+
+            try:
+                merged_bm.faces.new([
+                    src_verts[v.index]
+                    for v in face.verts
+                ])
+            except Exception:
+                pass
+
+        temp_bm.free()
+
+        any_added = True
+
+    if not any_added:
+        merged_bm.free()
+        return None
+
+    bvh = BVHTree.FromBMesh(merged_bm, epsilon=0.0)
+
+    merged_bm.free()
+
+    return bvh
+
+
+# ------------------------------------------------------------
+# Region AABBs — stored as plain tuples for fast access
+# ------------------------------------------------------------
+
+def build_region_boxes(regions):
+
+    region_boxes = []
+
+    for region in regions:
+
+        # Cache location once — obj.location copies on each access
+        loc = region.location.copy()
+
+        radius = max(region.empty_display_size, 1.0)
+
+        minb = (
+            loc.x - radius,
+            loc.y - radius,
+            loc.z - radius,
         )
 
-        if hit[0] is not None:
-            return True
+        maxb = (
+            loc.x + radius,
+            loc.y + radius,
+            loc.z + radius,
+        )
 
-    return False
+        region_boxes.append((
+            region,
+            region.name,
+            loc,
+            minb,
+            maxb,
+        ))
+
+    return region_boxes
 
 
 # ------------------------------------------------------------
-# Region visibility
+# Generate all ray directions at once with numpy.
+#
+# random_direction() called N times in a loop is slow.
+# Drawing from a 3D normal distribution and normalising
+# gives uniform random unit vectors in one vectorised op.
 # ------------------------------------------------------------
 
-def regions_visible(
-    region_a,
-    region_b,
-    bvhs,
-    sample_height_factor,
-    min_offset,
-    max_offset
+def random_directions_batch(n):
+
+    vecs = np.random.randn(n, 3).astype(np.float32)
+
+    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+
+    # Extremely unlikely but guard against zero vectors
+    norms = np.where(norms < 1e-6, 1.0, norms)
+
+    return vecs / norms
+
+
+# ------------------------------------------------------------
+# Point inside AABB — plain tuple version (no Vector overhead)
+# ------------------------------------------------------------
+
+def point_inside_aabb(px, py, pz, minb, maxb):
+
+    return (
+        minb[0] <= px <= maxb[0]
+        and minb[1] <= py <= maxb[1]
+        and minb[2] <= pz <= maxb[2]
+    )
+
+
+# ------------------------------------------------------------
+# Ray / AABB — plain tuple version
+# ------------------------------------------------------------
+
+def intersect_ray_aabb(ox, oy, oz, dx, dy, dz, minb, maxb):
+
+    tmin = -1e20
+    tmax =  1e20
+
+    for o, d, lo, hi in (
+        (ox, dx, minb[0], maxb[0]),
+        (oy, dy, minb[1], maxb[1]),
+        (oz, dz, minb[2], maxb[2]),
+    ):
+
+        if abs(d) < 1e-8:
+
+            if o < lo or o > hi:
+                return None
+
+            continue
+
+        inv = 1.0 / d
+
+        t1 = (lo - o) * inv
+        t2 = (hi - o) * inv
+
+        if t1 > t2:
+            t1, t2 = t2, t1
+
+        tmin = max(tmin, t1)
+        tmax = min(tmax, t2)
+
+        if tmin > tmax:
+            return None
+
+    if tmax < 0.0:
+        return None
+
+    return tmax if tmin < 0.0 else tmin
+
+
+# ------------------------------------------------------------
+# Compute visible regions from one sample point
+# ------------------------------------------------------------
+
+def get_visible_regions_from_point(
+    src_pos,
+    bvh,
+    region_boxes,
+    rays_per_point,
+    search_radius,
+    reachable_boxes,
 ):
 
-    samples_a = get_region_sample_points(
-        region_a,
-        sample_height_factor,
-        min_offset,
-        max_offset
-    )
+    visible_regions = {}
 
-    samples_b = get_region_sample_points(
-        region_b,
-        sample_height_factor,
-        min_offset,
-        max_offset
-    )
+    EPSILON = 0.5
 
-    ignore = set()
+    # Generate all directions in one numpy call
+    directions = random_directions_batch(rays_per_point)
 
-    sprite_a = region_a.quail_region.sprite
-    sprite_b = region_b.quail_region.sprite
+    sx, sy, sz = src_pos.x, src_pos.y, src_pos.z
 
-    if sprite_a:
-        obj = bpy.data.objects.get(sprite_a)
-        if obj:
-            ignore.add(obj)
+    for i in range(rays_per_point):
 
-    if sprite_b:
-        obj = bpy.data.objects.get(sprite_b)
-        if obj:
-            ignore.add(obj)
+        dx, dy, dz = float(directions[i, 0]), float(directions[i, 1]), float(directions[i, 2])
 
-    for a in samples_a:
+        rx = sx + dx * EPSILON
+        ry = sy + dy * EPSILON
+        rz = sz + dz * EPSILON
 
-        for b in samples_b:
+        ray_start = Vector((rx, ry, rz))
+        direction  = Vector((dx, dy, dz))
 
-            if not ray_blocked(
-                a,
-                b,
-                bvhs,
-                ignore
-            ):
-                return True
+        # ----------------------------------------------------
+        # Single ray_cast against the merged occluder BVH
+        # ----------------------------------------------------
 
-    return False
+        nearest_block_dist = search_radius
+
+        if bvh is not None:
+
+            hit_co, _, _, _ = bvh.ray_cast(
+                ray_start,
+                direction,
+                search_radius
+            )
+
+            if hit_co is not None:
+
+                dist = (hit_co - ray_start).length
+
+                if dist >= 0.5:
+                    nearest_block_dist = dist
+
+        # ----------------------------------------------------
+        # Test only region boxes within search_radius of this
+        # sample point — prefiltered per sample in caller
+        # ----------------------------------------------------
+
+        for region, name, loc, minb, maxb in reachable_boxes:
+
+            if point_inside_aabb(rx, ry, rz, minb, maxb):
+
+                visible_regions[name] = visible_regions.get(name, 0) + 1
+
+                continue
+
+            hit_dist = intersect_ray_aabb(
+                rx, ry, rz,
+                dx, dy, dz,
+                minb, maxb
+            )
+
+            if hit_dist is None:
+                continue
+
+            if hit_dist > nearest_block_dist:
+                continue
+
+            visible_regions[name] = visible_regions.get(name, 0) + 1
+
+    return visible_regions
 
 
 # ------------------------------------------------------------
@@ -450,18 +427,17 @@ def regions_visible(
 
 def run_los_visibility(
     search_radius=2000.0,
-    sample_height_factor=0.35,
-    min_offset=4.0,
-    max_offset=64.0,
+    standing_height=32.0,
+    wall_offset=8.0,
+    rays_per_point=128,
+    min_hit_count=4,
     use_rle=True
 ):
 
     regions_collection = bpy.data.collections.get("REGIONS")
 
     if not regions_collection:
-        raise RuntimeError(
-            "REGIONS collection not found"
-        )
+        raise RuntimeError("REGIONS collection not found")
 
     regions = [
         obj for obj in regions_collection.objects
@@ -469,20 +445,32 @@ def run_los_visibility(
     ]
 
     if not regions:
-        raise RuntimeError(
-            "No region objects found"
-        )
+        raise RuntimeError("No region objects found")
 
-    print("Building region BVHs...")
+    # --------------------------------------------------------
+    # Build a single merged BVH for all occluder geometry
+    # --------------------------------------------------------
 
-    bvhs = build_occluder_bvhs()
+    print("Building merged WORLD-SPACE BVH...")
 
-    print(f"Built {len(bvhs)} region BVHs")
+    bvh = build_occluder_bvh()
+
+    print(f"Merged BVH built ({'' if bvh else 'no occluders found'})")
+
+    region_boxes = build_region_boxes(regions)
+
+    print(f"Built {len(region_boxes)} region AABBs")
+
+    search_radius_sq = search_radius * search_radius
+
+    # --------------------------------------------------------
+    # Main region loop
+    # --------------------------------------------------------
 
     for i, region in enumerate(regions):
 
         print(
-            f"LOS Visibility "
+            f"\nLOS Visibility "
             f"{i+1}/{len(regions)} : "
             f"{region.name}"
         )
@@ -491,65 +479,93 @@ def run_los_visibility(
 
         props.vislistbytes = use_rle
 
-        # ----------------------------------------------------
-        # Ensure vislist exists
-        # ----------------------------------------------------
-
         if len(props.vislists) == 0:
             props.vislists.add()
 
         vis = props.vislists[0]
 
-        # ----------------------------------------------------
-        # Clear visible regions
-        # ----------------------------------------------------
-
         while len(vis.visible_regions) > 0:
             vis.visible_regions.remove(0)
 
-        center = region.location
-
         existing = set()
 
-        for other in regions:
+        samples = get_region_sample_points(
+            region,
+            standing_height,
+            wall_offset
+        )
 
-            # ----------------------------------------
-            # Distance cull
-            # ----------------------------------------
+        print(f"Sample Points: {len(samples)}")
+
+        # ----------------------------------------------------
+        # Prefilter region boxes once per source region:
+        # discard any box whose centre is beyond search_radius.
+        # This shrinks the inner per-ray loop.
+        # ----------------------------------------------------
+
+        region_loc = region.location
+
+        reachable_boxes = [
+            box for box in region_boxes
+            if (box[2] - region_loc).length_squared <= search_radius_sq
+        ]
+
+        print(f"Reachable regions: {len(reachable_boxes)}")
+
+        # ----------------------------------------------------
+        # Cast rays from all sample points
+        # ----------------------------------------------------
+
+        combined_hits = {}
+
+        for sample in samples:
+
+            hits = get_visible_regions_from_point(
+                sample,
+                bvh,
+                region_boxes,
+                rays_per_point,
+                search_radius,
+                reachable_boxes,
+            )
+
+            for region_name, count in hits.items():
+                combined_hits[region_name] = (
+                    combined_hits.get(region_name, 0) + count
+                )
+
+        # ----------------------------------------------------
+        # Sort by strongest visibility, apply threshold
+        # ----------------------------------------------------
+
+        sorted_hits = sorted(
+            combined_hits.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        for region_name, count in sorted_hits:
+
+            if count < min_hit_count:
+                continue
+
+            other = bpy.data.objects.get(region_name)
+
+            if not other:
+                continue
 
             if (
-                other.location - center
+                other.location - region.location
             ).length > search_radius:
                 continue
 
-            # ----------------------------------------
-            # LOS test
-            # ----------------------------------------
-
-            visible = regions_visible(
-                region,
-                other,
-                bvhs,
-                sample_height_factor,
-                min_offset,
-                max_offset
-            )
-
-            if not visible:
-                continue
-
-            if other.name in existing:
+            if region_name in existing:
                 continue
 
             item = vis.visible_regions.add()
-
-            item.region_name = other.name
-
-            existing.add(other.name)
+            item.region_name = region_name
+            existing.add(region_name)
 
         rebuild_vislist_range(region)
 
-    print(
-        f"LOS visibility computed "
-        f"for {len(regions)} regions."
-    )
+    print(f"\nLOS visibility computed for {len(regions)} regions.")

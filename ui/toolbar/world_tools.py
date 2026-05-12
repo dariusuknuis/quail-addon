@@ -23,7 +23,7 @@ class VIEW3D_PT_EQ_world_tools(bpy.types.Panel):
         layout.operator(
             "object.generate_los_visibility",
             text="Generate Line-Of-Sight Visibility",
-            icon='ONIONSKIN_ON'
+            icon='ORIENTATION_CURSOR'
         )
         layout.operator(
             "object.format_world",
