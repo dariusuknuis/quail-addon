@@ -58,7 +58,7 @@ class ImportQuail(Operator, ImportHelper):
 
 def menu_func_import(self, context):
     self.layout.operator(ImportQuail.bl_idname,
-                         text="EverQuest Archive (.eqg/.s3d)")
+                         text="Archive (.eqg/.s3d)")
 
 
 def import_data(context, filepath, is_scene_cleared: bool = True, is_scene_modified: bool = True):

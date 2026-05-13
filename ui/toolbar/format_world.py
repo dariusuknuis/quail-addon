@@ -1,6 +1,6 @@
 import bpy, bmesh, re
 from mathutils import Vector, Matrix
-from ...common.mesh import merge_verts_by_attrs, rearrange_uvs
+from ...common.mesh import merge_verts_by_attrs, rearrange_uvs, merge_transparent_geometry
 
 
 class OBJECT_OT_format_world(bpy.types.Operator):
@@ -112,6 +112,8 @@ def run_format_world():
     rearrange_uvs(bm)
 
     merge_verts_by_attrs(bm)
+
+    # merge_transparent_geometry(bm, joined)
 
     bm.to_mesh(joined.data)
     joined.data.update()

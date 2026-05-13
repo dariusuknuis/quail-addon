@@ -88,3 +88,110 @@ def find_layer_collection(layer_coll, target):
         if found:
             return found
     return None
+
+# ------------------------------------------------------------
+# Collection helpers
+# ------------------------------------------------------------
+
+def ensure_child_collection(parent: bpy.types.Collection, name: str):
+
+    collection = parent.children.get(name)
+
+    if collection:
+        return collection
+
+    collection = bpy.data.collections.new(name)
+    parent.children.link(collection)
+
+    return collection
+
+
+def ensure_worlddef_structure(worlddef_collection):
+
+    worlddef_collection["quaildef"] = "worlddef"
+
+    regions = ensure_child_collection(
+        worlddef_collection,
+        "REGIONS"
+    )
+
+    region_meshes = ensure_child_collection(
+        worlddef_collection,
+        "REGION_MESHES"
+    )
+
+    worldtree = ensure_child_collection(
+        worlddef_collection,
+        "WORLDTREE"
+    )
+
+    zones = ensure_child_collection(
+        worlddef_collection,
+        "ZONES"
+    )
+
+    return {
+        "regions": regions,
+        "region_meshes": region_meshes,
+        "worldtree": worldtree,
+        "zones": zones,
+    }
+
+
+# ------------------------------------------------------------
+# Worlddef lookup helpers
+# ------------------------------------------------------------
+
+def find_parent_collection(child_collection):
+
+    for collection in bpy.data.collections:
+
+        if child_collection.name in collection.children:
+            return collection
+
+    return None
+
+
+def find_worlddef_collection(obj):
+
+    visited = set()
+
+    def walk(collection):
+
+        if not collection:
+            return None
+
+        if collection in visited:
+            return None
+
+        visited.add(collection)
+
+        if collection.get("quaildef") == "worlddef":
+            return collection
+
+        parent = find_parent_collection(collection)
+
+        if parent:
+            return walk(parent)
+
+        return None
+
+    for collection in obj.users_collection:
+
+        found = walk(collection)
+
+        if found:
+            return found
+
+    return None
+
+
+def create_worlddef_collection(name):
+
+    collection = bpy.data.collections.new(name)
+
+    bpy.context.scene.collection.children.link(collection)
+
+    collection["quaildef"] = "worlddef"
+
+    return collection

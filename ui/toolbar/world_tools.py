@@ -1,8 +1,8 @@
 import bpy
 
-class VIEW3D_PT_EQ_world_tools(bpy.types.Panel):
-    bl_label = "EverQuest World Tools"
-    bl_idname = "VIEW3D_PT_EQ_world_tools"
+class VIEW3D_PT_Quail_world_tools(bpy.types.Panel):
+    bl_label = "Quail World Tools"
+    bl_idname = "VIEW3D_PT_Quail_world_tools"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Quail'
@@ -19,6 +19,11 @@ class VIEW3D_PT_EQ_world_tools(bpy.types.Panel):
             "object.generate_radial_visibility",
             text="Generate Radial Visibility",
             icon='ONIONSKIN_ON'
+        )
+        layout.operator(
+            "object.generate_indoor_world",
+            text="Generate Indoor World",
+            icon='INTERNET_OFFLINE'
         )
         layout.operator(
             "object.generate_los_visibility",

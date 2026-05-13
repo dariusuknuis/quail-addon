@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 id = "quail_addon"
 version = "1.5.8"
 name = "Quail"
-tagline = "Utility tools for EverQuest model editing"
+tagline = "Utility tools for model editing"
 maintainer = "Xackery"
 type = "add-on"
 

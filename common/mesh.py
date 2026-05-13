@@ -516,3 +516,171 @@ def merge_verts_by_attrs(bm,
                 bmesh.ops.pointmerge(bm, verts=list(comp), merge_co=co)
 
     return bm
+
+def merge_transparent_geometry(bm, obj):
+
+    mesh = obj.data
+
+    print("[Format World] Merging transparent geometry...")
+
+    changed = True
+
+    while changed:
+
+        changed = False
+
+        bm.faces.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        bm.verts.ensure_lookup_table()
+
+        transparent_faces = []
+
+        for face in bm.faces:
+
+            if face.material_index >= len(mesh.materials):
+                continue
+
+            mat = mesh.materials[face.material_index]
+
+            if not mat:
+                continue
+
+            props = getattr(mat, "quail_materialdefinition", None)
+
+            if not props or not props.transparent_override:
+                continue
+
+            transparent_faces.append(face)
+
+        if not transparent_faces:
+            break
+
+        verts_before = len(bm.verts)
+        edges_before = len(bm.edges)
+        faces_before = len(bm.faces)
+
+        verts = list({
+            v
+            for f in transparent_faces
+            for v in f.verts
+        })
+
+        bmesh.ops.remove_doubles(
+            bm,
+            verts=verts,
+            dist=0.001,
+        )
+
+        bm.faces.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        bm.verts.ensure_lookup_table()
+
+        transparent_faces = []
+
+        for face in bm.faces:
+
+            if face.material_index >= len(mesh.materials):
+                continue
+
+            mat = mesh.materials[face.material_index]
+
+            if not mat:
+                continue
+
+            props = getattr(mat, "quail_materialdefinition", None)
+
+            if not props or not props.transparent_override:
+                continue
+
+            transparent_faces.append(face)
+
+        verts = list({
+            v
+            for f in transparent_faces
+            for v in f.verts
+        })
+
+        edges = list({
+            e
+            for f in transparent_faces
+            for e in f.edges
+        })
+
+        bmesh.ops.dissolve_limit(
+            bm,
+            angle_limit=0.01,
+            verts=verts,
+            edges=edges,
+        )
+
+        bm.faces.ensure_lookup_table()
+        bm.edges.ensure_lookup_table()
+        bm.verts.ensure_lookup_table()
+
+        transparent_faces = []
+
+        for face in bm.faces:
+
+            if face.material_index >= len(mesh.materials):
+                continue
+
+            mat = mesh.materials[face.material_index]
+
+            if not mat:
+                continue
+
+            props = getattr(mat, "quail_materialdefinition", None)
+
+            if not props or not props.transparent_override:
+                continue
+
+            transparent_faces.append(face)
+
+        edges = list({
+            e
+            for f in transparent_faces
+            for e in f.edges
+        })
+
+        bmesh.ops.dissolve_degenerate(
+            bm,
+            edges=edges,
+            dist=0.0001,
+        )
+
+        loose_verts = [
+            v for v in bm.verts
+            if not v.link_faces
+        ]
+
+        if loose_verts:
+
+            bmesh.ops.delete(
+                bm,
+                geom=loose_verts,
+                context='VERTS',
+            )
+
+        loose_edges = [
+            e for e in bm.edges
+            if not e.link_faces
+        ]
+
+        if loose_edges:
+
+            bmesh.ops.delete(
+                bm,
+                geom=loose_edges,
+                context='EDGES',
+            )
+
+        if (
+            len(bm.verts) != verts_before
+            or len(bm.edges) != edges_before
+            or len(bm.faces) != faces_before
+        ):
+            changed = True
+
+    bm.faces.ensure_lookup_table()
+
+    print("[Format World] Transparent geometry merge complete")

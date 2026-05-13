@@ -167,7 +167,7 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
 
 def load_texture(ctx: Context, name: str) -> str:
 
-    # EverQuest fallback: grid_standard.dds
+    # Fallback: grid_standard.dds
     if name.lower() == "grid_standard.dds":
 
         img = bpy.data.images.get("grid_standard.dds")

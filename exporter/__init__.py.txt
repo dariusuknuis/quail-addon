@@ -53,7 +53,7 @@ class ExportQuail(Operator, ExportHelper):
 
 def menu_func_export(self, context):
     self.layout.operator(ExportQuail.bl_idname,
-                         text="EverQuest Archive (.eqg/.s3d)")
+                         text="Archive (.eqg/.s3d)")
 
 
 def export_data(context, filepath: str, is_triangulate: bool) -> bool:

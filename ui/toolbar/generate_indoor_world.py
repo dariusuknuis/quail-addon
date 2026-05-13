@@ -1,11 +1,7 @@
-# pyright: basic, reportGeneralTypeIssues=false
-
 import bpy
 from .finalize_region_meshes import finalize_region_meshes
-from ...common import find_layer_collection, ensure_worlddef_structure
-from ...common import find_worlddef_collection, create_worlddef_collection
-from ...common.bsp import BSPContext, normalize_bounds, create_world_volume, recursive_bsp_split
-from ...common.bsp import aabb_mesh_world, build_volume_planes, point_inside_convex
+from ...common import ensure_worlddef_structure, find_worlddef_collection, create_worlddef_collection, find_layer_collection
+from ...common.bsp import BSPContext, create_world_volume, recursive_indoor_bsp_split
 from ...common.region import create_world_bounds_from_regions
 from ...common.math_helpers import aabb_mesh_local
 from ...common.mesh import bmesh_from_mesh
@@ -16,19 +12,22 @@ from ...decoder.region import decode_region
 from ...decoder.worldtree import decode_worldtree
 
 
-
-AABB_EPS = 0.001
-
-class OBJECT_OT_generate_outdoor_world(bpy.types.Operator):
-    bl_idname = "object.generate_outdoor_world"
-    bl_label = "Generate Outdoor World"
-    bl_description = "Generate BSP regions and world tree"
+class OBJECT_OT_generate_indoor_world(bpy.types.Operator):
+    bl_idname = "object.generate_indoor_world"
+    bl_label = "Generate Indoor World"
+    bl_description = "Generate traditional BSP indoor world"
     bl_options = {'REGISTER', 'UNDO'}
 
-    target_size: bpy.props.FloatProperty(
-        name="Target Size",
-        default=282.0,
-        min=0.01,
+    max_faces_per_region: bpy.props.IntProperty(
+        name="Max Faces Per Region",
+        default=128,
+        min=1,
+    )
+
+    max_depth: bpy.props.IntProperty(
+        name="Max BSP Depth",
+        default=64,
+        min=1,
     )
 
     def invoke(self, context, event):
@@ -37,16 +36,22 @@ class OBJECT_OT_generate_outdoor_world(bpy.types.Operator):
     def execute(self, context):
 
         try:
-            run_outdoor_bsp_split(self.target_size)
+            run_indoor_bsp_split(
+                self.max_faces_per_region,
+                self.max_depth,
+            )
 
         except Exception as e:
             self.report({'ERROR'}, str(e))
             return {'CANCELLED'}
 
-        self.report({'INFO'}, "Outdoor BSP generation complete")
+        self.report({'INFO'}, "Indoor BSP generation complete")
         return {'FINISHED'}
 
-def run_outdoor_bsp_split(target_size=282.0):
+def run_indoor_bsp_split(
+    max_faces_per_region=128,
+    max_depth=64,
+):
 
     bpy.context.preferences.view.show_splash = False
     bpy.context.scene.render.use_lock_interface = True
@@ -54,6 +59,7 @@ def run_outdoor_bsp_split(target_size=282.0):
     bpy.context.window_manager.progress_begin(0, 100)
 
     try:
+
         selected_objs = [
             obj for obj in bpy.context.selected_objects
             if (
@@ -77,7 +83,8 @@ def run_outdoor_bsp_split(target_size=282.0):
         ]
 
         for src in selected_objs:
-            print(f"Generating BSP world for {src.name}")
+
+            print(f"Generating indoor BSP for {src.name}")
 
             # Find or create WORLDDEF collection
             worlddef_collection = find_worlddef_collection(src)
@@ -101,7 +108,6 @@ def run_outdoor_bsp_split(target_size=282.0):
                 if zones_collection not in zone.users_collection:
                     zones_collection.objects.link(zone)
 
-            # Create parser + BSP context
             parser = wce("")
 
             ctx = BSPContext(
@@ -131,35 +137,27 @@ def run_outdoor_bsp_split(target_size=282.0):
             wt.tag = "WORLDTREE"
             parser.worldtrees[wt.tag] = wt
 
-            # BSP setup
+            bm_geo = bmesh_from_mesh(src)
+
             bounds_min, bounds_max = aabb_mesh_local(src)
 
-            vol_min, vol_max = normalize_bounds(
+            bm_vol = create_world_volume(
                 bounds_min,
                 bounds_max,
-                target_size
             )
 
-            bm = bmesh_from_mesh(src)
-
-            bm_vol = create_world_volume(
-                vol_min,
-                vol_max
-            )
-
-            recursive_bsp_split(
+            recursive_indoor_bsp_split(
                 ctx,
-                bm,
+                bm_geo,
                 bm_vol,
-                target_size,
+                max_faces_per_region=max_faces_per_region,
+                max_depth=max_depth,
                 depth=0,
                 depth_counters=None,
                 backtree=False,
             )
 
-            # Decode generated regions and worldnodes
             for reg in parser.regions.values():
-
                 decode_region(ctx, reg)
 
             lc = find_layer_collection(
@@ -170,8 +168,10 @@ def run_outdoor_bsp_split(target_size=282.0):
             if lc:
                 lc.hide_viewport = True
 
-
-            create_world_bounds_from_regions(ctx, parser)
+            create_world_bounds_from_regions(
+                ctx,
+                parser,
+            )
 
             decode_worldtree(ctx, wt)
 
@@ -181,60 +181,17 @@ def run_outdoor_bsp_split(target_size=282.0):
                 if region_meshes_collection not in obj.users_collection:
                     region_meshes_collection.objects.link(obj)
 
-            # Region -> Zone membership
+            finalize_region_meshes(
+                ctx.pending_region_meshes
+            )
 
-            zone_boxes = {
-                zone: aabb_mesh_world(zone)
-                for zone in zone_volumes
-            }
-
-            zone_planes = {
-                zone: build_volume_planes(zone)
-                for zone in zone_volumes
-            }
-
-            for zone in zone_volumes:
-                minb, maxb = zone_boxes[zone]
-                planes = zone_planes[zone]
-                region_idxs = []
-                for region_index, centroid in ctx.region_centroids.items():
-                    pt = centroid
-
-                    # AABB test
-                    if (
-                        pt.x < minb.x - AABB_EPS or
-                        pt.x > maxb.x + AABB_EPS or
-                        pt.y < minb.y - AABB_EPS or
-                        pt.y > maxb.y + AABB_EPS or
-                        pt.z < minb.z - AABB_EPS or
-                        pt.z > maxb.z + AABB_EPS
-                    ):
-                        continue
-
-                    # Convex volume test
-                    if point_inside_convex(pt, planes):
-
-                        region_idxs.append(
-                            region_index - 1
-                        )
-
-                props = zone.quail_zone
-
-                while len(props.regionlist) > 0:
-                    props.regionlist.remove(0)
-
-                for region_index in region_idxs:
-                    region_tag = f"R{region_index + 1:06d}"
-                    item = props.regionlist.add()
-                    item.region_name = region_tag
-
-            finalize_region_meshes(ctx.pending_region_meshes)
-
-            print(f"Finished BSP world for {src.name}")
+            print(f"Finished indoor BSP for {src.name}")
 
     finally:
+
         bpy.context.scene.render.use_lock_interface = False
         bpy.context.window_manager.progress_end()
         bpy.context.view_layer.update()
 
-    print("BSP splitting complete.")
+    print("Indoor BSP complete.")
+
