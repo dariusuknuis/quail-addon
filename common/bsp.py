@@ -942,48 +942,204 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
     recursive_bsp_split(ctx, bm_geo_lower, bm_vol_lower, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=False)
     recursive_bsp_split(ctx, bm_geo_upper, bm_vol_upper, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=True)
 
-def is_convex_region(bm, epsilon=0.001, merge_dist=0.001):
-    # Work on a temporary copy so we don't mutate the real geometry
+DEBUG_WORLDNODES = {
+    29,
+}
+
+def edges_match(e0, e1, tol):
+
+    a0, b0 = [v.co for v in e0.verts]
+    a1, b1 = [v.co for v in e1.verts]
+
+    return (
+        (
+            (a0 - a1).length < tol and
+            (b0 - b1).length < tol
+        )
+        or
+        (
+            (a0 - b1).length < tol and
+            (b0 - a1).length < tol
+        )
+    )
+
+def is_convex_region(
+    bm,
+    worldnode=None,
+    epsilon=0.005,
+    dist_tol=0.01,
+):
+
     bm_test = bm.copy()
 
-    # Weld nearby vertices to connect faces that share a corner
-    bmesh.ops.remove_doubles(
+    # ---------------------------------------------------
+    # Remove degenerate geometry
+    # ---------------------------------------------------
+
+    bmesh.ops.dissolve_degenerate(
         bm_test,
-        verts=list(bm_test.verts),
-        dist=merge_dist,
+        dist=dist_tol,
+        edges=list(bm_test.edges),
     )
+
+    # Remove tiny faces
+    tiny_faces = [
+        f for f in bm_test.faces
+        if f.calc_area() < 0.01
+    ]
+
+    if tiny_faces:
+        bmesh.ops.delete(
+            bm_test,
+            geom=tiny_faces,
+            context='FACES',
+        )
+
+    # Remove loose edges
+    loose_edges = [
+        e for e in bm_test.edges
+        if not e.link_faces
+    ]
+
+    if loose_edges:
+        bmesh.ops.delete(
+            bm_test,
+            geom=loose_edges,
+            context='EDGES',
+        )
+
+    # Remove loose verts
+    loose_verts = [
+        v for v in bm_test.verts
+        if not v.link_edges
+    ]
+
+    if loose_verts:
+        bmesh.ops.delete(
+            bm_test,
+            geom=loose_verts,
+            context='VERTS',
+        )
+
     bm_test.normal_update()
 
-    for edge in bm_test.edges:
-        linked = edge.link_faces
-        if len(linked) != 2:
-            continue
+    faces = list(bm_test.faces)
 
-        f0, f1 = linked
+    # ---------------------------------------------------
+    # Debug original geometry
+    # ---------------------------------------------------
+
+    if worldnode in DEBUG_WORLDNODES:
+
+        print("\n====================")
+        print(f"WORLDNODE {worldnode}")
+        print("====================")
+
+        print(
+            f"Verts: {len(bm_test.verts)} | "
+            f"Edges: {len(bm_test.edges)} | "
+            f"Faces: {len(bm_test.faces)}"
+        )
+
+    # ---------------------------------------------------
+    # Compare spatially matching face edges
+    # ---------------------------------------------------
+
+    for i, f0 in enumerate(faces):
+
         n0 = f0.normal.normalized()
-        n1 = f1.normal.normalized()
 
-        if n0.length_squared < 0.5 or n1.length_squared < 0.5:
+        if n0.length_squared < 0.5:
             continue
 
-        # Skip parallel or anti-parallel face pairs
-        dot = n0.dot(n1)
-        if dot > 0.999 or dot < -0.999:
-            continue
+        for f1 in faces[i + 1:]:
 
-        ca = f0.calc_center_median()
-        for v in f1.verts:
-            if v not in edge.verts:
-                if n0.dot(v.co - ca) > epsilon:
-                    bm_test.free()
-                    return False
+            n1 = f1.normal.normalized()
 
-        cb = f1.calc_center_median()
-        for v in f0.verts:
-            if v not in edge.verts:
-                if n1.dot(v.co - cb) > epsilon:
-                    bm_test.free()
-                    return False
+            if n1.length_squared < 0.5:
+                continue
+
+            dot = n0.dot(n1)
+
+            # Ignore coplanar/opposite duplicate faces
+            if dot > 0.999 or dot < -0.999:
+                continue
+
+            shared = False
+            matched_edges = None
+
+            for e0 in f0.edges:
+
+                if e0.calc_length() < dist_tol:
+                    continue
+
+                for e1 in f1.edges:
+
+                    if e1.calc_length() < dist_tol:
+                        continue
+
+                    if edges_match(
+                        e0,
+                        e1,
+                        dist_tol,
+                    ):
+                        shared = True
+                        matched_edges = (e0, e1)
+                        break
+
+                if shared:
+                    break
+
+            if not shared:
+                continue
+
+            orientation = (
+                (
+                    f1.calc_center_median()
+                    - f0.calc_center_median()
+                ).normalized().dot(n0)
+            )
+
+            if orientation < -epsilon:
+
+                if worldnode in DEBUG_WORLDNODES:
+
+                    e0, e1 = matched_edges
+
+                    print("\nCONCAVE FACE PAIR")
+                    print("====================")
+
+                    print(
+                        f"Faces: "
+                        f"{f0.index} <-> {f1.index}"
+                    )
+
+                    print(
+                        f"Orientation: "
+                        f"{orientation}"
+                    )
+
+                    print(f"Normal0: {n0}")
+                    print(f"Normal1: {n1}")
+
+                    print(
+                        f"Edge0 Length: "
+                        f"{e0.calc_length()}"
+                    )
+
+                    print(
+                        f"Edge1 Length: "
+                        f"{e1.calc_length()}"
+                    )
+
+                    print(
+                        f"Face Areas: "
+                        f"{f0.calc_area()} | "
+                        f"{f1.calc_area()}"
+                    )
+
+                bm_test.free()
+                return False
 
     bm_test.free()
     return True
@@ -995,16 +1151,12 @@ def choose_bsp_plane(bm, epsilon=0.001):
 
     best_face = None
     best_score = 1e20
-
     faces = list(bm.faces)
-
     used_planes = []
 
     for face in faces:
-
         plane_no = face.normal.normalized()
         plane_co = face.calc_center_median()
-
         plane_d = -plane_no.dot(
             plane_co
         )
@@ -1014,7 +1166,6 @@ def choose_bsp_plane(bm, epsilon=0.001):
         # ------------------------------------------------------------
 
         skip = False
-
         for n0, d0 in used_planes:
 
             if (
@@ -1037,28 +1188,18 @@ def choose_bsp_plane(bm, epsilon=0.001):
         split = 0
 
         for test_face in faces:
-
             has_front = False
             has_back = False
-
             for v in test_face.verts:
-
-                d = plane_no.dot(
-                    v.co - plane_co
-                )
-
+                d = plane_no.dot(v.co - plane_co)
                 if d > epsilon:
                     has_front = True
-
                 elif d < -epsilon:
                     has_back = True
-
             if has_front and has_back:
                 split += 1
-
             elif has_front:
                 front += 1
-
             elif has_back:
                 back += 1
 
@@ -1070,8 +1211,8 @@ def choose_bsp_plane(bm, epsilon=0.001):
             continue
 
         # Avoid tiny sliver partitions
-        if front < 8 or back < 8:
-            continue
+        # if front < 2 or back < 2:
+        #     continue
 
         balance = abs(front - back)
 
@@ -1229,7 +1370,8 @@ def recursive_indoor_bsp_split(
     # ------------------------------------------------------------
 
     convex = is_convex_region(
-        bm_geo
+        bm_geo,
+        worldnode=current_node,
     )
 
     if convex:
@@ -1239,7 +1381,6 @@ def recursive_indoor_bsp_split(
             len(bm_geo.faces)
             <= max_faces_per_region
         ):
-
             region_index = ctx.region_counter[0]
             ctx.region_counter[0] += 1
 
@@ -1319,13 +1460,11 @@ def recursive_indoor_bsp_split(
 
         # Convex but too large -> balanced spatial split
         else:
-
             split_result = choose_balanced_convex_split(
                 bm_vol
             )
 
     else:
-
         # Concave -> traditional BSP split
         split_result = choose_bsp_plane(
             bm_geo
@@ -1396,6 +1535,11 @@ def recursive_indoor_bsp_split(
         return
 
     if split_result is None:
+        print(
+            f"Worldnode_{current_node} | "
+            f"Convex={convex} | "
+            f"No valid split, leaf"
+        )
 
         region_index = ctx.region_counter[0]
         ctx.region_counter[0] += 1
@@ -1521,3 +1665,134 @@ def recursive_indoor_bsp_split(
         depth_counters=depth_counters,
         backtree=True,
     )
+
+# import bpy
+# import bmesh
+# from mathutils import Vector
+
+# EPSILON = 0.005
+# DIST_TOL = 0.01
+
+# def edges_match(e0, e1, tol):
+
+#     a0, b0 = [v.co for v in e0.verts]
+#     a1, b1 = [v.co for v in e1.verts]
+
+#     return (
+#         (
+#             (a0 - a1).length < tol and
+#             (b0 - b1).length < tol
+#         )
+#         or
+#         (
+#             (a0 - b1).length < tol and
+#             (b0 - a1).length < tol
+#         )
+#     )
+
+# def is_convex_region(
+#     bm,
+#     epsilon=0.005,
+#     dist_tol=0.01,
+# ):
+
+#     bm_test = bm.copy()
+#     bm_test.normal_update()
+
+#     faces = list(bm_test.faces)
+
+#     # ---------------------------------------------------
+#     # Compare spatially-overlapping edges
+#     # ---------------------------------------------------
+
+#     for i, f0 in enumerate(faces):
+
+#         n0 = f0.normal.normalized()
+
+#         if n0.length_squared < 0.5:
+#             continue
+
+#         for f1 in faces[i + 1:]:
+
+#             n1 = f1.normal.normalized()
+
+#             if n1.length_squared < 0.5:
+#                 continue
+
+#             dot = n0.dot(n1)
+
+#             # Ignore coplanar/opposite duplicate faces
+#             if dot > 0.999 or dot < -0.999:
+#                 continue
+
+#             shared = False
+
+#             # ------------------------------------------------
+#             # Spatial edge comparison
+#             # ------------------------------------------------
+
+#             for e0 in f0.edges:
+#                 for e1 in f1.edges:
+
+#                     if edges_match(
+#                         e0,
+#                         e1,
+#                         dist_tol,
+#                     ):
+#                         shared = True
+#                         break
+
+#                 if shared:
+#                     break
+
+#             if not shared:
+#                 continue
+
+#             c0 = f0.calc_center_median()
+#             c1 = f1.calc_center_median()
+
+#             orientation = (
+#                 (c1 - c0).normalized().dot(n0)
+#             )
+
+#             if orientation < -epsilon:
+
+#                 print(
+#                     f"CONCAVE FACE PAIR: "
+#                     f"{f0.index} <-> {f1.index}"
+#                 )
+
+#                 bm_test.free()
+#                 return False
+
+#     bm_test.free()
+#     return True
+
+# # -------------------------------------------------------
+# # Run on selected mesh
+# # -------------------------------------------------------
+
+# obj = bpy.context.object
+
+# if not obj or obj.type != 'MESH':
+#     raise Exception("Select a mesh object.")
+
+# bm = bmesh.new()
+# bm.from_mesh(obj.data)
+
+# result = is_convex_region(
+#     bm,
+#     epsilon=EPSILON,
+#     dist_tol=DIST_TOL,
+# )
+
+# bm.free()
+
+# print("\n==============================")
+
+# if result:
+#     print(f"{obj.name} IS CONVEX")
+# else:
+#     print(f"{obj.name} IS NOT CONVEX")
+
+# print("==============================")

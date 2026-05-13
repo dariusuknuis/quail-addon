@@ -20,7 +20,7 @@ class OBJECT_OT_generate_indoor_world(bpy.types.Operator):
 
     max_faces_per_region: bpy.props.IntProperty(
         name="Max Faces Per Region",
-        default=128,
+        default=280,
         min=1,
     )
 
