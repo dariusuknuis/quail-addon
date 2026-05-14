@@ -345,26 +345,28 @@ def create_world_volume(vol_min, vol_max):
 
     return bm
 
-def terrain_split(bm_geo, plane_co, plane_no, tol=1e-6):
+def terrain_split(bm_geo, plane_co, plane_no, tol=0.001):
 
     def signed_dist(co):
         return plane_no.dot(Vector(co) - Vector(plane_co))
 
     def face_classification(face):
         dists = [signed_dist(v.co) for v in face.verts]
-        if all(d >= -tol for d in dists) and all(d <= tol for d in dists):
+        max_d = max(dists)
+        min_d = min(dists)
+        if max_d < tol and min_d > -tol:
             return 'coplanar'
-        if all(d >= -tol for d in dists):
+        if min_d >= -tol:
             return 'front'
-        if all(d <= tol for d in dists):
+        if max_d <= tol:
             return 'back'
         return 'split'
 
+    # Lower: bisect, clear_outer removes front, then manually remove coplanars
     bm_lower = bm_geo.copy()
-    geom_l = list(bm_lower.verts) + list(bm_lower.edges) + list(bm_lower.faces)
     bmesh.ops.bisect_plane(
         bm_lower,
-        geom=geom_l,
+        geom=list(bm_lower.verts) + list(bm_lower.edges) + list(bm_lower.faces),
         plane_co=plane_co,
         plane_no=plane_no,
         dist=tol,
@@ -372,19 +374,16 @@ def terrain_split(bm_geo, plane_co, plane_no, tol=1e-6):
         clear_inner=False,
         clear_outer=True,
     )
-    # Remove coplanar faces from lower — they belong to upper
-    coplanar_lower = [
-        f for f in bm_lower.faces
-        if face_classification(f) == 'coplanar'
-    ]
-    bmesh.ops.delete(bm_lower, geom=coplanar_lower, context='FACES')
+    remove_lower = [f for f in bm_lower.faces if face_classification(f) == 'coplanar']
+    if remove_lower:
+        bmesh.ops.delete(bm_lower, geom=remove_lower, context='FACES')
     cleanup_mesh_geometry(bm_lower)
 
+    # Upper: bisect, clear_inner removes back, coplanars stay (no removal needed)
     bm_upper = bm_geo.copy()
-    geom_u = list(bm_upper.verts) + list(bm_upper.edges) + list(bm_upper.faces)
     bmesh.ops.bisect_plane(
         bm_upper,
-        geom=geom_u,
+        geom=list(bm_upper.verts) + list(bm_upper.edges) + list(bm_upper.faces),
         plane_co=plane_co,
         plane_no=plane_no,
         dist=tol,
@@ -392,7 +391,6 @@ def terrain_split(bm_geo, plane_co, plane_no, tol=1e-6):
         clear_inner=True,
         clear_outer=False,
     )
-    # Coplanar faces stay in upper — no removal needed
     cleanup_mesh_geometry(bm_upper)
 
     return bm_lower, bm_upper
@@ -943,8 +941,7 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
     recursive_bsp_split(ctx, bm_geo_upper, bm_vol_upper, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=True)
 
 DEBUG_WORLDNODES = {
-    1707,
-    4302,
+    3337,
 }
 
 def edges_match(e0, e1, tol):
