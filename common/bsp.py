@@ -943,7 +943,8 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
     recursive_bsp_split(ctx, bm_geo_upper, bm_vol_upper, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=True)
 
 DEBUG_WORLDNODES = {
-    29,
+    1707,
+    4302,
 }
 
 def edges_match(e0, e1, tol):
@@ -966,8 +967,8 @@ def edges_match(e0, e1, tol):
 def is_convex_region(
     bm,
     worldnode=None,
-    epsilon=0.005,
-    dist_tol=0.01,
+    epsilon=0.11,
+    dist_tol=0.06,
 ):
 
     bm_test = bm.copy()
@@ -1062,7 +1063,21 @@ def is_convex_region(
             dot = n0.dot(n1)
 
             # Ignore coplanar/opposite duplicate faces
-            if dot > 0.999 or dot < -0.999:
+            if dot > 0.995 or dot < -0.995:
+                continue
+
+            small_area = min(
+                f0.calc_area(),
+                f1.calc_area(),
+            )
+
+            large_area = max(
+                f0.calc_area(),
+                f1.calc_area(),
+            )
+
+            # Ignore tiny splitter/sliver faces
+            if small_area / large_area < 0.005:
                 continue
 
             shared = False
@@ -1668,10 +1683,37 @@ def recursive_indoor_bsp_split(
 
 # import bpy
 # import bmesh
+# import re
 # from mathutils import Vector
 
 # EPSILON = 0.005
 # DIST_TOL = 0.01
+
+# # -------------------------------------------------------
+# # Paste console output here
+# # -------------------------------------------------------
+
+# DATA = r"""
+# Worldnode_350 | Convex=False | No valid split, leaf
+# Worldnode_365 | Convex=False | No valid split, leaf
+# Worldnode_426 | Convex=False | No valid split, leaf
+# """
+
+# # -------------------------------------------------------
+# # Extract worldnode ids
+# # -------------------------------------------------------
+
+# WORLDNODE_IDS = [
+#     int(m.group(1))
+#     for m in re.finditer(
+#         r"Worldnode_(\d+)",
+#         DATA,
+#     )
+# ]
+
+# # -------------------------------------------------------
+# # Convexity helpers
+# # -------------------------------------------------------
 
 # def edges_match(e0, e1, tol):
 
@@ -1701,9 +1743,11 @@ def recursive_indoor_bsp_split(
 
 #     faces = list(bm_test.faces)
 
-#     # ---------------------------------------------------
-#     # Compare spatially-overlapping edges
-#     # ---------------------------------------------------
+#     print(
+#         f"Verts: {len(bm_test.verts)} | "
+#         f"Edges: {len(bm_test.edges)} | "
+#         f"Faces: {len(bm_test.faces)}"
+#     )
 
 #     for i, f0 in enumerate(faces):
 
@@ -1726,12 +1770,10 @@ def recursive_indoor_bsp_split(
 #                 continue
 
 #             shared = False
-
-#             # ------------------------------------------------
-#             # Spatial edge comparison
-#             # ------------------------------------------------
+#             matched_edges = None
 
 #             for e0 in f0.edges:
+
 #                 for e1 in f1.edges:
 
 #                     if edges_match(
@@ -1740,6 +1782,7 @@ def recursive_indoor_bsp_split(
 #                         dist_tol,
 #                     ):
 #                         shared = True
+#                         matched_edges = (e0, e1)
 #                         break
 
 #                 if shared:
@@ -1748,18 +1791,47 @@ def recursive_indoor_bsp_split(
 #             if not shared:
 #                 continue
 
-#             c0 = f0.calc_center_median()
-#             c1 = f1.calc_center_median()
-
 #             orientation = (
-#                 (c1 - c0).normalized().dot(n0)
+#                 (
+#                     f1.calc_center_median()
+#                     - f0.calc_center_median()
+#                 ).normalized().dot(n0)
 #             )
 
 #             if orientation < -epsilon:
 
+#                 e0, e1 = matched_edges
+
+#                 print("\nCONCAVE FACE PAIR")
+#                 print("====================")
+
 #                 print(
-#                     f"CONCAVE FACE PAIR: "
+#                     f"Faces: "
 #                     f"{f0.index} <-> {f1.index}"
+#                 )
+
+#                 print(
+#                     f"Orientation: "
+#                     f"{orientation}"
+#                 )
+
+#                 print(f"Normal0: {n0}")
+#                 print(f"Normal1: {n1}")
+
+#                 print(
+#                     f"Edge0 Length: "
+#                     f"{e0.calc_length()}"
+#                 )
+
+#                 print(
+#                     f"Edge1 Length: "
+#                     f"{e1.calc_length()}"
+#                 )
+
+#                 print(
+#                     f"Face Areas: "
+#                     f"{f0.calc_area()} | "
+#                     f"{f1.calc_area()}"
 #                 )
 
 #                 bm_test.free()
@@ -1769,30 +1841,81 @@ def recursive_indoor_bsp_split(
 #     return True
 
 # # -------------------------------------------------------
-# # Run on selected mesh
+# # Process worldnodes
 # # -------------------------------------------------------
 
-# obj = bpy.context.object
+# print("\n===================================")
+# print("TEST RESULTS")
+# print("===================================")
 
-# if not obj or obj.type != 'MESH':
-#     raise Exception("Select a mesh object.")
+# for worldnode_id in WORLDNODE_IDS:
 
-# bm = bmesh.new()
-# bm.from_mesh(obj.data)
+#     worldnode_name = f"WorldNode_{worldnode_id}"
 
-# result = is_convex_region(
-#     bm,
-#     epsilon=EPSILON,
-#     dist_tol=DIST_TOL,
-# )
+#     wn = bpy.data.objects.get(worldnode_name)
 
-# bm.free()
+#     if not wn:
+#         print(f"\n{worldnode_name} : NOT FOUND")
+#         continue
 
-# print("\n==============================")
+#     # ---------------------------------------------------
+#     # Get region tag from property group
+#     # ---------------------------------------------------
 
-# if result:
-#     print(f"{obj.name} IS CONVEX")
-# else:
-#     print(f"{obj.name} IS NOT CONVEX")
+#     try:
+#         region_tag = wn.quail_worldnode.region_tag
+#     except Exception:
+#         print(f"\n{worldnode_name} : NO region_tag")
+#         continue
 
-# print("==============================")
+#     if not region_tag:
+#         print(f"\n{worldnode_name} : EMPTY region_tag")
+#         continue
+
+#     # ---------------------------------------------------
+#     # Convert:
+#     # R000123 -> R123_DMSPRITEDEF
+#     # ---------------------------------------------------
+
+#     region_num = int(region_tag[1:])
+
+#     mesh_name = f"R{region_num}_DMSPRITEDEF"
+
+#     obj = bpy.data.objects.get(mesh_name)
+
+#     if not obj:
+#         print(
+#             f"\n{worldnode_name} : "
+#             f"MISSING {mesh_name}"
+#         )
+#         continue
+
+#     if obj.type != 'MESH':
+#         print(
+#             f"\n{worldnode_name} : "
+#             f"{mesh_name} is not mesh"
+#         )
+#         continue
+
+#     print("\n===================================")
+#     print(f"WORLDNODE {worldnode_id}")
+#     print("===================================")
+
+#     print(f"Region Tag : {region_tag}")
+#     print(f"Mesh       : {mesh_name}")
+
+#     bm = bmesh.new()
+#     bm.from_mesh(obj.data)
+
+#     result = is_convex_region(
+#         bm,
+#         epsilon=EPSILON,
+#         dist_tol=DIST_TOL,
+#     )
+
+#     bm.free()
+
+#     print(
+#         f"\nRESULT: "
+#         f"{'CONVEX' if result else 'CONCAVE'}"
+#     )
