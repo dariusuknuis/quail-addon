@@ -1,9 +1,11 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
-import bpy
+import bpy, bmesh
+from mathutils import Vector
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, CollectionProperty
 from ...common import state
-from ...common.s3dobject import apply_bounding_box_geo
+from ...common.mesh import get_vertex_normal_nodegroup
+from ...common.s3dobject import apply_bounding_box_geo, apply_bounding_radius_geo
 
 def update_fpscale(self, context):
 
@@ -222,18 +224,255 @@ class QuailDMSpriteDef2Properties(bpy.types.PropertyGroup):
     usevertexcoloralpha: BoolProperty(name="Vertex Color Alpha", default=False)
     spritedefpolyhedron: BoolProperty(name="Sprite Def Polyhedron", default=False)
 
+class OBJECT_OT_add_default_dmspritedef2(bpy.types.Operator):
+
+    bl_idname = "object.add_default_dmspritedef2"
+    bl_label = "Set DMSPRITEDEF2"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+
+        obj = context.object
+
+        return (
+            obj and
+            obj.type == 'MESH'
+        )
+
+    def execute(self, context):
+
+        obj = context.object
+        mesh = obj.data
+
+        # Tag object
+        obj["quaildef"] = "dmspritedef2"
+        props = obj.quail_dmspritedef2
+
+        # Default panel values
+        props.usecenteroffset = True
+        props.dmtrack = ""
+        props.dmrgbtrack = ""
+        props.useparams2 = False
+        props.params2_x = 0.0
+        props.params2_y = 0.0
+        props.params2_z = 0.0
+        props.useboundingbox = False
+        props.useboundingradius = True
+        props.usevertexcoloralpha = False
+        props.spritedefpolyhedron = False
+
+        # Normalize mesh
+        bpy.context.view_layer.objects.active = obj
+
+        if obj.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bm.verts.ensure_lookup_table()
+        bm.faces.ensure_lookup_table()
+
+        # Triangulate
+        bmesh.ops.triangulate(bm, faces=list(bm.faces))
+
+        # Create vertex_normals layer
+        normal_layer = (
+            bm.verts.layers.float_vector.get("vertex_normals")
+        )
+
+        # Only generate normals if missing
+        if not normal_layer:
+
+            normal_layer = (
+                bm.verts.layers.float_vector.new(
+                    "vertex_normals"
+                )
+            )
+
+            bm.normal_update()
+            for vert in bm.verts:
+                normal = vert.normal.normalized()
+                vert[normal_layer] = (
+                    normal.x,
+                    normal.y,
+                    normal.z,
+                )
+
+        # Convert vertex colors
+        color_attr = None
+
+        # POINT domain existing layer
+        if "vertex_colors" in mesh.color_attributes:
+            attr = mesh.color_attributes["vertex_colors"]
+            if attr.domain == 'POINT':
+                color_attr = attr
+
+        # Convert CORNER -> POINT
+        if color_attr is None:
+            source_attr = None
+            for attr in mesh.color_attributes:
+                if attr.domain == 'CORNER':
+                    source_attr = attr
+                    break
+
+            if source_attr:
+                point_attr = mesh.color_attributes.new(
+                    name="vertex_colors",
+                    type='FLOAT_COLOR',
+                    domain='POINT',
+                )
+
+                accum = {}
+                counts = {}
+
+                for poly in mesh.polygons:
+                    for loop_index in poly.loop_indices:
+                        loop = mesh.loops[loop_index]
+                        vidx = loop.vertex_index
+                        color = source_attr.data[loop_index].color
+                        if vidx not in accum:
+                            accum[vidx] = [0.0, 0.0, 0.0, 0.0]
+                            counts[vidx] = 0
+
+                        for i in range(4):
+                            accum[vidx][i] += color[i]
+
+                        counts[vidx] += 1
+
+                for vidx, col in accum.items():
+                    count = counts[vidx]
+                    point_attr.data[vidx].color = (
+                        col[0] / count,
+                        col[1] / count,
+                        col[2] / count,
+                        col[3] / count,
+                    )
+
+                mesh.color_attributes.remove(source_attr)
+                color_attr = point_attr
+
+        if color_attr:
+            props.usevertexcoloralpha = True
+
+        # Write BMesh back
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.update()
+
+        # Add vertex normal geo node
+        nodegroup = get_vertex_normal_nodegroup()
+
+        if not obj.modifiers.get("VertexNormals"):
+
+            mod = obj.modifiers.new(
+                "VertexNormals",
+                'NODES'
+            )
+
+            mod.node_group = nodegroup
+
+        # ------------------------------------------------
+        # Compute bounds
+        # ------------------------------------------------
+
+        coords = [v.co.copy() for v in mesh.vertices]
+
+        if coords:
+            min_v = Vector((
+                min(v.x for v in coords),
+                min(v.y for v in coords),
+                min(v.z for v in coords),
+            ))
+
+            max_v = Vector((
+                max(v.x for v in coords),
+                max(v.y for v in coords),
+                max(v.z for v in coords),
+            ))
+
+            props.b_box_min_x = 0.0
+            props.b_box_min_y = 0.0
+            props.b_box_min_z = 0.0
+
+            props.b_box_max_x = 0.0
+            props.b_box_max_y = 0.0
+            props.b_box_max_z = 0.0
+
+            # Bounding sphere
+            center = (min_v + max_v) * 0.5
+            radius = max(
+                (v.co - center).length
+                for v in mesh.vertices
+            )
+
+            extent = (max_v - min_v).length
+
+        props.boundingradius = radius
+        apply_bounding_radius_geo(
+            parent_obj=obj,
+            radius=radius,
+            enabled=False,
+        )
+
+        apply_bounding_box_geo(
+            obj,
+            (
+                (min_v.x, min_v.y, min_v.z),
+                (max_v.x, max_v.y, max_v.z),
+            ),
+            use_custom=False,
+            visible=False,
+        )
+
+        # FPSCALE heuristic
+        vert_count = max(len(mesh.vertices), 1)
+        density = vert_count / max(extent, 0.0001)
+        fpscale = int(round(max(5,min(13, 5 + ((density ** 0.75) * 0.25)))))
+        props.fpscale_prev = fpscale
+        props.fpscale = fpscale
+
+        self.report(
+            {'INFO'},
+            f"Initialized DMSPRITEDEF2 (fpscale={fpscale})"
+        )
+
+        return {'FINISHED'}
+
 
 # =========================================================
 # PANEL
 # =========================================================
 
 def draw_dmspritedef2_in_transform(self, context):
+
     obj = context.object
-    if not obj or obj.get('quaildef') != 'dmspritedef2':
+
+    if not obj:
+        return
+
+    layout = self.layout
+
+    # Show initialize button for normal meshes
+    if (
+        obj.type == 'MESH' and
+        obj.get("quaildef") != "dmspritedef2"
+    ):
+
+        box = layout.box()
+
+        box.operator(
+            "object.add_default_dmspritedef2",
+            text="Set DMSPRITEDEF2",
+        )
+
+        return
+
+    # Existing DMSPRITEDEF2 panel
+    if obj.get('quaildef') != 'dmspritedef2':
         return
 
     props = obj.quail_dmspritedef2
-    layout = self.layout
 
     box = layout.box()
     box.label(text="DMSPRITEDEF2")
@@ -249,22 +488,26 @@ def draw_dmspritedef2_in_transform(self, context):
     box.prop(props, "polyhedron")
 
     box.prop(props, "useparams2")
+
     row = box.row(align=True)
     row.prop(props, "params2_x")
     row.prop(props, "params2_y")
     row.prop(props, "params2_z")
 
     box.prop(props, "useboundingbox")
+
     row = box.row(align=True)
     row.prop(props, "b_box_min_x")
     row.prop(props, "b_box_min_y")
     row.prop(props, "b_box_min_z")
+
     row = box.row(align=True)
     row.prop(props, "b_box_max_x")
     row.prop(props, "b_box_max_y")
     row.prop(props, "b_box_max_z")
 
     box.prop(props, "useboundingradius")
+
     row = box.row(align=True)
     row.prop(props, "boundingradius")
 
