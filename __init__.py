@@ -1,37 +1,33 @@
-from . import exporter, importer
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 from . import auto_load
-from . import view_panel, material_panel
-from .common import prop
-auto_load.init()
+from .handlers import QuailHandlers
 
 bl_info = {
-    "name": "Quail",
-    "author": "xackery",
-    "version": (1, 0, 0),
-    "blender": (3, 0, 0),
-    "location": "File > Export, File > Import",
-    "category": "Import-Export",
-    "description": "Helper for EverQuest Archives",
+    "name": "Quail-Addon",
+    "blender": (5, 0, 0),
+    "category": "Object",
 }
+
+auto_load.init()
 
 
 def register():
-    prop.register()
-    exporter.register()
-    importer.register()
-    view_panel.register()
-    material_panel.register()
     auto_load.register()
+    QuailHandlers.register()
 
 
 def unregister():
-    prop.unregister()
-    exporter.unregister()
-    importer.unregister()
-    view_panel.unregister()
-    material_panel.unregister()
     auto_load.unregister()
-
-
-if __name__ == "__main__":
-    register()
+    QuailHandlers.unregister()

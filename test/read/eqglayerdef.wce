@@ -1,0 +1,8 @@
+// EQG Layer Definition
+EQGLAYERDEF "tag"
+	VERSION 1
+	NUMLAYERS 1
+		LAYER
+		MATERIAL "1"
+		DIFFUSE "1"
+		NORMAL "1"

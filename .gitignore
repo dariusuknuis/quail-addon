@@ -128,9 +128,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.vscode/settings.json
 
 quail-*
 blender.sh
 
 .DS_Store
+test/write
+*.quail

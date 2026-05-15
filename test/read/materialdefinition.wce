@@ -1,0 +1,38 @@
+// Wld Material
+MATERIALDEFINITION "tag"
+	// For variations
+ 	 // Argument 1 (%d): Variation of tag
+	VARIATION 1
+	// Method for rendering
+ 	 // Argument 1 (%s): Rendering method
+	RENDERMETHOD "1"
+	// RGB Colorizing
+ 	 // Argument 1 (%d): Red
+ 	 // Argument 2 (%d): Green
+ 	 // Argument 3 (%d): Blue
+ 	 // Argument 4 (%d): Alpha
+	RGBPEN 1 2 3 4
+	// Color brightness
+ 	 // Argument 1 (%0.8e): Brightness amount
+	BRIGHTNESS 1.12345678
+	// Scaled ambient amount
+ 	 // Argument 1 (%0.8e): Scaled ambient amount
+	SCALEDAMBIENT 1.12345678
+	// Simple sprite instance section
+	SIMPLESPRITEINST
+		// Simple sprite instance tag
+ 		 // Argument 1 (%s): Simple sprite instance tag
+		SIMPLESPRITETAG "1"
+		// 0x10 flag; enables SIMPLESPRITESKIPFRAMES flag to be evaluated
+ 		 // Argument 1 (%d): 0 or 1
+		SIMPLESPRITEHAVESKIPFRAMES 1
+		// 0x40 flag; used only if SIMPLESPRITEHAVESKIPFRAMES is set
+ 		 // Argument 1 (%d): 0 or 1
+		SIMPLESPRITESKIPFRAMES 1
+	// Optional UV shift per millisecond values
+ 	 // Argument 1 (%0.8e): U shift per ms
+ 	 // Argument 2 (%0.8e): V shift per ms
+	UVSHIFTPERMS? 1.12345678 2.12345678
+	// Is material double sided?
+ 	 // Argument 1 (%d): 0: False, 1: True
+	TWOSIDED 1

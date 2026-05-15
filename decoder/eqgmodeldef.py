@@ -1,0 +1,247 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false
+
+import bpy
+import mathutils
+import math
+from ..common.armature import ensure_pivot, apply_pivot_shapes
+from ..common.mesh import get_vertex_normal_nodegroup
+from ..wce.eqgmodeldef import eqgmodeldef
+from .eqgmaterialdef import decode_eqgmaterialdef
+from .context import Context
+from ..ui.panel.eqgface import set_face_property
+
+def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.Vector) -> str:
+    mesh = bpy.data.meshes.new(eqgmodeldef.tag)
+    obj = bpy.data.objects.new(eqgmodeldef.tag, mesh)
+    ctx.collection.objects.link(obj)
+
+    obj.parent = ctx.parent
+    obj.location = location
+    obj['quaildef'] = 'eqgmodeldef'
+    obj.quail_eqgmodeldef.version = str(eqgmodeldef.version) # type: ignore
+
+    for _, mat in enumerate(eqgmodeldef.materials):
+        properties = []
+        for _, prop in enumerate(mat.properties):
+            properties.append((prop.property[0], prop.property[1], prop.property[2]))
+        textures = []
+        for _, tex in enumerate(mat.animtextures):
+            textures.append(tex.texture)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        if err != "":
+            return f"decode {mat.materialtag}: {err}"
+
+    faces_for_creation = []
+    for face in eqgmodeldef.faces:
+        faces_for_creation.append(face.triangle)
+
+    vertices = []
+    for _, vertex in enumerate(eqgmodeldef.vertices):
+        vertices.append(mathutils.Vector(vertex.xyz))
+    mesh.from_pydata(vertices, [], faces_for_creation)
+    mesh.update()
+
+    attr = mesh.attributes.new(
+        name="vertex_normals",
+        type='FLOAT_VECTOR',
+        domain='POINT'
+    )
+
+    for i, vertex in enumerate(eqgmodeldef.vertices):
+        attr.data[i].vector = vertex.normal
+
+    uvlayer = mesh.uv_layers.new(name=eqgmodeldef.tag+"_uv")
+    for _, triangle in enumerate(mesh.polygons):
+        vertices = list(triangle.vertices)
+        for j, vertex in enumerate(vertices):
+            src_vert = eqgmodeldef.vertices[vertex]
+            uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1])
+
+    for i, face in enumerate(eqgmodeldef.faces):
+        poly = mesh.polygons[i]
+
+        poly.material_index = mesh.materials.find(f"{eqgmodeldef.tag}_{face.material}")
+        if poly.material_index == -1:
+            return f"Material {eqgmodeldef.tag}_{face.material} not found"
+
+        set_face_property(mesh, i, "passable", face.passable)
+        set_face_property(mesh, i, "collisionrequired", face.collisionrequired)
+        set_face_property(mesh, i, "transparent", face.transparent)
+        set_face_property(mesh, i, "culled", face.culled)
+        set_face_property(mesh, i, "degenerate", face.degenerate)
+
+    # ---------------------------------------------------------
+    # Create Armature if bones exist
+    # ---------------------------------------------------------
+    armature_obj = None
+
+    if len(eqgmodeldef.bones) > 0:
+
+        ensure_pivot()
+
+        armature = bpy.data.armatures.new(eqgmodeldef.tag + "_armature")
+        armature_obj = bpy.data.objects.new(eqgmodeldef.tag + "_armature", armature)
+        ctx.collection.objects.link(armature_obj)
+
+        armature_obj.location = location
+        obj.parent = armature_obj
+
+        bpy.context.view_layer.objects.active = armature_obj
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        edit_bones = armature.edit_bones
+
+        # -----------------------------------------------------
+        # Create bones
+        # -----------------------------------------------------
+        bones = {}
+        bone_matrices = {}
+
+        tail_len = 1
+
+        # -----------------------------------------------------
+        # Create bones (temporary positions)
+        # -----------------------------------------------------
+        for bone in eqgmodeldef.bones:
+
+            b = edit_bones.new(bone.bone)
+
+            b.head = (0, 0, 0)
+            b.tail = (0, tail_len, 0)
+            b.use_connect = False
+
+            bones[bone.bone] = b
+
+        parent_map = {}
+
+        for parent_bone in eqgmodeldef.bones:
+
+            if parent_bone.children <= 0 or parent_bone.childindex < 0:
+                continue
+
+            child_index = parent_bone.childindex
+
+            for _ in range(parent_bone.children):
+
+                if child_index < 0 or child_index >= len(eqgmodeldef.bones):
+                    break
+
+                child_name = eqgmodeldef.bones[child_index].bone
+                parent_map[child_name] = parent_bone.bone
+
+                child_index = eqgmodeldef.bones[child_index].next
+
+        ordered_bones = []
+        added = set()
+
+        while len(ordered_bones) < len(eqgmodeldef.bones):
+
+            for bone in eqgmodeldef.bones:
+
+                name = bone.bone
+
+                if name in added:
+                    continue
+
+                parent = parent_map.get(name)
+
+                if parent is None or parent in added:
+                    ordered_bones.append(bone)
+                    added.add(name)
+
+        # -----------------------------------------------------
+        # Build transform matrices
+        # -----------------------------------------------------
+        for bone in ordered_bones:
+
+            b = bones[bone.bone]
+
+            loc = mathutils.Vector(bone.pivot)
+
+            rot = mathutils.Quaternion((
+                -bone.quaternion[3],
+                bone.quaternion[0],
+                bone.quaternion[1],
+                bone.quaternion[2]
+            ))
+
+            T = mathutils.Matrix.Translation(loc)
+            R = rot.to_matrix().to_4x4()
+
+            local_matrix = T @ R
+
+            parent_name = parent_map.get(bone.bone)
+
+            if parent_name:
+                parent_matrix = bone_matrices.get(
+                    parent_name,
+                    mathutils.Matrix.Identity(4)
+                )
+            else:
+                parent_matrix = mathutils.Matrix.Identity(4)
+
+            world_matrix = parent_matrix @ local_matrix
+
+            bone_matrices[bone.bone] = world_matrix
+
+            # apply transform
+            b.matrix = world_matrix
+            b.length = tail_len
+
+        # -----------------------------------------------------
+        # Parent bones using CHILDINDEX + NEXT chain
+        # -----------------------------------------------------
+        for child_name, parent_name in parent_map.items():
+
+            if child_name in bones and parent_name in bones:
+                bones[child_name].parent = bones[parent_name]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # -----------------------------------------------------
+        # Add armature modifier
+        # -----------------------------------------------------
+        mod = obj.modifiers.new("Armature", 'ARMATURE')
+        mod.object = armature_obj
+
+        obj.parent = armature_obj
+
+        # -----------------------------------------------------
+        # Add vertex normal modifier
+        # -----------------------------------------------------
+
+        nodegroup = get_vertex_normal_nodegroup()
+
+        mod = obj.modifiers.new("VertexNormals", 'NODES')
+        mod.node_group = nodegroup
+
+        # -----------------------------------------------------
+        # Create vertex groups
+        # -----------------------------------------------------
+        for bone in eqgmodeldef.bones:
+            obj.vertex_groups.new(name=bone.bone)
+
+        # -----------------------------------------------------
+        # Assign weights
+        # -----------------------------------------------------
+        for v_index, vertex in enumerate(eqgmodeldef.vertices):
+
+            for weight in vertex.weights:
+
+                bone_index, w = weight.weight
+
+                if bone_index < len(eqgmodeldef.bones):
+
+                    bone_name = eqgmodeldef.bones[bone_index].bone
+
+                    group = obj.vertex_groups.get(bone_name)
+
+                    if group:
+                        group.add([v_index], w, 'ADD')
+
+        apply_pivot_shapes(armature_obj)
+
+    mesh.update()
+    return ""
+
+

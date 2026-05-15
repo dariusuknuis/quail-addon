@@ -1,0 +1,11 @@
+// Wld Blit Sprite
+BLITSPRITEDEF "tag"
+	// Sprite tag
+ 	 // Argument 1 (%s): Name of tag
+	SPRITE "1"
+	// Method for rendering
+ 	 // Argument 1 (%s): Rendering method
+	RENDERMETHOD "1"
+	// Is Transparent
+ 	 // Argument 1 (%d): 0: false, 1: true
+	TRANSPARENT 1

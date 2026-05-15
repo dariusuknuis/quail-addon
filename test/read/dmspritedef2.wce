@@ -1,0 +1,124 @@
+// Wld DM sprite definition
+DMSPRITEDEF2 "tag"
+	// The center offset of the sprite
+ 	 // Argument 1 (%0.8e): The x offset
+ 	 // Argument 2 (%0.8e): The y offset
+ 	 // Argument 3 (%0.8e): The z offset
+	CENTEROFFSET 1.12345678 2.12345678 3.12345678
+	// The number of vertices in the sprite
+ 	 // Argument 1 (%d): The number of vertices
+	NUMVERTICES 1
+		// The coordinates of a vertex
+ 		 // Argument 1 (%0.8e): The x coordinate
+ 		 // Argument 2 (%0.8e): The y coordinate
+ 		 // Argument 3 (%0.8e): The z coordinate
+		VXYZ 1.12345678 2.12345678 3.12345678
+	// The number of UVs in the sprite
+ 	 // Argument 1 (%d): The number of UVs
+	NUMUVS 1
+		// UV entry
+ 		 // Argument 1 (%0.8e): U on UV map
+ 		 // Argument 2 (%0.8e): V on UV map
+		UV 1.12345678 2.12345678
+	// The number of vertex normals in the sprite
+ 	 // Argument 1 (%d): The number of vertex normals
+	NUMVERTEXNORMALS 1
+		// The coordinates of a texture normal
+ 		 // Argument 1 (%0.8e): The x coordinate
+ 		 // Argument 2 (%0.8e): The y coordinate
+ 		 // Argument 3 (%0.8e): The z coordinate
+		NXYZ 1.12345678 2.12345678 3.12345678
+	// The number of vertex colors in the sprite
+ 	 // Argument 1 (%d): The number of vertex colors
+	NUMVERTEXCOLORS 1
+		// The coordinates of a vertex
+ 		 // Argument 1 (%d): Red
+ 		 // Argument 2 (%d): Green
+ 		 // Argument 3 (%d): Blue
+ 		 // Argument 4 (%d): Alpha
+		RGBA 1 2 3 4
+	// The skin assignment groups
+ 	 // Argument 1 (%d...): First value is the number of groups, then pairs of dag/# of verts
+	SKINASSIGNMENTGROUPS 1 1 1
+	// The material palette used by the sprite
+ 	 // Argument 1 (%s): The name of the material palette
+	MATERIALPALETTE "1"
+	// The DM track instance
+ 	 // Argument 1 (%s): The track instance
+	DMTRACKINST "1"
+	// The DMRGB track instance
+ 	 // Argument 1 (%s): The DMRGB track instance
+	DMRGBTRACK "1"
+	// The polyhedron definition
+	POLYHEDRON
+	// The definition reference
+ 	 // Argument 1 (%s): The definition
+	SPRITE "1"
+	// The number of face2s in the sprite
+ 	 // Argument 1 (%d): The number of face2s
+	NUMFACE2S 1
+		// DM Face 2 Entries
+		DMFACE2
+		// Is face passable?
+ 		 // Argument 1 (%d): Is face passable?
+		PASSABLE 1
+		// Triangle indexes
+ 		 // Argument 1 (%d): Index 0 of triangle
+ 		 // Argument 2 (%d): Index 1 of triangle
+ 		 // Argument 3 (%d): Index 2 of triangle
+		TRIANGLE 1 2 3
+	// The number of mesh operations in the sprite
+ 	 // Argument 1 (%d): The number of mesh operations
+	NUMMESHOPS 1
+		// A mesh operation
+ 		 // Argument 1 (%d): Primary index value
+ 		 // Argument 2 (%d): Secondary index value
+ 		 // Argument 3 (%0.8e): Offset value (used when type indicates float operation)
+ 		 // Argument 4 (%d): Auxiliary parameter
+ 		 // Argument 5 (%d): Mesh operation type identifier
+		MESHOP 1 2 3.12345678 4 5
+	// The face material groups
+ 	 // Argument 1 (%d...): First value if number of groups, then pairs of mat and # of faces
+	FACEMATERIALGROUPS 1 1 1
+	// The vertex material groups
+ 	 // Argument 1 (%d...): First value if number of groups, then pairs of mat and # of verts
+	VERTEXMATERIALGROUPS 1 1 1
+	// Additional parameter vector
+ 	 // Argument 1 (%0.8e): Parameter x
+ 	 // Argument 2 (%0.8e): Parameter y
+ 	 // Argument 3 (%0.8e): Parameter z
+	PARAMS2 1.12345678 2.12345678 3.12345678
+	// The minimum bounding box coordinates
+ 	 // Argument 1 (%0.8e): The x coordinate
+ 	 // Argument 2 (%0.8e): The y coordinate
+ 	 // Argument 3 (%0.8e): The z coordinate
+	BOUNDINGBOXMIN 1.12345678 2.12345678 3.12345678
+	// The maximum bounding box coordinates
+ 	 // Argument 1 (%0.8e): The x coordinate
+ 	 // Argument 2 (%0.8e): The y coordinate
+ 	 // Argument 3 (%0.8e): The z coordinate
+	BOUNDINGBOXMAX 1.12345678 2.12345678 3.12345678
+	// The bounding radius of the sprite
+ 	 // Argument 1 (%0.8e): The bounding radius
+	BOUNDINGRADIUS 1.12345678
+	// The FPS scale of the sprite
+ 	 // Argument 1 (%d): The FPS scale
+	FPSCALE 1
+	// If 0, center offset will be set to 0,0,0 in game
+ 	 // Argument 1 (%d): Use center offset flag
+	USECENTEROFFSET 1
+	// If 0, bounding radius will default to 1.0 in game
+ 	 // Argument 1 (%d): Use bounding radius flag
+	USEBOUNDINGRADIUS 1
+	// If 0, params2 will be set to 0,0,0 in game
+ 	 // Argument 1 (%d): Use params2 flag
+	USEPARAMS2 1
+	// If 0, bounding box is calculated from object AABB at runtime
+ 	 // Argument 1 (%d): Use bounding box flag
+	USEBOUNDINGBOX 1
+	// If 0, vertex colors will only use RGB value, alpha ignored
+ 	 // Argument 1 (%d): Use vertex color alpha flag
+	USEVERTEXCOLORALPHA 1
+	// Used in objects and terrain meshes to enable collision
+ 	 // Argument 1 (%d): Sprite polyhedron flag
+	SPRITEDEFPOLYHEDRON 1

@@ -1,0 +1,245 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false
+
+import bpy
+import bmesh
+from bpy.types import Operator
+#from ..exporter import export_data
+from ..common import dialog, version
+import os
+addon_keymaps = []
+
+
+def register():
+    bpy.utils.register_class(ViewPanelQuail)
+    bpy.utils.register_class(QUAIL_PT_fast_export)
+    if on_selection_changed not in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.append(on_selection_changed)
+    wm = bpy.context.window_manager
+    kc = wm.keyconfigs.addon
+    if kc:
+        km = wm.keyconfigs.addon.keymaps.new(
+            name='3D View', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            QUAIL_PT_fast_export.bl_idname, type='E', value='PRESS', ctrl=True, shift=True)
+        addon_keymaps.append((km, kmi))
+
+
+def unregister():
+    bpy.utils.unregister_class(ViewPanelQuail)
+    bpy.utils.unregister_class(QUAIL_PT_fast_export)
+    if on_selection_changed in bpy.app.handlers.depsgraph_update_post:
+        bpy.app.handlers.depsgraph_update_post.remove(
+            on_selection_changed)
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+    addon_keymaps.clear()
+
+
+class ViewPanelQuail(bpy.types.Panel):
+    # important since its how bpy.ops.import_test.some_data is constructed
+    bl_idname = "QUAIL_PT_view"
+    bl_label = "Quail %s" % (version())
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'EverQuest'
+
+    context_label: str = ""
+    display_label: str = ""
+    flag_label: str = ""
+    view_mode: str = "none"
+    particle_rig_label: str = ""
+    is_select_registered: bool = False
+
+    def draw(self, context: bpy.types.Context):
+        if not self.is_select_registered:
+            self.is_select_registered = True
+            if on_selection_changed not in bpy.app.handlers.depsgraph_update_post:
+                bpy.app.handlers.depsgraph_update_post.append(
+                    on_selection_changed)
+        if self.object_draw(context):
+            return
+        if self.mesh_draw(context):
+            return
+        if self.particle_draw(context):
+            return
+        if self.rig_draw(context):
+            return
+
+        layout = self.layout
+        row = layout.row()
+        if context.mode != "OBJECT":
+            row.label(text=self.display_label)
+            return
+        row.label(text="Fast Export")
+        layout.operator("quail.fast_export", icon='IMPORT', text="Export")
+
+    def object_draw(self, context: bpy.types.Context) -> bool:
+        if self.view_mode != "object":
+            return False
+        layout = self.layout
+        row = layout.row()
+
+        row = layout.row()
+        row.label(text=self.display_label)
+        #self.flag_box_draw(context)
+        return True
+
+    def mesh_draw(self, context: bpy.types.Context) -> bool:
+        if self.view_mode != "mesh":
+            return False
+        layout = self.layout
+        row = layout.row()
+        row = layout.row()
+        row = layout.row()
+        row.label(text=self.display_label)
+
+        return True
+
+    def particle_draw(self, context: bpy.types.Context) -> bool:
+        if self.view_mode != "particle":
+            return False
+        layout = self.layout
+        row = layout.row()
+        if self.display_label != "":
+            row = layout.row()
+            row.label(text=self.display_label)
+
+        if self.particle_rig_label == "":
+            return True
+
+        row = layout.row()
+        row.label(text="Rig: %s" % self.particle_rig_label)
+        row = layout.row()
+
+        # row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index", rows=rows)
+
+        # col = row.column(align=True)
+        # col.operator("object.material_slot_add", icon='ADD', text="")
+        # col.operator("object.material_slot_remove", icon='REMOVE', text="")
+
+        # col.separator()
+
+        return True
+
+    def rig_draw(self, context: bpy.types.Context) -> bool:
+        if self.view_mode != "rig":
+            return False
+        layout = self.layout
+        row = layout.row()
+        row = layout.row()
+        row.label(text=self.display_label)
+
+        return True
+
+
+class QUAIL_PT_fast_export(Operator):
+    bl_idname = "quail.fast_export"
+    bl_label = "Fast Export"
+    bl_description = "Export the selected object to a eqg/s3d file"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        path = ""
+        if path == "":
+            dialog.message_box("Please set a path in the export panel",
+                               "Error", 'ERROR')
+            return {'CANCELLED'}
+        if not path.endswith(".eqg") and not path.endswith(".s3d"):
+            dialog.message_box("Please set a path with a .eqg or .s3d extension",
+                               "Error", 'ERROR')
+            return {'CANCELLED'}
+
+        if bpy.data.filepath == "":
+            dialog.message_box("Please save the blend file first",
+                               "Error", 'ERROR')
+            return {'CANCELLED'}
+        base_path = os.path.dirname(bpy.data.filepath)
+        path = os.path.join(base_path, path)
+
+        # if export_data(context, path, False):
+        #     dialog.message_box("Exported to %s" % path,
+        #                        "Success", 'INFO')
+        return {'FINISHED'}
+        #return {'CANCELLED'}
+
+
+def on_selection_changed(scene):
+    # bpy.types.QUAIL_PT_view.context_label = ""
+    # bpy.types.QUAIL_PT_view.view_mode = "none"
+    on_mesh_select(scene)
+    # on_particle_select(scene)
+    # on_face_select(scene)
+    # on_rig_select(scene)
+
+
+def on_mesh_select(scene):
+    if bpy.context.mode != 'OBJECT':
+        return
+    obj = bpy.context.object
+    if obj == None:
+        return
+    on_model_select(scene)
+
+    # view = bpy.types.QUAIL_PT_view
+    # view.flag_label = "Flags: 0"
+    # view.display_label = ""
+    # sel_count = len(bpy.context.selected_objects)
+    # if sel_count != 1:
+    #     if sel_count > 1:
+    #         view.display_label = "Too many objects selected"
+    #     else:
+    #         view.display_label = "Select an object to edit details"
+    #     return
+
+    # bpy.types.QUAIL_PT_view.view_mode = "object"
+
+    # if obj.type == "EMPTY":
+    #     if obj.empty_display_type == "PLAIN_AXES":
+    #         ext = obj.get('ext')
+    #         if ext is None:
+    #             ext = "pts"
+    #         bpy.types.QUAIL_PT_view.view_mode = "particle"
+    #         return
+
+    #if obj.type != "MESH":
+    #    view.display_label = "Select a mesh object to edit details"
+    #    return
+
+
+def on_particle_select(scene):
+    if bpy.context.mode != 'OBJECT':
+        return
+    obj = bpy.context.object
+    if obj == None:
+        return
+    on_model_select(scene)
+
+    if obj.type != "EMPTY":
+        return
+
+    if obj.empty_display_type != "PLAIN_AXES":
+        return
+
+
+
+def on_rig_select(scene):
+    if bpy.context.mode != 'OBJECT':
+        return
+    obj = bpy.context.object
+    if obj == None:
+        return
+    if obj.type != "ARMATURE":
+        return
+
+    on_model_select(scene)
+
+
+def on_model_select(scene):
+    obj = bpy.context.object
+    if obj == None:
+        return
+
+
+
+def on_face_select(scene):
+    on_model_select(scene)

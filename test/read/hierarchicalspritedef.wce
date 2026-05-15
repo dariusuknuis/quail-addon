@@ -1,0 +1,49 @@
+// Wld Hierarchical Sprite Definition
+HIERARCHICALSPRITEDEF "tag"
+	// Number of DAG nodes in the hierarchy
+ 	 // Argument 1 (%d): Number of DAG entries
+	NUMDAGS 1
+		// A DAG entry
+		DAG
+		// The DAG node tag name
+ 		 // Argument 1 (%s): DAG tag identifier
+		TAG "1"
+		// Referenced sprite tag
+ 		 // Argument 1 (%s): Sprite definition tag
+		SPRITETAG "1"
+		// Referenced track tag
+ 		 // Argument 1 (%s): Track definition tag
+		TRACK "1"
+		// List of child DAG indices
+ 		 // Argument 1 (%d...): Count followed by subdag indices
+		SUBDAGLIST 2 1 3
+	// Number of attached skins
+ 	 // Argument 1 (%d): Number of attached skins
+	NUMATTACHEDSKINS 1
+		// Attached skin entry
+		ATTACHEDSKIN
+		// Referenced DMSPRITE tag
+ 		 // Argument 1 (%s): DMSPRITE definition tag
+		DMSPRITE "1"
+		// Index of DAG this skin updates
+ 		 // Argument 1 (%d): DAG index this skin attaches to
+		LINKSKINUPDATESTODAGINDEX 1
+	// Collision polyhedron definition
+	POLYHEDRON
+	// Reference to polyhedron tag or SPECIAL_COLLISION
+ 	 // Argument 1 (%s): Polyhedron definition tag
+	SPRITE "1"
+	// Optional center offset vector
+ 	 // Argument 1 (%0.8e): Center offset X
+ 	 // Argument 2 (%0.8e): Center offset Y
+ 	 // Argument 3 (%0.8e): Center offset Z
+	CENTEROFFSET? 1.12345678 2.12345678 3.12345678
+	// Optional bounding radius
+ 	 // Argument 1 (%0.8e): Bounding sphere radius
+	BOUNDINGRADIUS? 1.12345678
+	// If 1, attached skins are present (0x200 flag)
+ 	 // Argument 1 (%d): Attached skins enabled flag
+	HAVEATTACHEDSKINS 1
+	// Enable DAG-based collision (0x20000 flag)
+ 	 // Argument 1 (%d): DAG collision flag
+	DAGCOLLISIONS 1

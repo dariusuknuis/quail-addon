@@ -1,0 +1,64 @@
+// Wld Sprite 2D Definition
+SPRITE2DDEF "tag"
+	// Sprite scale (X, Y)
+	SCALE 1.12345678 2.12345678
+	// Referenced sphere list tag
+	SPHERELISTTAG "1"
+	// Optional depth scale
+	DEPTHSCALE? 1.12345678
+	// Optional center offset
+	CENTEROFFSET? 1.12345678 2.12345678 3.12345678
+	// Optional bounding radius
+	BOUNDINGRADIUS? 1.12345678
+	// Optional current frame reference
+	CURRENTFRAMEREF? 1
+	// Optional sleep duration
+	SLEEP? 1
+	// Number of pitch levels
+	NUMPITCHES 1
+		// Pitch entry
+		PITCH
+		// Pitch cap
+		PITCHCAP 1
+		// Top or bottom view flag
+		TOPORBOTTOMVIEW 1
+		// Number of heading levels
+		NUMHEADINGS 1
+			// Heading entry
+			HEADING
+			// Heading cap
+			HEADINGCAP 1
+			// Number of frames
+			NUMFRAMES 1
+				// Frame tag
+				FRAME "1"
+				// Number of texture files
+				NUMFILES 1
+					// Texture file
+					FILE "1"
+	// Rendering method
+	RENDERMETHOD "1"
+	// Render configuration block
+	RENDERINFO
+		// Optional pen value
+		PEN? 1
+		// Optional brightness
+		BRIGHTNESS? 1.12345678
+		// Optional scaled ambient
+		SCALEDAMBIENT? 1.12345678
+		// Optional sprite tag
+		SPRITE? "1"
+		// Optional UV origin
+		UVORIGIN? 1.12345678 2.12345678 3.12345678
+		// Optional U axis
+		UAXIS? 1.12345678 2.12345678 3.12345678
+		// Optional V axis
+		VAXIS? 1.12345678 2.12345678 3.12345678
+		// Number of UV entries
+		UVCOUNT 1
+			// UV coordinate
+			UV 1.12345678 2.12345678
+		// Is sprite two sided
+		TWOSIDED 1
+	// Hex 0x10 flag
+	HEXTENFLAG 1

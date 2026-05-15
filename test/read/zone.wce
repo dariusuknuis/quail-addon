@@ -1,0 +1,4 @@
+// Wld Zone
+ZONE "tag"
+	REGIONLIST 1 1
+	USERDATA "1"

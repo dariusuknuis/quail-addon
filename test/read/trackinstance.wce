@@ -1,0 +1,10 @@
+// Wld Track
+TRACKINSTANCE "tag"
+	TRACKDEF "1"
+	// deprecated, ignored in RoF2
+ 	 // Argument 1 (%d): deprecated, ignored in RoF2
+	INTERPOLATE 1
+	// deprecated, ignored in RoF2
+ 	 // Argument 1 (%d): deprecated, ignored in RoF2
+	REVERSE 1
+	SLEEP? 1

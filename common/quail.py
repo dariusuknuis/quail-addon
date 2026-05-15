@@ -4,10 +4,9 @@ import os
 import stat
 import subprocess
 
-
 def run(operation: str, arg1: str, arg2: str) -> str:
     suffix = ""
-    cmd = bpy.utils.user_resource('SCRIPTS') + "/addons/quail-addon/quail"
+    cmd = bpy.utils.user_resource('SCRIPTS') + "/addons/quail_addon/quail"
     if sys.platform == "win32":
         suffix = ".exe"
     if sys.platform == "linux":

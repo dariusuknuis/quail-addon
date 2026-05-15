@@ -1,0 +1,47 @@
+// Wld actor definition
+ACTORDEF "tag"
+	// The callback function for the actor
+ 	 // Argument 1 (%s): The callback function
+	CALLBACK "1"
+	// The bounds reference for the actor
+ 	 // Argument 1 (%d): The bounds reference
+	BOUNDSREF 1
+	// The current action of the actor
+ 	 // Argument 1 (%d): The current action
+	CURRENTACTION? 1
+	// The location of the actor
+ 	 // Argument 1 (%0.8e): The x coordinate
+ 	 // Argument 2 (%0.8e): The y coordinate
+ 	 // Argument 3 (%0.8e): The z coordinate
+ 	 // Argument 4 (%d): The x rotation
+ 	 // Argument 5 (%d): The y rotation
+ 	 // Argument 6 (%d): The z rotation
+	LOCATION? 1.12345678 2.12345678 3.12345678 4 5 6
+	// The active geometry of the actor
+ 	 // Argument 1 (%s): The active geometry
+	ACTIVEGEOMETRY? "1"
+	// The number of actions for the actor
+ 	 // Argument 1 (%d): The number of actions
+	NUMACTIONS 1
+		// Action entry
+		ACTION
+			// Unknown entry 1
+ 			 // Argument 1 (%d): value of unk1
+			UNK1 1
+			// Number of levels of detail
+ 			 // Argument 1 (%d): Number of levels of detail
+			NUMLEVELSOFDETAILS 1
+				// Level of detail entry
+				LEVELOFDETAIL
+					// Sprite entry tag
+ 					 // Argument 1 (%s): sprite tag
+					SPRITE "1"
+					// Minimum distance to render LOD
+ 					 // Argument 1 (%0.8e): Minimum distance
+					MINDISTANCE 1.12345678
+	// Ignored in RoF2. 0x80 flag. This gets ignored if ActorInst doesn't have it. Likely need to use hierarchysprite flag for things like boats
+ 	 // Argument 1 (%d): 0: no, 1: yes
+	SPRITEVOLUMEONLY 1
+	// User Data
+ 	 // Argument 1 (%s): User Data
+	USERDATA "1"

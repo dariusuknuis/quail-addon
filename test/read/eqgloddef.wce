@@ -1,0 +1,7 @@
+// EQG LOD Definition
+EQGLODDEF "tag"
+	NUMLODS 1
+		LOD
+			TAG "1"
+			CATEGORY "1"
+			DISTANCE 1.12345678

@@ -1,0 +1,23 @@
+// Wld RGB Deformation Track Definition
+RGBDEFORMATIONTRACKDEF "tag"
+	// Sleep value between deformation frames
+ 	 // Argument 1 (%d): Frame delay
+	SLEEP 1
+	// Unknown track parameter
+ 	 // Argument 1 (%d): Unknown data value
+	DATA4 1
+	// Whether alpha channel is used (0 or 1)
+ 	 // Argument 1 (%d): Use alpha flag
+	USEALPHA 1
+	// Number of RGB deformation frames
+ 	 // Argument 1 (%d): Number of frames
+	NUMRGBDEFORMATIONFRAMES 1
+		// Number of RGBA entries in this frame
+ 		 // Argument 1 (%d): RGBA count
+		NUMRGBAS 1
+			// RGBA color entry
+ 			 // Argument 1 (%d): Red
+ 			 // Argument 2 (%d): Green
+ 			 // Argument 3 (%d): Blue
+ 			 // Argument 4 (%d): Alpha
+			RGBA 1 2 3 4

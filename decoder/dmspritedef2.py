@@ -1,0 +1,344 @@
+# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false
+
+import bpy
+import mathutils
+from bpy.types import Object, Collection
+from ..common.mesh import get_vertex_normal_nodegroup
+from ..common.s3dobject import apply_bounding_radius_geo, attach_collision_volume, apply_bounding_box_geo
+from ..common.region import is_region_mesh, is_zone_collection
+from ..wce.wce import wce
+from ..wce.dmspritedef2 import dmspritedef2
+from .context import Context
+from .dmtrackdef2 import decode_dmtrackdef2
+
+def find_hsprite_for_mesh(parser, mesh_name):
+
+    mesh_prefix = mesh_name.replace("_DMSPRITEDEF", "").split(".")[0][:3]
+
+    for hs in parser.hierarchicalspritedefs.values():
+        for skin in hs.attachedskins:
+
+            tag = skin.dmsprite
+            tag_prefix = tag.replace("_DMSPRITEDEF", "").split(".")[0][:3]
+
+            if tag_prefix == mesh_prefix:
+                return hs, skin
+
+    return None, None
+
+def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
+    mesh = bpy.data.meshes.new(sprite.tag)
+    obj = bpy.data.objects.new(sprite.tag, mesh)
+    # Decide target collection
+    target_collection = ctx.collection
+
+    if is_region_mesh(sprite.tag) and is_zone_collection(ctx.collection):
+        region_mesh_collection = getattr(ctx, "region_mesh_collection", None)
+
+        if region_mesh_collection:
+            target_collection = region_mesh_collection
+
+    target_collection.objects.link(obj)
+    obj['quaildef'] = 'dmspritedef2'
+
+    obj.parent = ctx.parent
+
+    # ------------------------------------------------
+    # Populate properties for panel
+    # ------------------------------------------------
+
+    props = obj.quail_dmspritedef2
+    props.usecenteroffset = bool(sprite.usecenteroffset)
+    props.materialpalette = bpy.data.objects.get(sprite.materialpalette)
+    props.dmtrack = sprite.dmtrackinst
+    props.dmrgbtrack = sprite.dmrgbtrack
+    props.polyhedron = bpy.data.objects.get(sprite.sprite)
+
+    props.useparams2 = bool(sprite.useparams2)
+    px, py, pz = sprite.params2
+    props.params2_x = px
+    props.params2_y = py
+    props.params2_z = pz
+
+    props.useboundingbox = bool(sprite.useboundingbox)
+    min_x, min_y, min_z = sprite.boundingboxmin
+    props.b_box_min_x = min_x
+    props.b_box_min_y = min_y
+    props.b_box_min_z = min_z
+
+    max_x, max_y, max_z = sprite.boundingboxmax
+    props.b_box_max_x = max_x
+    props.b_box_max_y = max_y
+    props.b_box_max_z = max_z
+
+    props.useboundingradius = bool(sprite.useboundingradius)
+    props.boundingradius = sprite.boundingradius
+    props.fpscale = sprite.fpscale
+    props.fpscale_prev = sprite.fpscale
+    props.usevertexcoloralpha = bool(sprite.usevertexcoloralpha)
+    props.spritedefpolyhedron = bool(sprite.spritedefpolyhedron)
+
+    # ------------------------------------------------
+    # Build mesh
+    # ------------------------------------------------
+
+    hsprite, skin = find_hsprite_for_mesh(ctx.parser, sprite.tag)
+    if hsprite:
+        obj["hsprite"] = hsprite.tag
+        print(obj.name, "->", obj.get("hsprite"))
+    else:
+        print(obj.name, ": no hsprite found")
+
+    obj.location = mathutils.Vector(sprite.centeroffset)
+
+    if sprite.materialpalette != "":
+        materialpalette = ctx.parser.materialpalettes.get(sprite.materialpalette)
+
+        if materialpalette:
+            for src_mp_mat in materialpalette.materials:
+                mat_name = src_mp_mat.material
+
+                # Try to find existing material
+                mat = bpy.data.materials.get(mat_name)
+
+                # If not found, create simple default material
+                if mat is None:
+                    mat = bpy.data.materials.new(mat_name)
+                    mat.use_nodes = True
+
+                    nodes = mat.node_tree.nodes
+                    links = mat.node_tree.links
+
+                    nodes.clear()
+
+                    principled = nodes.new("ShaderNodeBsdfPrincipled")
+                    principled.location = (0, 0)
+
+                    output = nodes.new("ShaderNodeOutputMaterial")
+                    output.location = (300, 0)
+
+                    links.new(principled.outputs["BSDF"], output.inputs["Surface"])
+
+                # Add to object if not already
+                if obj.data.materials.find(mat_name) == -1:
+                    obj.data.materials.append(mat)
+
+    faces = []
+    for face in sprite.face2s:
+        i0, i1, i2 = face.triangle
+        faces.append((i2, i1, i0))
+
+    vertices = []
+    for _, vertex in enumerate(sprite.vertices):
+        vertices.append(mathutils.Vector(vertex.vxyz))
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+
+    # ----------------------------------------
+    # PASSABLE face attribute
+    # ----------------------------------------
+
+    passable_attr = mesh.attributes.new(
+        name="PASSABLE",
+        type='INT',
+        domain='FACE'
+    )
+
+    for i, face in enumerate(sprite.face2s):
+
+        if i >= len(passable_attr.data):
+            break
+
+        passable_attr.data[i].value = int(face.passable)
+
+    if len(sprite.uvs) > 0:
+        uvlayer = mesh.uv_layers.new()
+        for triangle in mesh.polygons:
+            vertices = list(triangle.vertices)
+            for j, vertex in enumerate(vertices):
+                uvlayer.data[triangle.loop_indices[j]].uv = (
+                    sprite.uvs[vertex].uv[0],
+                    sprite.uvs[vertex].uv[1]
+                )
+
+    # ----------------------------------------
+    # Vertex UVs (POINT domain) for loose verts
+    # ----------------------------------------
+    if len(sprite.uvs) > 0:
+        uv_attr = mesh.attributes.new(
+            name="vertex_uvs",
+            type='FLOAT2',
+            domain='POINT'
+        )
+
+        for i, uv in enumerate(sprite.uvs):
+            if i >= len(uv_attr.data):
+                break
+            uv_attr.data[i].vector = (
+                uv.uv[0],
+                uv.uv[1]
+            )
+
+    if len(sprite.vertexnormals) > 0:
+        normal_attr = mesh.attributes.new(
+            name="vertex_normals",
+            type='FLOAT_VECTOR',
+            domain='POINT'
+        )
+
+        for i in range(len(sprite.vertexnormals)):
+            normal_attr.data[i].vector = (
+                sprite.vertexnormals[i].nxyz[0],
+                sprite.vertexnormals[i].nxyz[1],
+                sprite.vertexnormals[i].nxyz[2]
+            )
+
+        nodegroup = get_vertex_normal_nodegroup()
+
+        mod = obj.modifiers.new("VertexNormals", 'NODES')
+        mod.node_group = nodegroup
+
+    if len(sprite.vertexcolors) > 0:
+        color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
+        for i, color in enumerate(sprite.vertexcolors):
+            if i >= len(color_attribute.data):
+                break
+
+            color_attribute.data[i].color = (
+                color.rgba[0] / 255.0,
+                color.rgba[1] / 255.0,
+                color.rgba[2] / 255.0,
+                color.rgba[3] / 255.0
+            )
+
+    if len(sprite.vertexmaterialgroups) > 0:
+        vertex_material_attribute = mesh.attributes.new(name="Vertex_Material_Index", type='INT', domain='POINT')
+        groups = sprite.vertexmaterialgroups
+
+        group_count = int(groups[0])
+
+        vertex_index = 0
+        idx = 1
+
+        for _ in range(group_count):
+            count = int(groups[idx])
+            mat_index = int(groups[idx + 1])
+            idx += 2
+
+            for _ in range(count):
+                if vertex_index >= len(vertex_material_attribute.data):
+                    break
+
+                vertex_material_attribute.data[vertex_index].value = mat_index
+                vertex_index += 1
+
+    if len(sprite.facematerialgroups) > 0:
+
+        groups = sprite.facematerialgroups
+
+        group_count = int(groups[0])
+        expected_len = 1 + group_count * 2
+
+        if len(groups) != expected_len:
+            return f"FACEMATERIALGROUPS length mismatch: expected {expected_len}, got {len(groups)}"
+
+        face_index = 0
+
+        for g in range(group_count):
+            count = int(groups[1 + g*2])
+            mat_index = int(groups[1 + g*2 + 1])
+
+            if mat_index < 0 or mat_index >= len(materialpalette.materials):
+                return f"material index {mat_index+1} out of range (1-{len(materialpalette.materials)})"
+
+            materialName = materialpalette.materials[mat_index].material
+
+            obj_mat_index = obj.data.materials.find(materialName)
+            if obj_mat_index == -1:
+                return f"material {materialName} not found in object {obj.name}"
+
+            for _ in range(count):
+                if face_index >= len(mesh.polygons):
+                    return f"fmg assign: face index {face_index} out of range (0-{len(mesh.polygons)-1})"
+
+                mesh.polygons[face_index].material_index = obj_mat_index
+                face_index += 1
+
+    if hsprite and skin:
+        for dag in hsprite.dags:
+            obj.vertex_groups.new(name=dag.tag)
+
+    groups = sprite.skinassignmentgroups
+
+    group_count = int(groups[0])
+    expected_len = 1 + group_count * 2
+
+    if len(groups) != expected_len:
+        return f"SKINASSIGNMENTGROUPS length mismatch: expected {expected_len}, got {len(groups)}"
+
+    vertex_index = 0
+
+    for g in range(group_count):
+
+        count = int(groups[1 + g*2])
+        dag_index = int(groups[1 + g*2 + 1])
+
+        if dag_index >= len(hsprite.dags):
+            vertex_index += count
+            continue
+
+        group_name = hsprite.dags[dag_index].tag
+        vg = obj.vertex_groups.get(group_name)
+
+        for _ in range(count):
+
+            if vertex_index >= len(mesh.vertices):
+                break
+
+            if vg:
+                vg.add([vertex_index], 1.0, 'REPLACE')
+
+            vertex_index += 1
+
+    # ------------------------------------------------
+    # Create DMTRACKDEF2 shape keys
+    # ------------------------------------------------
+
+    if sprite.dmtrackinst:
+        dmtrack = ctx.parser.dmtrackdef2s.get(sprite.dmtrackinst)
+
+        if dmtrack:
+            err = decode_dmtrackdef2(ctx, obj, dmtrack)
+            if err:
+                return err
+        else:
+            print(f"{obj.name}: DMTRACKDEF2 not found: {sprite.dmtrackinst}")
+
+    bounds = (
+        sprite.boundingboxmin,
+        sprite.boundingboxmax,
+    )
+
+    # ------------------------------------------------
+    # Create Bounding Box
+    # ------------------------------------------------
+
+    apply_bounding_box_geo(obj, bounds, use_custom=True, visible=False)
+
+    # ------------------------------------------------
+    # Add bouding radius geo node
+    # ------------------------------------------------
+
+    apply_bounding_radius_geo(parent_obj=obj, radius=sprite.boundingradius, enabled=False)
+
+    # ------------------------------------------------
+    # Attach collision volume (polyhedron)
+    # ------------------------------------------------
+
+    if sprite.sprite:
+        attach_collision_volume(
+            parent_obj=obj,
+            poly_tag=sprite.sprite
+        )
+
+    return ""
