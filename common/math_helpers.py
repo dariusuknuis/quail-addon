@@ -90,7 +90,7 @@ def compute_bmesh_volume_centroid(bm: bmesh.types.BMesh):
 
     if abs(total_vol) < 1e-8:
         # zero or non-closed mesh
-        return None, 0.0
+        return None
 
     # divide by total (signed) volume
     center_of_volume = weighted_centroid / total_vol

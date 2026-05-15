@@ -1,4 +1,4 @@
-import bpy, bmesh, math, mathutils
+import bpy, bmesh, math, mathutils, sys
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 from .math_helpers import point_inside_convex, point_in_face_polygon, compute_bmesh_volume_centroid
@@ -10,6 +10,18 @@ from bpy.types import Object, Collection
 from ..wce.wce import wce
 from ..wce.worldtree import worldtree
 from ..wce.region import region
+
+
+def get_stack_depth():
+
+    depth = 0
+    frame = sys._getframe()
+
+    while frame:
+        depth += 1
+        frame = frame.f_back
+
+    return depth
 
 @dataclass
 class BSPContext:
@@ -33,9 +45,11 @@ class BSPContext:
     region_counter: list[int]
     worldnode_counter: list[int]
     region_centroids: dict
+    max_depth_reached: int
 
     # Pending Blender objects
     pending_region_meshes: list
+
 class BSPNode:
     def __init__(self):
         self.normal = None
@@ -799,6 +813,15 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
     if depth_counters is None:
         depth_counters = {}
 
+    if depth > ctx.max_depth_reached:
+
+        ctx.max_depth_reached = depth
+
+        print(
+            f"New BSP depth: {depth} | "
+            f"Python stack depth: {get_stack_depth()}"
+        )
+
     for d in list(depth_counters.keys()):
 
         if d <= depth:
@@ -877,6 +900,9 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
                          max(c.z for c in ws_corners)))
         sphere_radius = (ws_max - ws_min).length / 2.0
         centroid = compute_bmesh_volume_centroid(bm_vol)
+        if centroid is None:
+            centroid = (vol_min + vol_max) * 0.5
+
         ctx.region_centroids[region_index] = centroid
 
         # Create REGION definition
@@ -905,8 +931,10 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
             center = (vol_min + vol_max) * 0.5
             sphere_radius = (size).length / 2.0
             centroid = compute_bmesh_volume_centroid(bm_vol)
-            ctx.region_centroids[region_index] = centroid
+            if centroid is None:
+                centroid = (vol_min + vol_max) * 0.5
 
+            ctx.region_centroids[region_index] = centroid
             reg = region()
             reg.tag = f"R{region_index:06d}"
             reg.sphere = (center.x, center.y, center.z, sphere_radius)
@@ -947,6 +975,9 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
         center = (vol_min + vol_max) * 0.5
         sphere_radius = (size).length / 2.0
         centroid = compute_bmesh_volume_centroid(bm_vol)
+        if centroid is None:
+            centroid = (vol_min + vol_max) * 0.5
+
         ctx.region_centroids[region_index] = centroid
 
         # Create REGION definition
@@ -1418,6 +1449,15 @@ def recursive_indoor_bsp_split(
     if depth_counters is None:
         depth_counters = {}
 
+    if depth > ctx.max_depth_reached:
+
+        ctx.max_depth_reached = depth
+
+        print(
+            f"New BSP depth: {depth} | "
+            f"Python stack depth: {get_stack_depth()}"
+        )
+
     for d in list(depth_counters.keys()):
         if d <= depth:
             depth_counters[d] += 1
@@ -1445,6 +1485,26 @@ def recursive_indoor_bsp_split(
             if d >= depth:
                 depth_counters[d] = 0
 
+    # Inherit used zone planes from parent branch
+    parent_idx = None
+    for i, worldnode in enumerate(wt.worldnodes):
+        if (
+            worldnode.fronttree == current_node
+            or worldnode.backtree == current_node
+        ):
+            parent_idx = i + 1
+            break
+
+    if parent_idx is None:
+        used_planes[current_node] = []
+    else:
+        used_planes[current_node] = (
+            used_planes.get(
+                parent_idx,
+                [],
+            ).copy()
+        )
+
     # Empty leaf
     if not bm_geo.faces:
         region_index = ctx.region_counter[0]
@@ -1453,6 +1513,9 @@ def recursive_indoor_bsp_split(
         center = (vol_min + vol_max) * 0.5
         sphere_radius = (vol_max - vol_min).length / 2.0
         centroid = compute_bmesh_volume_centroid(bm_vol)
+        if centroid is None:
+            centroid = (vol_min + vol_max) * 0.5
+
         ctx.region_centroids[region_index] = centroid
         reg = region()
         reg.tag = f"R{region_index:06d}"
@@ -1574,14 +1637,11 @@ def recursive_indoor_bsp_split(
                 ws_max - ws_min
             ).length / 2.0
 
-            centroid = compute_bmesh_volume_centroid(
-                bm_vol
-            )
+            centroid = compute_bmesh_volume_centroid(bm_vol)
+            if centroid is None:
+                centroid = (vol_min + vol_max) * 0.5
 
-            ctx.region_centroids[
-                region_index
-            ] = centroid
-
+            ctx.region_centroids[region_index] = centroid
             reg = region()
 
             reg.tag = (
@@ -1652,14 +1712,11 @@ def recursive_indoor_bsp_split(
             vol_max - vol_min
         ).length / 2.0
 
-        centroid = compute_bmesh_volume_centroid(
-            bm_vol
-        )
+        centroid = compute_bmesh_volume_centroid(bm_vol)
+        if centroid is None:
+            centroid = (vol_min + vol_max) * 0.5
 
-        ctx.region_centroids[
-            region_index
-        ] = centroid
-
+        ctx.region_centroids[region_index] = centroid
         reg = region()
 
         reg.tag = (
@@ -1780,14 +1837,11 @@ def recursive_indoor_bsp_split(
             vol_max - vol_min
         ).length / 2.0
 
-        centroid = compute_bmesh_volume_centroid(
-            bm_vol
-        )
+        centroid = compute_bmesh_volume_centroid(bm_vol)
+        if centroid is None:
+            centroid = (vol_min + vol_max) * 0.5
 
-        ctx.region_centroids[
-            region_index
-        ] = centroid
-
+        ctx.region_centroids[region_index] = centroid
         reg = region()
 
         reg.tag = (

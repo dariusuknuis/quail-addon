@@ -124,6 +124,7 @@ def run_indoor_bsp_split(
                 region_counter=[1],
                 worldnode_counter=[1],
                 region_centroids={},
+                max_depth_reached=0,
                 pending_region_meshes=[],
             )
 
@@ -156,6 +157,8 @@ def run_indoor_bsp_split(
                 depth_counters=None,
                 backtree=False,
             )
+
+            print(f"Max BSP depth reached: " f"{ctx.max_depth_reached}")
 
             for reg in parser.regions.values():
                 decode_region(ctx, reg)

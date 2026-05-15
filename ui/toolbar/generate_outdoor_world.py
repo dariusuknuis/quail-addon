@@ -118,6 +118,7 @@ def run_outdoor_bsp_split(target_size=282.0):
                 region_counter=[1],
                 worldnode_counter=[1],
                 region_centroids={},
+                max_depth_reached=0,
                 pending_region_meshes=[],
             )
 
@@ -156,6 +157,8 @@ def run_outdoor_bsp_split(target_size=282.0):
                 depth_counters=None,
                 backtree=False,
             )
+
+            print(f"Max BSP depth reached: " f"{ctx.max_depth_reached}")
 
             # Decode generated regions and worldnodes
             for reg in parser.regions.values():
