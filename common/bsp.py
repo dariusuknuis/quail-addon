@@ -3,7 +3,8 @@ from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 from .math_helpers import point_inside_convex, point_in_face_polygon, compute_bmesh_volume_centroid
 from .math_helpers import aabb_bmesh_local, aabb_mesh_world, aabb_intersects
-from .mesh import cleanup_mesh_geometry, mesh_from_bmesh
+from .mesh import cleanup_mesh_geometry, mesh_from_bmesh, get_vertex_normal_nodegroup
+from .s3dobject import apply_bounding_radius_geo
 from dataclasses import dataclass
 from bpy.types import Object, Collection
 from ..wce.wce import wce
@@ -345,7 +346,7 @@ def create_world_volume(vol_min, vol_max):
 
     return bm
 
-def terrain_split(bm_geo, plane_co, plane_no, tol=0.001):
+def terrain_split(bm_geo, plane_co, plane_no, tol=.001):
 
     def signed_dist(co):
         return plane_no.dot(Vector(co) - Vector(plane_co))
@@ -499,6 +500,24 @@ def create_mesh_object_from_bmesh(bm, name, ctx: BSPContext):
 
     mesh_from_bmesh(bm, new_obj)
 
+    # ------------------------------------------------
+    # Vertex normals geo node
+    # ------------------------------------------------
+
+    if quaildef in {"dmspritedef2", "dmspritedefinition"}:
+
+        if me.attributes.get("vertex_normals"):
+
+            nodegroup = get_vertex_normal_nodegroup()
+
+            if nodegroup:
+                mod = new_obj.modifiers.new(
+                    "VertexNormals",
+                    'NODES'
+                )
+
+                mod.node_group = nodegroup
+
     # --- Set vertex color layer as active (or it doesn't display automatically) ---
     col_attr = me.color_attributes.get("vertex_colors")
     if col_attr:
@@ -531,6 +550,30 @@ def create_mesh_object_from_bmesh(bm, name, ctx: BSPContext):
 
     # --- recenter the mesh geometry so box-center moves to origin ---
     me.transform(Matrix.Translation(-center_int))
+
+    # ------------------------------------------------
+    # Calculate bounding radius from mesh
+    # ------------------------------------------------
+
+    if quaildef == "dmspritedef2":
+
+        props = getattr(new_obj, "quail_dmspritedef2", None)
+
+        if props:
+
+            radius = 0.0
+
+            for v in me.vertices:
+                radius = max(radius, v.co.length)
+
+            props.boundingradius = radius
+            props.useboundingradius = True
+
+            apply_bounding_radius_geo(
+                parent_obj=new_obj,
+                radius=radius,
+                enabled=False
+            )
 
     # place the new object back at the box-center
     new_obj.matrix_world = Matrix.Translation(center_int)
@@ -940,10 +983,6 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
     recursive_bsp_split(ctx, bm_geo_lower, bm_vol_lower, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=False)
     recursive_bsp_split(ctx, bm_geo_upper, bm_vol_upper, target_size, depth=depth + 1, depth_counters=depth_counters, backtree=True)
 
-DEBUG_WORLDNODES = {
-    3337,
-}
-
 def edges_match(e0, e1, tol):
 
     a0, b0 = [v.co for v in e0.verts]
@@ -961,87 +1000,106 @@ def edges_match(e0, e1, tol):
         )
     )
 
-def is_convex_region(
-    bm,
-    worldnode=None,
-    epsilon=0.11,
-    dist_tol=0.06,
-):
+def is_convex_region(bm, epsilon=0.11, dist_tol=0.06):
 
     bm_test = bm.copy()
 
-    # ---------------------------------------------------
     # Remove degenerate geometry
-    # ---------------------------------------------------
-
     bmesh.ops.dissolve_degenerate(
         bm_test,
         dist=dist_tol,
         edges=list(bm_test.edges),
     )
 
-    # Remove tiny faces
-    tiny_faces = [
-        f for f in bm_test.faces
-        if f.calc_area() < 0.01
-    ]
-
+    tiny_faces = [f for f in bm_test.faces if f.calc_area() < 0.01]
     if tiny_faces:
-        bmesh.ops.delete(
-            bm_test,
-            geom=tiny_faces,
-            context='FACES',
-        )
+        bmesh.ops.delete(bm_test, geom=tiny_faces, context='FACES')
 
-    # Remove loose edges
-    loose_edges = [
-        e for e in bm_test.edges
-        if not e.link_faces
-    ]
-
+    loose_edges = [e for e in bm_test.edges if not e.link_faces]
     if loose_edges:
-        bmesh.ops.delete(
-            bm_test,
-            geom=loose_edges,
-            context='EDGES',
-        )
+        bmesh.ops.delete(bm_test, geom=loose_edges, context='EDGES')
 
-    # Remove loose verts
-    loose_verts = [
-        v for v in bm_test.verts
-        if not v.link_edges
-    ]
-
+    loose_verts = [v for v in bm_test.verts if not v.link_edges]
     if loose_verts:
-        bmesh.ops.delete(
-            bm_test,
-            geom=loose_verts,
-            context='VERTS',
-        )
+        bmesh.ops.delete(bm_test, geom=loose_verts, context='VERTS')
 
     bm_test.normal_update()
-
     faces = list(bm_test.faces)
 
-    # ---------------------------------------------------
-    # Debug original geometry
-    # ---------------------------------------------------
-
-    if worldnode in DEBUG_WORLDNODES:
-
-        print("\n====================")
-        print(f"WORLDNODE {worldnode}")
-        print("====================")
-
-        print(
-            f"Verts: {len(bm_test.verts)} | "
-            f"Edges: {len(bm_test.edges)} | "
-            f"Faces: {len(bm_test.faces)}"
-        )
-
-    # ---------------------------------------------------
     # Compare spatially matching face edges
-    # ---------------------------------------------------
+    for i, f0 in enumerate(faces):
+        n0 = f0.normal.normalized()
+        if n0.length_squared < 0.5:
+            continue
+
+        for f1 in faces[i + 1:]:
+            n1 = f1.normal.normalized()
+            if n1.length_squared < 0.5:
+                continue
+
+            dot = n0.dot(n1)
+
+            # Ignore coplanar/opposite duplicate faces
+            if dot > 0.995 or dot < -0.995:
+                continue
+
+            small_area = min(f0.calc_area(), f1.calc_area())
+
+            large_area = max(f0.calc_area(), f1.calc_area())
+
+            # Ignore tiny splitter/sliver faces
+            if small_area / large_area < 0.005:
+                continue
+
+            shared = False
+            for e0 in f0.edges:
+                if e0.calc_length() < dist_tol:
+                    continue
+
+                for e1 in f1.edges:
+                    if e1.calc_length() < dist_tol:
+                        continue
+
+                    if edges_match(e0, e1, dist_tol):
+                        shared = True
+                        break
+
+                if shared:
+                    break
+
+            if not shared:
+                continue
+
+            orientation = (
+                (
+                    f1.calc_center_median()
+                    - f0.calc_center_median()
+                ).normalized().dot(n0)
+            )
+
+            if orientation < -epsilon:
+                bm_test.free()
+                return False
+
+    bm_test.free()
+    return True
+
+def choose_concavity_split(
+    bm,
+    epsilon=0.001,
+    dist_tol=0.06,
+):
+
+    if not bm.faces:
+        return None
+
+    faces = list(bm.faces)
+
+    candidate_planes = []
+
+    # ------------------------------------------------------------
+    # Build candidate planes from concave edge pairs
+    # ------------------------------------------------------------
 
     for i, f0 in enumerate(faces):
 
@@ -1059,26 +1117,11 @@ def is_convex_region(
 
             dot = n0.dot(n1)
 
-            # Ignore coplanar/opposite duplicate faces
+            # Ignore nearly coplanar faces
             if dot > 0.995 or dot < -0.995:
                 continue
 
-            small_area = min(
-                f0.calc_area(),
-                f1.calc_area(),
-            )
-
-            large_area = max(
-                f0.calc_area(),
-                f1.calc_area(),
-            )
-
-            # Ignore tiny splitter/sliver faces
-            if small_area / large_area < 0.005:
-                continue
-
-            shared = False
-            matched_edges = None
+            shared_edge = None
 
             for e0 in f0.edges:
 
@@ -1095,14 +1138,13 @@ def is_convex_region(
                         e1,
                         dist_tol,
                     ):
-                        shared = True
-                        matched_edges = (e0, e1)
+                        shared_edge = e0
                         break
 
-                if shared:
+                if shared_edge:
                     break
 
-            if not shared:
+            if not shared_edge:
                 continue
 
             orientation = (
@@ -1112,49 +1154,131 @@ def is_convex_region(
                 ).normalized().dot(n0)
             )
 
-            if orientation < -epsilon:
+            # Only concave pairs
+            if orientation >= -0.01:
+                continue
 
-                if worldnode in DEBUG_WORLDNODES:
+            v0 = shared_edge.verts[0].co
+            v1 = shared_edge.verts[1].co
 
-                    e0, e1 = matched_edges
+            edge_dir = (
+                v1 - v0
+            ).normalized()
 
-                    print("\nCONCAVE FACE PAIR")
-                    print("====================")
+            avg_normal = (
+                n0 + n1
+            )
 
-                    print(
-                        f"Faces: "
-                        f"{f0.index} <-> {f1.index}"
-                    )
+            if avg_normal.length_squared < 0.0001:
+                continue
 
-                    print(
-                        f"Orientation: "
-                        f"{orientation}"
-                    )
+            avg_normal.normalize()
 
-                    print(f"Normal0: {n0}")
-                    print(f"Normal1: {n1}")
+            # ------------------------------------------------------------
+            # Plane perpendicular to concave edge
+            # ------------------------------------------------------------
 
-                    print(
-                        f"Edge0 Length: "
-                        f"{e0.calc_length()}"
-                    )
+            plane_no = edge_dir.cross(
+                avg_normal
+            )
 
-                    print(
-                        f"Edge1 Length: "
-                        f"{e1.calc_length()}"
-                    )
+            if plane_no.length_squared < 0.0001:
+                continue
 
-                    print(
-                        f"Face Areas: "
-                        f"{f0.calc_area()} | "
-                        f"{f1.calc_area()}"
-                    )
+            plane_no.normalize()
 
-                bm_test.free()
-                return False
+            plane_co = (v0 + v1) * 0.5
 
-    bm_test.free()
-    return True
+            candidate_planes.append((
+                plane_co,
+                plane_no,
+                orientation,
+            ))
+
+    if not candidate_planes:
+        return None
+
+    # ------------------------------------------------------------
+    # Evaluate candidate planes
+    # ------------------------------------------------------------
+
+    best_plane = None
+    best_score = 1e20
+
+    for plane_co, plane_no, orientation in candidate_planes:
+
+        front = 0
+        back = 0
+        split = 0
+
+        for face in faces:
+
+            has_front = False
+            has_back = False
+
+            for v in face.verts:
+
+                d = plane_no.dot(
+                    v.co - plane_co
+                )
+
+                if d > epsilon:
+                    has_front = True
+
+                elif d < -epsilon:
+                    has_back = True
+
+            if has_front and has_back:
+                split += 1
+
+            elif has_front:
+                front += 1
+
+            elif has_back:
+                back += 1
+
+        # ------------------------------------------------------------
+        # Reject useless planes
+        # ------------------------------------------------------------
+
+        if front == 0 or back == 0:
+            continue
+
+        # # Avoid tiny sliver partitions
+        # if front < 3 or back < 3:
+        #     continue
+
+        balance = abs(front - back)
+
+        # Strongly discourage excessive polygon splitting
+        score = (
+            split * 25
+            + balance
+        )
+
+        # Prefer stronger concavity cuts
+        score += orientation * 10.0
+
+        # Prefer axial planes slightly
+        if abs(abs(plane_no.x) - 1.0) < 0.001:
+            score -= 5
+
+        if abs(abs(plane_no.y) - 1.0) < 0.001:
+            score -= 5
+
+        if abs(abs(plane_no.z) - 1.0) < 0.001:
+            score -= 5
+
+        if score < best_score:
+
+            best_score = score
+
+            best_plane = (
+                plane_co.copy(),
+                plane_no.copy(),
+            )
+
+    return best_plane
 
 def choose_bsp_plane(bm, epsilon=0.001):
 
@@ -1222,17 +1346,10 @@ def choose_bsp_plane(bm, epsilon=0.001):
         if front == 0 or back == 0:
             continue
 
-        # Avoid tiny sliver partitions
-        # if front < 2 or back < 2:
-        #     continue
-
         balance = abs(front - back)
 
         # Strongly discourage excessive polygon splitting
-        score = (
-            split * 25
-            + balance
-        )
+        score = (split * 25 + balance)
 
         # Prefer axial planes
         if abs(abs(plane_no.x) - 1.0) < 0.001:
@@ -1245,7 +1362,6 @@ def choose_bsp_plane(bm, epsilon=0.001):
             score -= 5
 
         if score < best_score:
-
             best_score = score
             best_face = face
 
@@ -1260,7 +1376,6 @@ def choose_bsp_plane(bm, epsilon=0.001):
 def choose_balanced_convex_split(bm):
 
     vol_min, vol_max = aabb_bmesh_local(bm)
-
     size = vol_max - vol_min
 
     axis = max(
@@ -1287,6 +1402,7 @@ def recursive_indoor_bsp_split(
     bm_vol,
     max_faces_per_region=280,
     max_depth=64,
+    used_planes=None,
     depth=0,
     depth_counters=None,
     backtree=False,
@@ -1294,76 +1410,52 @@ def recursive_indoor_bsp_split(
 
     parser = ctx.parser
     src = ctx.source_object
-
     wt = next(iter(parser.worldtrees.values()))
+
+    if used_planes is None:
+        used_planes = {}
 
     if depth_counters is None:
         depth_counters = {}
 
     for d in list(depth_counters.keys()):
-
         if d <= depth:
             depth_counters[d] += 1
 
     if depth not in depth_counters:
         depth_counters[depth] = 1
 
-    # ------------------------------------------------------------
     # Create worldnode
-    # ------------------------------------------------------------
-
     node = worldtree.worldnode()
-
     node.normalabcd = (0.0, 0.0, 0.0, 0.0)
     node.worldregiontag = ""
     node.fronttree = 0
     node.backtree = 0
-
     wt.worldnodes.append(node)
-
     current_node = ctx.worldnode_counter[0]
     ctx.worldnode_counter[0] += 1
 
-    # ------------------------------------------------------------
     # Backtree hookup
-    # ------------------------------------------------------------
-
     if backtree:
-
         parent_index = current_node - depth_counters[depth]
-
         if parent_index > 0:
-
             parent_node = wt.worldnodes[parent_index - 1]
             parent_node.backtree = current_node
-
         for d in list(depth_counters.keys()):
-
             if d >= depth:
                 depth_counters[d] = 0
 
-    # ------------------------------------------------------------
     # Empty leaf
-    # ------------------------------------------------------------
-
     if not bm_geo.faces:
-
         region_index = ctx.region_counter[0]
         ctx.region_counter[0] += 1
-
         vol_min, vol_max = aabb_bmesh_local(bm_vol)
-
         center = (vol_min + vol_max) * 0.5
         sphere_radius = (vol_max - vol_min).length / 2.0
-
         centroid = compute_bmesh_volume_centroid(bm_vol)
-
         ctx.region_centroids[region_index] = centroid
-
         reg = region()
-
         reg.tag = f"R{region_index:06d}"
-
         reg.sphere = (
             center.x,
             center.y,
@@ -1372,27 +1464,82 @@ def recursive_indoor_bsp_split(
         )
 
         parser.regions[reg.tag] = reg
-
         node.worldregiontag = reg.tag
 
         return
 
-    # ------------------------------------------------------------
     # Convexity check
-    # ------------------------------------------------------------
-
-    convex = is_convex_region(
-        bm_geo,
-        worldnode=current_node,
-    )
+    convex = is_convex_region(bm_geo)
 
     if convex:
-
         # Convex and small enough -> leaf
         if (
             len(bm_geo.faces)
             <= max_faces_per_region
         ):
+
+            # Zone BSP split attempt
+            for zone_obj in ctx.zone_volumes:
+
+                split_result = zone_bsp_split(
+                    bm_geo,
+                    zone_obj,
+                    current_node,
+                    bm_vol,
+                    tol=1e-4,
+                    min_diag=0.1,
+                    used_planes=used_planes,
+                )
+
+                if split_result is None:
+                    continue
+
+                (
+                    bm_geo_in,
+                    bm_geo_out,
+                    bm_vol_in,
+                    bm_vol_out,
+                    plane_no,
+                    d,
+                ) = split_result
+
+                node.normalabcd = (
+                    -plane_no.x,
+                    -plane_no.y,
+                    -plane_no.z,
+                    -float(d),
+                )
+
+                node.fronttree = (
+                    ctx.worldnode_counter[0]
+                )
+
+                recursive_indoor_bsp_split(
+                    ctx,
+                    bm_geo_in,
+                    bm_vol_in,
+                    max_faces_per_region=max_faces_per_region,
+                    max_depth=max_depth,
+                    used_planes=used_planes,
+                    depth=depth + 1,
+                    depth_counters=depth_counters,
+                    backtree=False,
+                )
+
+                recursive_indoor_bsp_split(
+                    ctx,
+                    bm_geo_out,
+                    bm_vol_out,
+                    max_faces_per_region=max_faces_per_region,
+                    max_depth=max_depth,
+                    used_planes=used_planes,
+                    depth=depth + 1,
+                    depth_counters=depth_counters,
+                    backtree=True,
+                )
+
+                return
+
             region_index = ctx.region_counter[0]
             ctx.region_counter[0] += 1
 
@@ -1482,10 +1629,12 @@ def recursive_indoor_bsp_split(
             bm_geo
         )
 
-    # ------------------------------------------------------------
-    # Recursion safety limit
-    # ------------------------------------------------------------
+        if split_result is None:
+            split_result = choose_concavity_split(
+                bm_geo
+            )
 
+    # Recursion safety limit
     if depth >= max_depth:
 
         region_index = ctx.region_counter[0]
@@ -1547,10 +1696,73 @@ def recursive_indoor_bsp_split(
         return
 
     if split_result is None:
+
+        # Zone BSP split
+        for zone_obj in ctx.zone_volumes:
+
+            zone_split = zone_bsp_split(
+                bm_geo,
+                zone_obj,
+                current_node,
+                bm_vol,
+                tol=1e-4,
+                min_diag=0.1,
+                used_planes=used_planes,
+            )
+
+            if zone_split is None:
+                continue
+
+            (
+                bm_geo_in,
+                bm_geo_out,
+                bm_vol_in,
+                bm_vol_out,
+                plane_no,
+                d,
+            ) = zone_split
+
+            node.normalabcd = (
+                -plane_no.x,
+                -plane_no.y,
+                -plane_no.z,
+                -float(d),
+            )
+
+            node.fronttree = (
+                ctx.worldnode_counter[0]
+            )
+
+            recursive_indoor_bsp_split(
+                ctx,
+                bm_geo_in,
+                bm_vol_in,
+                max_faces_per_region=max_faces_per_region,
+                max_depth=max_depth,
+                used_planes=used_planes,
+                depth=depth + 1,
+                depth_counters=depth_counters,
+                backtree=False,
+            )
+
+            recursive_indoor_bsp_split(
+                ctx,
+                bm_geo_out,
+                bm_vol_out,
+                max_faces_per_region=max_faces_per_region,
+                max_depth=max_depth,
+                used_planes=used_planes,
+                depth=depth + 1,
+                depth_counters=depth_counters,
+                backtree=True,
+            )
+
+            return
+
         print(
             f"Worldnode_{current_node} | "
             f"Convex={convex} | "
-            f"No valid split, leaf"
+            f"Failed all split heuristics, leaf"
         )
 
         region_index = ctx.region_counter[0]
@@ -1612,7 +1824,6 @@ def recursive_indoor_bsp_split(
         return
 
     plane_co, plane_no = split_result
-
     d_value = -plane_no.dot(
         plane_co
     )
@@ -1628,10 +1839,7 @@ def recursive_indoor_bsp_split(
         ctx.worldnode_counter[0]
     )
 
-    # ------------------------------------------------------------
     # Split geometry
-    # ------------------------------------------------------------
-
     bm_geo_front, bm_geo_back = terrain_split(
         bm_geo,
         plane_co,
@@ -1652,10 +1860,7 @@ def recursive_indoor_bsp_split(
     ):
         return
 
-    # ------------------------------------------------------------
     # Recurse
-    # ------------------------------------------------------------
-
     recursive_indoor_bsp_split(
         ctx,
         bm_geo_front,
@@ -1677,242 +1882,3 @@ def recursive_indoor_bsp_split(
         depth_counters=depth_counters,
         backtree=True,
     )
-
-# import bpy
-# import bmesh
-# import re
-# from mathutils import Vector
-
-# EPSILON = 0.005
-# DIST_TOL = 0.01
-
-# # -------------------------------------------------------
-# # Paste console output here
-# # -------------------------------------------------------
-
-# DATA = r"""
-# Worldnode_350 | Convex=False | No valid split, leaf
-# Worldnode_365 | Convex=False | No valid split, leaf
-# Worldnode_426 | Convex=False | No valid split, leaf
-# """
-
-# # -------------------------------------------------------
-# # Extract worldnode ids
-# # -------------------------------------------------------
-
-# WORLDNODE_IDS = [
-#     int(m.group(1))
-#     for m in re.finditer(
-#         r"Worldnode_(\d+)",
-#         DATA,
-#     )
-# ]
-
-# # -------------------------------------------------------
-# # Convexity helpers
-# # -------------------------------------------------------
-
-# def edges_match(e0, e1, tol):
-
-#     a0, b0 = [v.co for v in e0.verts]
-#     a1, b1 = [v.co for v in e1.verts]
-
-#     return (
-#         (
-#             (a0 - a1).length < tol and
-#             (b0 - b1).length < tol
-#         )
-#         or
-#         (
-#             (a0 - b1).length < tol and
-#             (b0 - a1).length < tol
-#         )
-#     )
-
-# def is_convex_region(
-#     bm,
-#     epsilon=0.005,
-#     dist_tol=0.01,
-# ):
-
-#     bm_test = bm.copy()
-#     bm_test.normal_update()
-
-#     faces = list(bm_test.faces)
-
-#     print(
-#         f"Verts: {len(bm_test.verts)} | "
-#         f"Edges: {len(bm_test.edges)} | "
-#         f"Faces: {len(bm_test.faces)}"
-#     )
-
-#     for i, f0 in enumerate(faces):
-
-#         n0 = f0.normal.normalized()
-
-#         if n0.length_squared < 0.5:
-#             continue
-
-#         for f1 in faces[i + 1:]:
-
-#             n1 = f1.normal.normalized()
-
-#             if n1.length_squared < 0.5:
-#                 continue
-
-#             dot = n0.dot(n1)
-
-#             # Ignore coplanar/opposite duplicate faces
-#             if dot > 0.999 or dot < -0.999:
-#                 continue
-
-#             shared = False
-#             matched_edges = None
-
-#             for e0 in f0.edges:
-
-#                 for e1 in f1.edges:
-
-#                     if edges_match(
-#                         e0,
-#                         e1,
-#                         dist_tol,
-#                     ):
-#                         shared = True
-#                         matched_edges = (e0, e1)
-#                         break
-
-#                 if shared:
-#                     break
-
-#             if not shared:
-#                 continue
-
-#             orientation = (
-#                 (
-#                     f1.calc_center_median()
-#                     - f0.calc_center_median()
-#                 ).normalized().dot(n0)
-#             )
-
-#             if orientation < -epsilon:
-
-#                 e0, e1 = matched_edges
-
-#                 print("\nCONCAVE FACE PAIR")
-#                 print("====================")
-
-#                 print(
-#                     f"Faces: "
-#                     f"{f0.index} <-> {f1.index}"
-#                 )
-
-#                 print(
-#                     f"Orientation: "
-#                     f"{orientation}"
-#                 )
-
-#                 print(f"Normal0: {n0}")
-#                 print(f"Normal1: {n1}")
-
-#                 print(
-#                     f"Edge0 Length: "
-#                     f"{e0.calc_length()}"
-#                 )
-
-#                 print(
-#                     f"Edge1 Length: "
-#                     f"{e1.calc_length()}"
-#                 )
-
-#                 print(
-#                     f"Face Areas: "
-#                     f"{f0.calc_area()} | "
-#                     f"{f1.calc_area()}"
-#                 )
-
-#                 bm_test.free()
-#                 return False
-
-#     bm_test.free()
-#     return True
-
-# # -------------------------------------------------------
-# # Process worldnodes
-# # -------------------------------------------------------
-
-# print("\n===================================")
-# print("TEST RESULTS")
-# print("===================================")
-
-# for worldnode_id in WORLDNODE_IDS:
-
-#     worldnode_name = f"WorldNode_{worldnode_id}"
-
-#     wn = bpy.data.objects.get(worldnode_name)
-
-#     if not wn:
-#         print(f"\n{worldnode_name} : NOT FOUND")
-#         continue
-
-#     # ---------------------------------------------------
-#     # Get region tag from property group
-#     # ---------------------------------------------------
-
-#     try:
-#         region_tag = wn.quail_worldnode.region_tag
-#     except Exception:
-#         print(f"\n{worldnode_name} : NO region_tag")
-#         continue
-
-#     if not region_tag:
-#         print(f"\n{worldnode_name} : EMPTY region_tag")
-#         continue
-
-#     # ---------------------------------------------------
-#     # Convert:
-#     # R000123 -> R123_DMSPRITEDEF
-#     # ---------------------------------------------------
-
-#     region_num = int(region_tag[1:])
-
-#     mesh_name = f"R{region_num}_DMSPRITEDEF"
-
-#     obj = bpy.data.objects.get(mesh_name)
-
-#     if not obj:
-#         print(
-#             f"\n{worldnode_name} : "
-#             f"MISSING {mesh_name}"
-#         )
-#         continue
-
-#     if obj.type != 'MESH':
-#         print(
-#             f"\n{worldnode_name} : "
-#             f"{mesh_name} is not mesh"
-#         )
-#         continue
-
-#     print("\n===================================")
-#     print(f"WORLDNODE {worldnode_id}")
-#     print("===================================")
-
-#     print(f"Region Tag : {region_tag}")
-#     print(f"Mesh       : {mesh_name}")
-
-#     bm = bmesh.new()
-#     bm.from_mesh(obj.data)
-
-#     result = is_convex_region(
-#         bm,
-#         epsilon=EPSILON,
-#         dist_tol=DIST_TOL,
-#     )
-
-#     bm.free()
-
-#     print(
-#         f"\nRESULT: "
-#         f"{'CONVEX' if result else 'CONCAVE'}"
-#     )
