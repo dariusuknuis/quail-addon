@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "quail_addon"
-version = "1.7-d"
+version = "1.7.0"
 name = "Quail"
 tagline = "Utility tools for model editing"
 maintainer = "Xackery"
