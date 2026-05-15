@@ -429,16 +429,9 @@ def merge_verts_by_attrs(bm,
         return bm  # no UV → nothing to do
 
     # point-domain vertex colors only
-    vcol_layer = (
-        bm.verts.layers.color.get(vcol_name)
-        or bm.verts.layers.float_color.get(vcol_name)
-        if vcol_name else
-        next(iter(bm.verts.layers.color.values()), None)
-        or next(iter(bm.verts.layers.float_color.values()), None)
-    )
-
-    if not vcol_layer:
-        raise RuntimeError("No point-domain vertex color layer found")
+    vcol_layer = None
+    if vcol_name:
+        vcol_layer = bm.verts.layers.float_color.get(vcol_name)
 
     # float_vector (per-loop)
     vec_layer = bm.verts.layers.float_vector.get(float_vec_name)
@@ -453,6 +446,8 @@ def merge_verts_by_attrs(bm,
         return (round(l[luv].uv.x,6), round(l[luv].uv.y,6))
 
     def vert_color(v):
+        if not vcol_layer:
+            return None
         col = v[vcol_layer]
         return tuple(quantize_255(c) for c in col)
 

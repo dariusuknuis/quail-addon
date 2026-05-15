@@ -1,4 +1,4 @@
-import bpy, bmesh, math, mathutils, sys
+import bpy, bmesh, math, mathutils
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 from .math_helpers import point_inside_convex, point_in_face_polygon, compute_bmesh_volume_centroid
@@ -11,17 +11,6 @@ from ..wce.wce import wce
 from ..wce.worldtree import worldtree
 from ..wce.region import region
 
-
-def get_stack_depth():
-
-    depth = 0
-    frame = sys._getframe()
-
-    while frame:
-        depth += 1
-        frame = frame.f_back
-
-    return depth
 
 @dataclass
 class BSPContext:
@@ -814,13 +803,7 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
         depth_counters = {}
 
     if depth > ctx.max_depth_reached:
-
         ctx.max_depth_reached = depth
-
-        print(
-            f"New BSP depth: {depth} | "
-            f"Python stack depth: {get_stack_depth()}"
-        )
 
     for d in list(depth_counters.keys()):
 
@@ -1125,7 +1108,6 @@ def choose_concavity_split(
         return None
 
     faces = list(bm.faces)
-
     candidate_planes = []
 
     # ------------------------------------------------------------
@@ -1135,14 +1117,11 @@ def choose_concavity_split(
     for i, f0 in enumerate(faces):
 
         n0 = f0.normal.normalized()
-
         if n0.length_squared < 0.5:
             continue
 
         for f1 in faces[i + 1:]:
-
             n1 = f1.normal.normalized()
-
             if n1.length_squared < 0.5:
                 continue
 
@@ -1153,9 +1132,7 @@ def choose_concavity_split(
                 continue
 
             shared_edge = None
-
             for e0 in f0.edges:
-
                 if e0.calc_length() < dist_tol:
                     continue
 
@@ -1192,13 +1169,9 @@ def choose_concavity_split(
             v0 = shared_edge.verts[0].co
             v1 = shared_edge.verts[1].co
 
-            edge_dir = (
-                v1 - v0
-            ).normalized()
+            edge_dir = (v1 - v0).normalized()
 
-            avg_normal = (
-                n0 + n1
-            )
+            avg_normal = n0 + n1
 
             if avg_normal.length_squared < 0.0001:
                 continue
@@ -1217,9 +1190,7 @@ def choose_concavity_split(
                 continue
 
             plane_no.normalize()
-
             plane_co = (v0 + v1) * 0.5
-
             candidate_planes.append((
                 plane_co,
                 plane_no,
@@ -1248,7 +1219,6 @@ def choose_concavity_split(
             has_back = False
 
             for v in face.verts:
-
                 d = plane_no.dot(
                     v.co - plane_co
                 )
@@ -1268,24 +1238,14 @@ def choose_concavity_split(
             elif has_back:
                 back += 1
 
-        # ------------------------------------------------------------
         # Reject useless planes
-        # ------------------------------------------------------------
-
         if front == 0 or back == 0:
             continue
-
-        # # Avoid tiny sliver partitions
-        # if front < 3 or back < 3:
-        #     continue
 
         balance = abs(front - back)
 
         # Strongly discourage excessive polygon splitting
-        score = (
-            split * 25
-            + balance
-        )
+        score = (split * 25 + balance)
 
         # Prefer stronger concavity cuts
         score += orientation * 10.0
@@ -1301,13 +1261,8 @@ def choose_concavity_split(
             score -= 5
 
         if score < best_score:
-
             best_score = score
-
-            best_plane = (
-                plane_co.copy(),
-                plane_no.copy(),
-            )
+            best_plane = (plane_co.copy(), plane_no.copy())
 
     return best_plane
 
@@ -1450,13 +1405,7 @@ def recursive_indoor_bsp_split(
         depth_counters = {}
 
     if depth > ctx.max_depth_reached:
-
         ctx.max_depth_reached = depth
-
-        print(
-            f"New BSP depth: {depth} | "
-            f"Python stack depth: {get_stack_depth()}"
-        )
 
     for d in list(depth_counters.keys()):
         if d <= depth:
@@ -1498,12 +1447,7 @@ def recursive_indoor_bsp_split(
     if parent_idx is None:
         used_planes[current_node] = []
     else:
-        used_planes[current_node] = (
-            used_planes.get(
-                parent_idx,
-                [],
-            ).copy()
-        )
+        used_planes[current_node] = used_planes.get(parent_idx, []).copy()
 
     # Empty leaf
     if not bm_geo.faces:
@@ -1536,14 +1480,10 @@ def recursive_indoor_bsp_split(
 
     if convex:
         # Convex and small enough -> leaf
-        if (
-            len(bm_geo.faces)
-            <= max_faces_per_region
-        ):
+        if len(bm_geo.faces) <= max_faces_per_region:
 
             # Zone BSP split attempt
             for zone_obj in ctx.zone_volumes:
-
                 split_result = zone_bsp_split(
                     bm_geo,
                     zone_obj,
@@ -1573,9 +1513,7 @@ def recursive_indoor_bsp_split(
                     -float(d),
                 )
 
-                node.fronttree = (
-                    ctx.worldnode_counter[0]
-                )
+                node.fronttree = ctx.worldnode_counter[0]
 
                 recursive_indoor_bsp_split(
                     ctx,
@@ -1605,14 +1543,11 @@ def recursive_indoor_bsp_split(
 
             region_index = ctx.region_counter[0]
             ctx.region_counter[0] += 1
-
             vol_min, vol_max = aabb_bmesh_local(
                 bm_vol
             )
 
-            center = (
-                vol_min + vol_max
-            ) * 0.5
+            center = (vol_min + vol_max) * 0.5
 
             ws_corners = [
                 src.matrix_world @ Vector((x, y, z))
@@ -1633,20 +1568,14 @@ def recursive_indoor_bsp_split(
                 max(v.z for v in ws_corners),
             ))
 
-            sphere_radius = (
-                ws_max - ws_min
-            ).length / 2.0
-
+            sphere_radius = (ws_max - ws_min).length / 2.0
             centroid = compute_bmesh_volume_centroid(bm_vol)
             if centroid is None:
                 centroid = (vol_min + vol_max) * 0.5
 
             ctx.region_centroids[region_index] = centroid
             reg = region()
-
-            reg.tag = (
-                f"R{region_index:06d}"
-            )
+            reg.tag = (f"R{region_index:06d}")
 
             reg.sphere = (
                 center.x,
@@ -1655,74 +1584,43 @@ def recursive_indoor_bsp_split(
                 sphere_radius,
             )
 
-            reg.sprite = (
-                f"R{region_index}_DMSPRITEDEF"
-            )
-
-            parser.regions[
-                reg.tag
-            ] = reg
-
+            reg.sprite = (f"R{region_index}_DMSPRITEDEF")
+            parser.regions[reg.tag] = reg
             node.worldregiontag = reg.tag
-
             mesh_obj = create_mesh_object_from_bmesh(
                 bm_geo,
                 f"R{region_index}_DMSPRITEDEF",
                 ctx,
             )
 
-            ctx.pending_region_meshes.append(
-                mesh_obj
-            )
+            ctx.pending_region_meshes.append(mesh_obj)
 
             return
 
         # Convex but too large -> balanced spatial split
         else:
-            split_result = choose_balanced_convex_split(
-                bm_vol
-            )
+            split_result = choose_balanced_convex_split(bm_vol)
 
     else:
         # Concave -> traditional BSP split
-        split_result = choose_bsp_plane(
-            bm_geo
-        )
-
+        split_result = choose_bsp_plane(bm_geo)
         if split_result is None:
-            split_result = choose_concavity_split(
-                bm_geo
-            )
+            split_result = choose_concavity_split(bm_geo)
 
     # Recursion safety limit
     if depth >= max_depth:
-
         region_index = ctx.region_counter[0]
         ctx.region_counter[0] += 1
-
-        vol_min, vol_max = aabb_bmesh_local(
-            bm_vol
-        )
-
-        center = (
-            vol_min + vol_max
-        ) * 0.5
-
-        sphere_radius = (
-            vol_max - vol_min
-        ).length / 2.0
-
+        vol_min, vol_max = aabb_bmesh_local(bm_vol)
+        center = (vol_min + vol_max) * 0.5
+        sphere_radius = (vol_max - vol_min).length / 2.0
         centroid = compute_bmesh_volume_centroid(bm_vol)
         if centroid is None:
             centroid = (vol_min + vol_max) * 0.5
 
         ctx.region_centroids[region_index] = centroid
         reg = region()
-
-        reg.tag = (
-            f"R{region_index:06d}"
-        )
-
+        reg.tag = (f"R{region_index:06d}")
         reg.sphere = (
             center.x,
             center.y,
@@ -1730,25 +1628,17 @@ def recursive_indoor_bsp_split(
             sphere_radius,
         )
 
-        reg.sprite = (
-            f"R{region_index}_DMSPRITEDEF"
-        )
+        reg.sprite = (f"R{region_index}_DMSPRITEDEF")
 
-        parser.regions[
-            reg.tag
-        ] = reg
-
+        parser.regions[reg.tag] = reg
         node.worldregiontag = reg.tag
-
         mesh_obj = create_mesh_object_from_bmesh(
             bm_geo,
             f"R{region_index}_DMSPRITEDEF",
             ctx,
         )
 
-        ctx.pending_region_meshes.append(
-            mesh_obj
-        )
+        ctx.pending_region_meshes.append(mesh_obj)
 
         return
 
@@ -1786,9 +1676,7 @@ def recursive_indoor_bsp_split(
                 -float(d),
             )
 
-            node.fronttree = (
-                ctx.worldnode_counter[0]
-            )
+            node.fronttree = ctx.worldnode_counter[0]
 
             recursive_indoor_bsp_split(
                 ctx,
@@ -1825,18 +1713,11 @@ def recursive_indoor_bsp_split(
         region_index = ctx.region_counter[0]
         ctx.region_counter[0] += 1
 
-        vol_min, vol_max = aabb_bmesh_local(
-            bm_vol
-        )
+        vol_min, vol_max = aabb_bmesh_local(bm_vol)
 
-        center = (
-            vol_min + vol_max
-        ) * 0.5
+        center = (vol_min + vol_max) * 0.5
 
-        sphere_radius = (
-            vol_max - vol_min
-        ).length / 2.0
-
+        sphere_radius = (vol_max - vol_min).length / 2.0
         centroid = compute_bmesh_volume_centroid(bm_vol)
         if centroid is None:
             centroid = (vol_min + vol_max) * 0.5
@@ -1844,9 +1725,7 @@ def recursive_indoor_bsp_split(
         ctx.region_centroids[region_index] = centroid
         reg = region()
 
-        reg.tag = (
-            f"R{region_index:06d}"
-        )
+        reg.tag = (f"R{region_index:06d}")
 
         reg.sphere = (
             center.x,
@@ -1855,33 +1734,21 @@ def recursive_indoor_bsp_split(
             sphere_radius,
         )
 
-        reg.sprite = (
-            f"R{region_index}_DMSPRITEDEF"
-        )
-
-        parser.regions[
-            reg.tag
-        ] = reg
-
+        reg.sprite = (f"R{region_index}_DMSPRITEDEF")
+        parser.regions[reg.tag] = reg
         node.worldregiontag = reg.tag
-
         mesh_obj = create_mesh_object_from_bmesh(
             bm_geo,
             f"R{region_index}_DMSPRITEDEF",
             ctx,
         )
 
-        ctx.pending_region_meshes.append(
-            mesh_obj
-        )
+        ctx.pending_region_meshes.append(mesh_obj)
 
         return
 
     plane_co, plane_no = split_result
-    d_value = -plane_no.dot(
-        plane_co
-    )
-
+    d_value = -plane_no.dot(plane_co)
     node.normalabcd = (
         -plane_no.x,
         -plane_no.y,
@@ -1889,9 +1756,7 @@ def recursive_indoor_bsp_split(
         -float(d_value),
     )
 
-    node.fronttree = (
-        ctx.worldnode_counter[0]
-    )
+    node.fronttree = ctx.worldnode_counter[0]
 
     # Split geometry
     bm_geo_front, bm_geo_back = terrain_split(
@@ -1908,10 +1773,7 @@ def recursive_indoor_bsp_split(
     )
 
     # Avoid useless recursion
-    if (
-        not bm_geo_front.faces
-        or not bm_geo_back.faces
-    ):
+    if not bm_geo_front.faces or not bm_geo_back.faces:
         return
 
     # Recurse

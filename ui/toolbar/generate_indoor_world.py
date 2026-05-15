@@ -139,13 +139,8 @@ def run_indoor_bsp_split(
             parser.worldtrees[wt.tag] = wt
 
             bm_geo = bmesh_from_mesh(src)
-
             bounds_min, bounds_max = aabb_mesh_local(src)
-
-            bm_vol = create_world_volume(
-                bounds_min,
-                bounds_max,
-            )
+            bm_vol = create_world_volume(bounds_min, bounds_max)
 
             recursive_indoor_bsp_split(
                 ctx,
@@ -171,16 +166,12 @@ def run_indoor_bsp_split(
             if lc:
                 lc.hide_viewport = True
 
-            create_world_bounds_from_regions(
-                ctx,
-                parser,
-            )
+            create_world_bounds_from_regions(ctx, parser)
 
             decode_worldtree(ctx, wt)
 
             # Link regions to collection
             for obj in ctx.pending_region_meshes:
-
                 if region_meshes_collection not in obj.users_collection:
                     region_meshes_collection.objects.link(obj)
 
@@ -189,6 +180,9 @@ def run_indoor_bsp_split(
             )
 
             print(f"Finished indoor BSP for {src.name}")
+
+            # Remove original terrain source mesh
+            bpy.data.objects.remove(src, do_unlink=True)
 
     finally:
 

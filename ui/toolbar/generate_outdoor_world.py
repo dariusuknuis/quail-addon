@@ -235,6 +235,9 @@ def run_outdoor_bsp_split(target_size=282.0):
 
             print(f"Finished BSP world for {src.name}")
 
+            # Remove original terrain source mesh
+            bpy.data.objects.remove(src, do_unlink=True)
+
     finally:
         bpy.context.scene.render.use_lock_interface = False
         bpy.context.window_manager.progress_end()
