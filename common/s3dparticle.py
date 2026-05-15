@@ -347,6 +347,12 @@ def apply_particlecloud_blit(obj):
 
         helper.data = source_blit.data.copy()
 
+        for i, mat in enumerate(helper.data.materials):
+            if not mat:
+                continue
+
+            helper.data.materials[i] = mat.copy()
+
         helper.name = f"{obj.name}_BLIT"
 
         helper["quaildef"] = "particleblit"
