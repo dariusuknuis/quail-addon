@@ -44,6 +44,8 @@ In the Outliner:
 - Select the main collection to export everything inside it.
 - Select a specific collection (such as an `ACTORDEF` collection) to export only that asset set.
 
+<img width="735" height="260" alt="Export Options" src="https://github.com/user-attachments/assets/3b225b03-000e-4248-bd4b-7cf0662d956b" />
+
 ## 2. Open the Export Menu
 
 Go to:
@@ -55,8 +57,6 @@ Go to:
 Any export mode will also export image files.
 
 Currently, all exported textures are written as PNG files, even if they use different file extensions.
-
-<img width="735" height="260" alt="Export Options" src="https://github.com/user-attachments/assets/3b225b03-000e-4248-bd4b-7cf0662d956b" />
 
 ---
 
