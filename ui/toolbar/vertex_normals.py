@@ -314,6 +314,56 @@ class VERTNORMALS_OT_from_face_average(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class VERTNORMALS_OT_average_selected(bpy.types.Operator):
+    bl_idname = "mesh.vn_average_selected"
+    bl_label = "Average Selected"
+    bl_description = f"Average '{LAYER_NAME}' values across selected vertices"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return _in_edit_vertex_mode(context)
+
+    def execute(self, context):
+
+        obj = context.active_object
+        mesh = obj.data
+
+        bm = bmesh.from_edit_mesh(mesh)
+
+        layer = bm.verts.layers.float_vector.get(LAYER_NAME)
+
+        if layer is None:
+            self.report({'WARNING'}, f"Layer '{LAYER_NAME}' missing")
+            return {'CANCELLED'}
+
+        selected = [v for v in bm.verts if v.select]
+
+        if not selected:
+            self.report({'WARNING'}, "No selected vertices")
+            return {'CANCELLED'}
+
+        avg = Vector((0.0, 0.0, 0.0))
+
+        for vert in selected:
+            avg += Vector(vert[layer])
+
+        avg /= len(selected)
+
+        for vert in selected:
+            vert[layer] = avg[:]
+
+        bmesh.update_edit_mesh(mesh, loop_triangles=False, destructive=False)
+
+        _sync_ui_from_vec(context, avg)
+
+        self.report(
+            {'INFO'},
+            f"Averaged normals across {len(selected)} vertices"
+        )
+
+        return {'FINISHED'}
+
 # ---------- panel ----------
 
 class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
@@ -403,6 +453,7 @@ class VIEW3D_PT_vertex_layer_normals(bpy.types.Panel):
         row.operator("mesh.vn_load_from_active", icon='EYEDROPPER')
         row.operator("mesh.vn_write_to_active", icon='CHECKMARK')
         layout.operator("mesh.vn_from_face_average", icon='NORMALS_VERTEX')
+        layout.operator("mesh.vn_average_selected", icon='GROUP_VERTEX')
 
         if not layer:
             layout.operator("mesh.vn_create_layer", icon='ADD')
