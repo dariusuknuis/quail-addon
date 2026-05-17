@@ -892,6 +892,15 @@ def recursive_bsp_split(ctx: BSPContext, bm_geo, bm_vol, target_size, used_plane
         reg = region()
         reg.tag = f"R{region_index:06d}"
         reg.sphere = (center.x, center.y, center.z, sphere_radius)
+        visnode = region.visnode()
+        visnode.vnormalabcd = (0.0, 0.0, 0.0, 0.0)
+        visnode.vislistindex = 1
+        visnode.fronttree = 0
+        visnode.backtree = 0
+        reg.visnodes.append(visnode)
+        vislist = region.vislist()
+        vislist.range = ["0"]
+        reg.visiblelists.append(vislist)
         if bm_geo.faces:
             reg.sprite = (f"R{region_index}_DMSPRITEDEF")
         parser.regions[reg.tag] = reg

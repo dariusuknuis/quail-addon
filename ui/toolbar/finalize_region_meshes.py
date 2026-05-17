@@ -20,9 +20,18 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
         bm = bmesh_from_mesh(ob)
         bm.verts.ensure_lookup_table()
         bm_by_obj[ob] = bm
-
         wm = ob.matrix_world
-        factor = 2 ** ob.get("FPSCALE", 0)
+
+        # ----------------------------------------
+        # FPSCALE snapping factor
+        # ----------------------------------------
+
+        factor = None
+        if ob.get("quaildef") == "dmspritedef2":
+            props = getattr(ob, "quail_dmspritedef2", None)
+            if props:
+                fpscale = int(props.fpscale)
+                factor = 2 ** fpscale
 
         for v in bm.verts:
             coords.append(wm @ v.co)
@@ -31,12 +40,12 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
     if not coords:
         return
 
-    # 2) Build KD‑tree once
+    # 2) Build KD-tree once
     kd = KDTree(len(coords))
     for i, co in enumerate(coords):
         kd.insert(co, i)
-    kd.balance()
 
+    kd.balance()
     visited = set()
 
     # 3) For each point, cluster & snap/merge
@@ -49,25 +58,37 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
 
         # find all nearby indices
         raw = kd.find_range(co, threshold)
-        nbrs = [j for (_, j, _) in raw
-                if mapping[j][1].is_valid]  # only still‑valid verts
+        nbrs = [
+            j for (_, j, _) in raw
+            if mapping[j][1].is_valid
+        ]
+
         visited.update(nbrs)
         if len(nbrs) < 2:
             continue
 
         # new cluster centroid in world‐space
-        centroid = sum((coords[j] for j in nbrs), Vector()) / len(nbrs)
+        centroid = (
+            sum((coords[j] for j in nbrs), Vector())
+            / len(nbrs)
+        )
 
         # snap/merge each member back in its local BM
         for j in nbrs:
             ob, v, factor = mapping[j]
+
             # if this vertex was deleted during the loop, skip it
             if not v.is_valid:
                 continue
 
             bm = bm_by_obj[ob]
             lt = ob.matrix_world.inverted() @ centroid
-            if factor != 1:
+
+            # ----------------------------------------
+            # FPSCALE quantization
+            # ----------------------------------------
+
+            if factor is not None:
                 lt.x = round(lt.x * factor) / factor
                 lt.y = round(lt.y * factor) / factor
                 lt.z = round(lt.z * factor) / factor
@@ -77,8 +98,14 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
             for e in v.link_edges:
                 ov = e.other_vert(v)
                 if (ov.co - lt).length < eps:
-                    bmesh.ops.pointmerge(bm, verts=[v, ov], merge_co=ov.co)
+                    bmesh.ops.pointmerge(
+                        bm,
+                        verts=[v, ov],
+                        merge_co=ov.co
+                    )
+
                     merged = True
+
                     break
 
             if not merged:
@@ -89,6 +116,7 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
 
     # 4) Collapse any zero‐length edges in each BM
     for ob, bm in bm_by_obj.items():
+
         bm.verts.ensure_lookup_table()
         bm.edges.ensure_lookup_table()
         to_merge = []
@@ -96,9 +124,14 @@ def collapse_vertices_across_objects(objs, threshold=0.05):
             v1, v2 = e.verts
             if (v1.co - v2.co).length < eps:
                 to_merge.append((v1, v2))
+
         for v1, v2 in to_merge:
             if v1.is_valid and v2.is_valid:
-                bmesh.ops.pointmerge(bm, verts=[v1, v2], merge_co=v1.co)
+                bmesh.ops.pointmerge(
+                    bm,
+                    verts=[v1, v2],
+                    merge_co=v1.co
+                )
 
     # 5) Write back
     for ob, bm in bm_by_obj.items():
