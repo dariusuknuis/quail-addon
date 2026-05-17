@@ -684,6 +684,9 @@ def write_objects_folder(parser, export_objects, root_path):
 
         for inst in parser.actorinsts.values():
 
+            if inst.sprite == "PLAYER_1":
+                continue
+
             if inst.dmrgbtrack:
                 track = parser.rgbdeformationtrackdefs.get(inst.dmrgbtrack)
                 if track:

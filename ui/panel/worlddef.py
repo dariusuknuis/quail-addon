@@ -25,6 +25,30 @@ class QuailWorldDefProperties(bpy.types.PropertyGroup):
         default=0
     )
 
+class QUAIL_OT_make_worlddef(bpy.types.Operator):
+    bl_idname = "quail.make_worlddef"
+    bl_label = "Make WORLDDEF"
+
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+
+        col = context.collection
+
+        if not col:
+            return False
+
+        return not col.get("quaildef")
+
+    def execute(self, context):
+
+        col = context.collection
+
+        col["quaildef"] = "worlddef"
+
+        return {'FINISHED'}
+
 class QUAIL_PT_worlddef_collection(bpy.types.Panel):
     bl_label = "WORLDDEF"
     bl_idname = "QUAIL_PT_worlddef_collection"
@@ -35,18 +59,26 @@ class QUAIL_PT_worlddef_collection(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         col = context.collection
+        if not col:
+            return
 
-        if not col or col.get("quaildef") != "worlddef":
+        if not col.get("quaildef"):
+            layout.operator(
+                "quail.make_worlddef",
+                icon='WORLD'
+            )
+
+            return
+
+        # WORLDDEF panel
+        if col.get("quaildef") != "worlddef":
             return
 
         props = col.quail_worlddef
-
         box = layout.box()
         box.label(text="WORLDDEF")
-
         box.prop(props, "newworld")
         box.prop(props, "zone")
-
         box.prop(props, "use_eqg")
         if props.use_eqg:
             box.prop(props, "eqgversion")

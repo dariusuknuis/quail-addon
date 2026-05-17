@@ -233,12 +233,6 @@ def delete_empty_region_meshes_and_clear_sprite(region_objs):
                 if region_empty and "SPRITE" in region_empty:
                     region_empty["SPRITE"] = ""
 
-            # 2) delete any direct children named "<mesh_name>_BR"
-            for child in list(obj.children):
-                if (child.type == 'EMPTY'
-                    and child.name == obj.name + "_BR"):
-                    bpy.data.objects.remove(child, do_unlink=True)
-
             # 3) delete the mesh itself
             bpy.data.objects.remove(obj, do_unlink=True)
             region_objs.remove(obj)

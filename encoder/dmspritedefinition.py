@@ -1,4 +1,4 @@
-import bpy
+import bpy, bmesh
 import mathutils
 from ..wce.dmspritedefinition import dmspritedefinition
 
@@ -9,6 +9,241 @@ def encode_dmspritedefinition(parser, obj) -> str:
 
     mesh = obj.data
     props = obj.quail_dmspritedefinition
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    material_layer = bm.verts.layers.int.get(
+        "Vertex_Material_Index"
+    )
+
+    if not material_layer:
+        material_layer = bm.verts.layers.int.new(
+            "Vertex_Material_Index"
+        )
+
+    for vert in bm.verts:
+        if not vert.link_faces:
+            continue
+
+        vert[material_layer] = (
+            vert.link_faces[0].material_index
+        )
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    mesh.update()
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    material_layer = bm.verts.layers.int.get(
+        "Vertex_Material_Index"
+    )
+
+    vert_sort_data = []
+    for vert in bm.verts:
+        vg_index = -1
+        dvert = mesh.vertices[vert.index]
+        if dvert.groups:
+            vg_index = dvert.groups[0].group
+
+        mat_index = 0
+        if material_layer:
+            mat_index = vert[material_layer]
+
+        vert_sort_data.append((vert.index, vg_index, mat_index))
+    vert_sort_data.sort(key=lambda x: (x[1], x[2], x[0]))
+    old_to_new_vert = {}
+    for new_index, (old_index, _, _) in enumerate(
+        vert_sort_data
+    ):
+        old_to_new_vert[old_index] = new_index
+
+    # Save geometry
+    verts = [
+        mesh.vertices[old].co.copy()
+        for old, _, _ in vert_sort_data
+    ]
+
+    faces = []
+    face_materials = []
+    face_flags = []
+    face_data = []
+    flag_attr = mesh.attributes.get("FLAG")
+    data_attr = mesh.color_attributes.get("DATA")
+    for poly_index, poly in enumerate(mesh.polygons):
+        remapped = [old_to_new_vert[v] for v in poly.vertices]
+        faces.append(remapped)
+        face_materials.append(poly.material_index)
+        if flag_attr:
+            face_flags.append(
+                int(flag_attr.data[poly_index].value)
+            )
+
+        else:
+            face_flags.append(75)
+
+        if data_attr:
+            c = data_attr.data[poly_index].color
+            face_data.append((c[0], c[1], c[2], c[3]))
+
+        else:
+            face_data.append((0, 0, 0, 0,))
+
+    saved_uvs = []
+    if mesh.uv_layers:
+        uv_layer = mesh.uv_layers.active
+        for poly in mesh.polygons:
+            poly_uvs = []
+            for li in poly.loop_indices:
+                poly_uvs.append(
+                    uv_layer.data[li].uv.copy()
+                )
+
+            saved_uvs.append(poly_uvs)
+
+    saved_normals = []
+    normal_attr = mesh.attributes.get("vertex_normals")
+    if normal_attr:
+        for old_index, _, _ in vert_sort_data:
+            saved_normals.append(
+                normal_attr.data[old_index].vector.copy()
+            )
+
+    saved_colors = []
+    color_attr = mesh.color_attributes.get("vertex_colors")
+    if color_attr:
+        for old_index, _, _ in vert_sort_data:
+            saved_colors.append(
+                color_attr.data[old_index].color[:]
+            )
+
+    saved_vertex_materials = []
+    if material_layer:
+        for old_index, _, _ in vert_sort_data:
+            bm_vert = bm.verts[old_index]
+            saved_vertex_materials.append(bm_vert[material_layer])
+
+    saved_vertex_groups = {}
+    for old_index, _, _ in vert_sort_data:
+        dvert = mesh.vertices[old_index]
+        saved_vertex_groups[old_index] = []
+        for g in dvert.groups:
+            vg_name = obj.vertex_groups[g.group].name
+            saved_vertex_groups[old_index].append((vg_name, g.weight))
+
+    saved_group_names = [
+        vg.name
+        for vg in obj.vertex_groups
+    ]
+
+    bm.free()
+
+    sorted_face_data = sorted(
+        zip(faces, face_materials, face_flags, face_data, saved_uvs),
+        key=lambda x: x[1]
+    )
+
+    faces = [x[0] for x in sorted_face_data]
+    face_materials = [x[1] for x in sorted_face_data]
+    face_flags = [x[2] for x in sorted_face_data]
+    face_data = [x[3] for x in sorted_face_data]
+    saved_uvs = [x[4] for x in sorted_face_data]
+
+    # Rebuild geometry
+    materials = list(mesh.materials)
+    mesh.clear_geometry()
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    mesh.materials.clear()
+    for mat in materials:
+        mesh.materials.append(mat)
+
+    if saved_uvs:
+        uv_layer = mesh.uv_layers.new()
+        for poly_index, poly in enumerate(mesh.polygons):
+            for j, li in enumerate(poly.loop_indices):
+                uv_layer.data[li].uv = (saved_uvs[poly_index][j])
+
+    for i, poly in enumerate(mesh.polygons):
+        poly.material_index = (face_materials[i])
+        poly.use_smooth = True
+
+    flag_attr = mesh.attributes.get("FLAG")
+    if not flag_attr:
+        flag_attr = mesh.attributes.new(name="FLAG", type='INT', domain='FACE')
+
+    for i in range(len(mesh.polygons)):
+        flag_attr.data[i].value = (face_flags[i])
+
+    data_attr = mesh.color_attributes.get("DATA")
+    if not data_attr:
+        data_attr = mesh.color_attributes.new(
+            name="DATA",
+            type='FLOAT_COLOR',
+            domain='FACE'
+        )
+
+    for i in range(len(mesh.polygons)):
+        data_attr.data[i].color = (face_data[i])
+
+    if saved_normals:
+        attr = mesh.attributes.get("vertex_normals")
+        if not attr:
+            attr = mesh.attributes.new(
+                name="vertex_normals",
+                type='FLOAT_VECTOR',
+                domain='POINT'
+            )
+
+        for i in range(len(saved_normals)):
+            attr.data[i].vector = (saved_normals[i])
+
+    if saved_colors:
+        attr = mesh.color_attributes.get("vertex_colors")
+        if not attr:
+            attr = mesh.color_attributes.new(
+                name="vertex_colors",
+                type='FLOAT_COLOR',
+                domain='POINT'
+            )
+
+        for i in range(len(saved_colors)):
+            attr.data[i].color = (saved_colors[i])
+
+    attr = mesh.attributes.get("Vertex_Material_Index")
+    if not attr:
+        attr = mesh.attributes.new(
+            name="Vertex_Material_Index",
+            type='INT',
+            domain='POINT'
+        )
+
+    for i in range(len(saved_vertex_materials)):
+        attr.data[i].value = (saved_vertex_materials[i])
+
+    obj.vertex_groups.clear()
+    for group_name in saved_group_names:
+        obj.vertex_groups.new(name=group_name)
+
+    for new_index, (old_index, _, _) in enumerate(vert_sort_data):
+        groups = saved_vertex_groups.get(old_index,[])
+        for vg_name, weight in groups:
+            vg = obj.vertex_groups.get(vg_name)
+            if not vg:
+                continue
+
+            vg.add([new_index],weight,'ADD')
+
+    mesh.update()
 
     wce_sprite = dmspritedefinition()
 
@@ -256,7 +491,7 @@ def encode_dmspritedefinition(parser, obj) -> str:
     # ----------------------------------------
     # Skin Assignment Groups
     # ----------------------------------------
-    wce_sprite.skinassignmentgroups = []
+    wce_sprite.skinassignmentgroups = ["0"]
 
     if obj.vertex_groups:
 

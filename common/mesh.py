@@ -679,3 +679,106 @@ def merge_transparent_geometry(bm, obj):
     bm.faces.ensure_lookup_table()
 
     print("[Format World] Transparent geometry merge complete")
+
+def split_vertices_by_uv(mesh_obj):
+
+    me = mesh_obj.data
+
+    in_edit_mode = (
+        mesh_obj.mode == 'EDIT'
+    )
+
+    if in_edit_mode:
+        bm = bmesh.from_edit_mesh(me)
+    else:
+        bm = bmesh.new()
+        bm.from_mesh(me)
+
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    luv = bm.loops.layers.uv.active
+
+    if not luv:
+
+        if not in_edit_mode:
+            bm.free()
+
+        print(f"{mesh_obj.name}: no active UV layer")
+        return
+
+    # ------------------------------------------------
+    # Find verts whose linked loops
+    # use different UV values
+    # ------------------------------------------------
+
+    verts_to_split = []
+
+    for v in bm.verts:
+
+        if len(v.link_loops) < 2:
+            continue
+
+        uv_set = set()
+
+        for loop in v.link_loops:
+
+            uv = loop[luv].uv
+
+            uv_set.add((
+                round(uv.x, 6),
+                round(uv.y, 6),
+            ))
+
+        if len(uv_set) > 1:
+            verts_to_split.append(v)
+
+    print(
+        f"{mesh_obj.name}: "
+        f"splitting {len(verts_to_split)} UV seam verts"
+    )
+
+    # ------------------------------------------------
+    # Split verts
+    # ------------------------------------------------
+
+    for v in verts_to_split:
+
+        if not v.is_valid:
+            continue
+
+        try:
+            bmesh.utils.vert_separate(
+                v,
+                list(v.link_edges)
+            )
+
+        except Exception as ex:
+            print(
+                f"{mesh_obj.name}: "
+                f"failed splitting vert: {ex}"
+            )
+
+    bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+
+    # ------------------------------------------------
+    # Apply back
+    # ------------------------------------------------
+
+    if in_edit_mode:
+
+        bmesh.update_edit_mesh(
+            me,
+            loop_triangles=True,
+            destructive=True,
+        )
+
+    else:
+
+        bm.to_mesh(me)
+        bm.free()
+
+    me.update()
