@@ -182,7 +182,20 @@ def encode_track(parser, actions, context) -> str:
                 # Identity
                 # ----------------------------------------
                 t.tag = track_tag
-                t.trackdef = f"{track_tag}_TRACKDEF"
+                if "_TRACK." in track_tag:
+                    t.trackdef = track_tag.replace(
+                        "_TRACK.",
+                        "_TRACKDEF."
+                    )
+
+                elif track_tag.endswith("_TRACK"):
+                    t.trackdef = (
+                        track_tag[:-len("_TRACK")] +
+                        "_TRACKDEF"
+                    )
+
+                else:
+                    t.trackdef = f"{track_tag}_TRACKDEF"
 
                 # ----------------------------------------
                 # Instance values

@@ -13,6 +13,7 @@ def sync_panel_from_armature(obj):
     state.QUAIL_UPDATING = True
 
     try:
+
         if not obj or obj.type != 'ARMATURE':
             return
 
@@ -21,55 +22,65 @@ def sync_panel_from_armature(obj):
 
         props = obj.quail_hierarchicalspritedef
         bones = obj.data.bones
+        old_dags = {}
+        for dag in props.dags:
+            old_dags[dag.tag] = {
+                "track": dag.track,
+                "spritetag": dag.spritetag,
+            }
 
-        # ----------------------------------------
-        # STEP 1: Ensure DAG count matches bones
-        # ----------------------------------------
-        while len(props.dags) < len(bones):
-            props.dags.add()
+        while len(props.dags) > 0:
+            props.dags.remove(0)
 
-        while len(props.dags) > len(bones):
-            props.dags.remove(len(props.dags) - 1)
+        for bone in bones:
+            dag = props.dags.add()
+            dag.tag = bone.name
+            expected_track = bone.name
+            if "DAG." in expected_track:
+                expected_track = expected_track.replace(
+                    "DAG.",
+                    "TRACK."
+                )
 
-        # ----------------------------------------
-        # STEP 2: Update tags from bones (preserve data)
-        # ----------------------------------------
-        for i, bone in enumerate(bones):
-            dag = props.dags[i]
+            elif expected_track.endswith("DAG"):
+                expected_track = (
+                    expected_track[:-3] +
+                    "TRACK"
+                )
 
-            if dag.tag != bone.name:
-                dag.tag = bone.name
+            old = old_dags.get(bone.name)
 
-        # ----------------------------------------
-        # STEP 3: Clear subdags
-        # ----------------------------------------
+            if old:
+                dag.track = old["track"] or expected_track
+                if old["spritetag"]:
+                    dag.spritetag = old["spritetag"]
+
+            else:
+                dag.track = expected_track
+
         for dag in props.dags:
             while len(dag.subdags) > 0:
                 dag.subdags.remove(0)
 
-        # ----------------------------------------
-        # STEP 4: Build index lookup
-        # ----------------------------------------
-        name_to_index = {bone.name: i for i, bone in enumerate(bones)}
+        name_to_index = {
+            bone.name: i
+            for i, bone in enumerate(bones)
+        }
 
-        # ----------------------------------------
-        # STEP 5: Rebuild relationships
-        # ----------------------------------------
         for i, bone in enumerate(bones):
             if not bone.parent:
                 continue
 
             parent_name = bone.parent.name
-
             if parent_name not in name_to_index:
                 continue
 
             parent_index = name_to_index[parent_name]
-
             item = props.dags[parent_index].subdags.add()
             item.dag_index = i
 
     finally:
+
         state.QUAIL_UPDATING = False
 
 class QuailHandlers:

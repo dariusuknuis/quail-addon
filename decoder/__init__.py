@@ -21,7 +21,7 @@ from .sprite3ddef import decode_sprite3ddef
 from .particleclouddef import decode_particleclouddef
 from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
-from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations
+from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations, reset_track_cache
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
@@ -67,6 +67,8 @@ def ensure_material_fake_users():
 def wce_decode(path: str, parent_collection=None):
 
     state.QUAIL_UPDATING = True
+
+    reset_track_cache()
 
     # ------------------------------------------------
     # Ensure scene camera exists

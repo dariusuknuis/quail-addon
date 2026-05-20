@@ -1,10 +1,8 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
 
-import bpy
-import mathutils
-import re
-import math
+import bpy, mathutils, re, math
 from bpy_extras import anim_utils
+from ..common import base_tag
 
 regexAniPrefix = re.compile(r"^[CDLOPST](0[1-9]|[1-9][0-9])")
 regexItemModel = re.compile(r"IT\d+")
@@ -86,6 +84,12 @@ class Track:
                 "scale": scale
             })
 
+def reset_track_cache():
+
+    _trackdefs.clear()
+    _trackinsts.clear()
+    _tracks.clear()
+
 def get_or_create_track_props(action, group):
     """
     Find or create QuailTrackProperties for a given ActionGroup.
@@ -158,7 +162,9 @@ def parse_track_tag(tag: str, state: TrackParseState):
     Parses a WLD track tag and returns (animation_code, model_code)
     """
 
-    is_character = not bool(regexItemModel.search(tag))
+    basetag = base_tag(tag)
+
+    is_character = not bool(regexItemModel.search(basetag))
 
     combined_code = state.currentAniCode + state.currentAniModelCode
 
@@ -211,25 +217,25 @@ def parse_track_tag(tag: str, state: TrackParseState):
 
         for i, pattern in enumerate(animation_patterns):
 
-            if pattern.match(tag):
+            if pattern.match(basetag):
 
                 if i == 0:
-                    state.currentAniCode, state.currentAniModelCode = tag[:3], tag[3:6]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:3], basetag[3:6]
 
                 elif i == 1:
-                    state.currentAniCode, state.currentAniModelCode = tag[:3], tag[6:9]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:3], basetag[6:9]
 
                 elif i == 2:
-                    state.currentAniCode, state.currentAniModelCode = tag[:3], tag[7:10]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:3], basetag[7:10]
 
                 elif i in [3, 4]:
-                    state.currentAniCode, state.currentAniModelCode = tag[:3], tag[3:6]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:3], basetag[3:6]
 
                 elif i == 5:
-                    state.currentAniCode, state.currentAniModelCode = tag[:4], tag[4:7]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:4], basetag[4:7]
 
                 elif i == 6:
-                    state.currentAniCode, state.currentAniModelCode = tag[:4], tag[8:11]
+                    state.currentAniCode, state.currentAniModelCode = basetag[:4], basetag[8:11]
 
                 state.previousAnimations[f"{state.currentAniCode}:{state.currentAniModelCode}"] = True
 
@@ -237,8 +243,8 @@ def parse_track_tag(tag: str, state: TrackParseState):
 
         # fallback
 
-        if len(tag) >= 6:
-            state.currentAniCode, state.currentAniModelCode = tag[:3], tag[3:6]
+        if len(basetag) >= 6:
+            state.currentAniCode, state.currentAniModelCode = basetag[:3], basetag[3:6]
 
             state.previousAnimations[f"{state.currentAniCode}:{state.currentAniModelCode}"] = True
 
@@ -259,11 +265,11 @@ def parse_track_tag(tag: str, state: TrackParseState):
 
         for pattern in item_patterns:
 
-            if pattern.match(tag):
+            if pattern.match(basetag):
 
-                ani_code = tag[:3]
+                ani_code = basetag[:3]
 
-                match = regexItemModel.search(tag)
+                match = regexItemModel.search(basetag)
 
                 model_code = match.group(0) if match else None
 
@@ -295,8 +301,10 @@ def build_wld_animations():
     for track in tracks:
 
         track_name = track.tag
-
-        is_animation = bool(regexAniPrefix.match(track_name))
+        if "." in track_name:
+            print(f"Resolved assets path: {track_name}")
+        basetag = base_tag(track_name)
+        is_animation = bool(regexAniPrefix.match(basetag))
 
         if is_animation:
 
@@ -318,16 +326,10 @@ def build_wld_animations():
 
         tracks_by_action.setdefault(action_name, []).append(track)
 
-    # -----------------------------------------
-    # PASS 2 — build Blender actions
-    # -----------------------------------------
-
+    # Build Blender actions
     for action_name, action_tracks in tracks_by_action.items():
-
         ani_prefix, model_code = action_name.split("_", 1)
-
         armature_obj = None
-
         for obj in bpy.data.objects:
             if obj.type == 'ARMATURE' and obj.name.lower().startswith(model_code.lower()):
                 armature_obj = obj
@@ -344,21 +346,25 @@ def build_wld_animations():
 
 
         for track in action_tracks:
-
             track_name = track.tag
-            base_name = track_name.replace("_TRACK", "")
-
+            base_name = track_name
             if ani_prefix and base_name.startswith(ani_prefix):
                 base_name = base_name[len(ani_prefix):]
 
-            bone_name = f"{base_name}_DAG"
+            if "_TRACK." in base_name:
+                root, suffix = base_name.split("_TRACK.", 1)
+                bone_name = (f"{root}_DAG.{suffix}")
+
+            elif base_name.endswith("_TRACK"):
+                bone_name = (base_name[:-6] + "_DAG")
+
+            else:
+                bone_name = (f"{base_name}_DAG")
 
             if bone_name not in armature_obj.pose.bones:
                 continue
 
-            # -----------------------------------------
             # Ensure slot exists
-            # -----------------------------------------
             if not action.slots:
                 action.fcurve_ensure_for_datablock(
                     armature_obj,
@@ -367,29 +373,17 @@ def build_wld_animations():
                 )
 
             slot = action.slots[0]
-
-            # -----------------------------------------
-            # Ensure channelbag (THIS is the correct API)
-            # -----------------------------------------
             channelbag = anim_utils.action_ensure_channelbag_for_slot(action, slot)
 
-            # -----------------------------------------
-            # Get/create group
-            # -----------------------------------------
             group = channelbag.groups.get(bone_name)
             if not group:
                 group = channelbag.groups.new(name=bone_name)
 
-            # -----------------------------------------
-            # Create track props (WRITE SAFE HERE)
-            # -----------------------------------------
             track_props = get_or_create_track_props(action, group)
-
             track_props.tag = group.name
             track_props.track = track.tag
             track_props.interpolate = track.interpolate
             track_props.reverse = track.reverse
-
             if track.sleep is not None:
                 track_props.has_sleep = True
                 track_props.sleep = track.sleep

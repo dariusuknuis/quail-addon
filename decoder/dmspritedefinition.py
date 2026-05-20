@@ -269,10 +269,6 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
                 mesh.polygons[face_index].material_index = obj_mat_index
                 face_index += 1
 
-    if hsprite and skin:
-        for dag in hsprite.dags:
-            obj.vertex_groups.new(name=dag.tag)
-
     groups = sprite.skinassignmentgroups
 
     group_count = int(groups[0])
@@ -294,6 +290,8 @@ def decode_dmspritedefinition(ctx:Context, sprite:dmspritedefinition) -> str:
 
         group_name = hsprite.dags[dag_index].tag
         vg = obj.vertex_groups.get(group_name)
+        if vg is None:
+            vg = obj.vertex_groups.new(name=group_name)
 
         for _ in range(count):
 

@@ -432,12 +432,40 @@ def encode_dmspritedef2(parser, obj) -> str:
         current_group = None
         current_count = 0
 
+        # ----------------------------------------
+        # Build DAG lookup from HSprite
+        # ----------------------------------------
+
+        dag_lookup = {}
+
+        if (
+            obj.parent and
+            obj.parent.get("quaildef") == "hierarchicalspritedef"
+        ):
+
+            hs_props = obj.parent.quail_hierarchicalspritedef
+
+            for i, dag in enumerate(hs_props.dags):
+                dag_lookup[dag.tag] = i
+
+        # ----------------------------------------
+        # Pack consecutive vertex assignments
+        # ----------------------------------------
+
         for v in mesh.vertices:
 
             group_index = -1
 
             if v.groups:
-                group_index = v.groups[0].group
+
+                vg = obj.vertex_groups[
+                    v.groups[0].group
+                ]
+
+                group_index = dag_lookup.get(
+                    vg.name,
+                    -1
+                )
 
             if current_group != group_index:
 
