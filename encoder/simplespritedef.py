@@ -50,9 +50,9 @@ def encode_simplespritedef(parser, tree) -> str:
     wce.tag = tree.name
 
     # -------------------------
-    # Variation (not exposed → default)
+    # Variation
     # -------------------------
-    wce.variation = 0
+    wce.variation = int(props.variation)
 
     # -------------------------
     # SkipFrames (bool → int)

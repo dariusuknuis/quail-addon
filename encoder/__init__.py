@@ -1264,6 +1264,8 @@ def gather_export_objects(root_objects, parser):
                             mat.quail_materialdefinition
                         )
 
+                        mprops.variation = True
+
                         sprite_tag = (
                             mprops.simplespritetag
                         )
@@ -1282,6 +1284,8 @@ def gather_export_objects(root_objects, parser):
                             if sprite:
 
                                 add(sprite)
+                                sprops = sprite.quail_simplesprite
+                                sprops.variation = True
 
                             else:
 

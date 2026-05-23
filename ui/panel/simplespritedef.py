@@ -526,6 +526,11 @@ class QuailSimpleSpriteFrame(bpy.types.PropertyGroup):
 
 class QuailSimpleSpriteProperties(bpy.types.PropertyGroup):
 
+    variation: BoolProperty (
+        name="Variation",
+        default=False
+    )
+
     skipframes: BoolProperty(
         name="Skip Frames",
         description="Flag for Skip Frames",

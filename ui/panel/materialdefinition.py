@@ -119,6 +119,11 @@ class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_rendermethod_node
     )
 
+    variation: BoolProperty(
+        name="Variation",
+        default = False
+    )
+
     rgbpen: FloatVectorProperty(
         name="RGB",
         description="RGB Pen",
@@ -220,6 +225,7 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         # ------------------------------------------------
 
         props.transparent_override = True
+        props.variation = False
         props.rgbpen = (1.0, 1.0, 1.0)
         props.brightness = 1
         props.scaledambient = 1

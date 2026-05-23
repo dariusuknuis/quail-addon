@@ -20,9 +20,9 @@ def encode_materialdefinition(parser, mat) -> str:
     wce.tag = mat.name
 
     # -------------------------
-    # Variation (you currently don't expose this → default 0)
+    # Variation
     # -------------------------
-    wce.variation = 0
+    wce.variation = int(props.variation)
 
     # -------------------------
     # RenderMethod (rebuild string)
