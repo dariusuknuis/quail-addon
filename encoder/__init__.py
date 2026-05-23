@@ -158,7 +158,7 @@ def write_materials_and_sprites(parser, w, model_dir):
         sprite_tag = mat.simplespriteinst.simplespritetag
 
         is_variation = tag in parser.variationmaterialtags
-        print("CHECK:", tag, "->", tag in parser.variationmaterialtags)
+        # print("CHECK:", tag, "->", tag in parser.variationmaterialtags)
 
         # ----------------------------------------
         # Handle VARIATION materials
@@ -210,15 +210,15 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     local_objects = gather_export_objects([root_obj], parser)
     local_actions = gather_export_tracks(local_objects)
 
-    print(f"\n[MODEL] {model_name}")
-    print("[LOCAL OBJECTS]")
-    for obj in local_objects:
-        if isinstance(obj, bpy.types.Object):
-            print(" ", obj.name, obj.get("quaildef"))
+    # print(f"\n[MODEL] {model_name}")
+    # print("[LOCAL OBJECTS]")
+    # for obj in local_objects:
+    #     if isinstance(obj, bpy.types.Object):
+    #         print(" ", obj.name, obj.get("quaildef"))
 
-    print("[LOCAL ACTIONS]")
-    for act in local_actions:
-        print(" ", act.name)
+    # print("[LOCAL ACTIONS]")
+    # for act in local_actions:
+    #     print(" ", act.name)
 
     if root_obj.name in parser.actordefs:
         local_parser.actordefs[root_obj.name] = (
@@ -289,7 +289,7 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
 
     for action in local_actions:
 
-        print(f"[LOCAL ACTION] {action.name}")
+        # print(f"[LOCAL ACTION] {action.name}")
 
         for track in parser.tracks.values():
 
@@ -298,7 +298,7 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
             if anim_name.upper() != action.name.upper():
                 continue
 
-            print(f"[TRACK MATCH] {track.tag}")
+            # print(f"[TRACK MATCH] {track.tag}")
 
             local_parser.tracks[track.tag] = track
 
@@ -835,15 +835,15 @@ def write_quail_folder(parser, export_objects, root_path, context):
     # ROOT OBJECTS
     # ----------------------------------------
     roots = get_root_objects(export_objects)
-    print("\n=== ROOT OBJECTS ===")
-    for r in roots:
-        if isinstance(r, bpy.types.Collection):
-            print(f"[COLLECTION] {r.name} ({r.get('quaildef')})")
-        elif isinstance(r, bpy.types.Object):
-            print(f"[OBJECT] {r.name} ({r.get('quaildef')})")
-        else:
-            print(f"[UNKNOWN] {r}")
-    print("====================\n")
+    # print("\n=== ROOT OBJECTS ===")
+    # for r in roots:
+    #     if isinstance(r, bpy.types.Collection):
+    #         print(f"[COLLECTION] {r.name} ({r.get('quaildef')})")
+    #     elif isinstance(r, bpy.types.Object):
+    #         print(f"[OBJECT] {r.name} ({r.get('quaildef')})")
+    #     else:
+    #         print(f"[UNKNOWN] {r}")
+    # print("====================\n")
 
     model_dirs = []
 
@@ -1014,7 +1014,7 @@ def gather_export_tracks(export_objects):
 
             # Match "_AVI", "_HUM", etc
             if action.name.endswith(f"_{model_code}"):
-                print(f"[TRACK MATCH] action={action.name} model={model_code}")
+                # print(f"[TRACK MATCH] action={action.name} model={model_code}")
                 actions.add(action)
 
     return actions

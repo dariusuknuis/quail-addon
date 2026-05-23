@@ -124,11 +124,6 @@ def encode_track(parser, actions, context) -> str:
                         elif path.endswith("scale") and fc.array_index == 0:
                             scale_x = fc.evaluate(f)
 
-                    if bone_name == "DWMPE_DAG" and action.name == "T07_DWM":
-                        print(f"  Frame {int(f):3d} RAW FCurve: W={rot[0]:+.9f} X={rot[1]:+.9f} Y={rot[2]:+.9f} Z={rot[3]:+.9f}")
-
-                    if bone_name == "DWMPE_DAG" and action.name == "T07_DWM":
-                        print(f"rest_matrix:\n{rest_matrix}")
                     # ----------------------------------------
                     # Rebuild pose_matrix
                     # ----------------------------------------
@@ -156,9 +151,6 @@ def encode_track(parser, actions, context) -> str:
                     # ----------------------------------------
                     loc = local_anim.to_translation()
                     rot = local_anim.to_quaternion()
-
-                    if bone_name == "DWMPE_DAG" and action.name == "T07_DWM":
-                        print(f"  Frame {int(f):3d} POST-MULT: W={rot.w:+.9f} X={rot.x:+.9f} Y={rot.y:+.9f} Z={rot.z:+.9f}")
 
                     # ----------------------------------------
                     # Convert BACK to WCE format
@@ -230,8 +222,6 @@ def encode_track(parser, actions, context) -> str:
                 parser.tracks[t.tag] = t
 
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 errors.append(f"Failed track encode {track_tag}: {e}")
 
     if errors:
