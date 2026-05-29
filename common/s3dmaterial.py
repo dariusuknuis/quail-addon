@@ -1,4 +1,4 @@
-import re, bpy
+import re, bpy, hashlib
 from ..common import base_tag
 from ..common.rendermethod import apply_userdefined, apply_transparent, sync_rendermethod_node
 
@@ -68,11 +68,29 @@ def update_transparent(self, context):
         return
 
 def sprite_items(self, context):
-    items = [("NONE", "<None>", "")]
+
+    items = [("NONE", "<None>", "", 0)]
 
     for ng in bpy.data.node_groups:
-        if ng.get("quaildef") == "simplespritedef":
-            items.append((ng.name, ng.name, ""))
+
+        if ng.get("quaildef") != "simplespritedef":
+            continue
+
+        enum_id = int(
+            hashlib.md5(
+                ng.name.encode("utf8")
+            ).hexdigest()[:7],
+            16
+        )
+
+        items.append(
+            (
+                ng.name,
+                ng.name,
+                "",
+                enum_id
+            )
+        )
 
     return items
 
