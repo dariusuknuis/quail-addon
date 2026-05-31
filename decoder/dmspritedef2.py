@@ -2,16 +2,20 @@
 
 import bpy
 import mathutils
-from bpy.types import Object, Collection
 from ..common.mesh import get_vertex_normal_nodegroup
 from ..common.s3dobject import apply_bounding_radius_geo, attach_collision_volume, apply_bounding_box_geo
 from ..common.region import is_region_mesh, is_zone_collection
-from ..wce.wce import wce
 from ..wce.dmspritedef2 import dmspritedef2
 from .context import Context
 from .dmtrackdef2 import decode_dmtrackdef2
 
 def find_hsprite_for_mesh(parser, mesh_name):
+
+    for hs in parser.hierarchicalspritedefs.values():
+        for skin in hs.attachedskins:
+
+            if skin.dmsprite == mesh_name:
+                return hs, skin
 
     mesh_prefix = mesh_name.replace("_DMSPRITEDEF", "").split(".")[0][:3]
 

@@ -79,7 +79,7 @@ def sprite_items(self, context):
         enum_id = int(
             hashlib.md5(
                 ng.name.encode("utf8")
-            ).hexdigest()[:7],
+            ).hexdigest()[:4],
             16
         )
 
