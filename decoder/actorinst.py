@@ -170,7 +170,7 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
                 new_obj.material_slots[0].material = mat
 
     # =================================================
-    # NON-RGB PATH (unchanged)
+    # NON-RGB PATH
     # =================================================
     else:
         obj.instance_type = 'COLLECTION'
@@ -205,8 +205,8 @@ def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
         scale = (2 * math.pi) / 512.0
         obj.rotation_euler = (
-            ry * scale,
             rx * scale,
+            -ry * scale,
             rz * scale,
         )
     else:

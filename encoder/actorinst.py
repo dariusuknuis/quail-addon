@@ -59,8 +59,8 @@ def encode_actorinst(parser, obj) -> str:
             float(loc.y),
             float(loc.z),
             int(round(rot.z * scale)),
+            int(round(-rot.y * scale)),
             int(round(rot.x * scale)),
-            int(round(rot.y * scale)),
         )
 
     else:
