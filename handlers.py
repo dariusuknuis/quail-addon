@@ -102,15 +102,15 @@ class QuailHandlers:
         if obj.get("quaildef") != "hierarchicalspritedef":
             return
 
-        arm = obj.data
+        current_mode = obj.mode
 
-        for update in depsgraph.updates:
-
-            if update.id.original not in {obj, arm}:
-                continue
-
+        if (
+            QuailHandlers._last_mode == 'EDIT'
+            and current_mode != 'EDIT'
+        ):
             sync_panel_from_armature(obj)
-            break
+
+        QuailHandlers._last_mode = current_mode
 
     @staticmethod
     def particle_seed_handler(scene):
