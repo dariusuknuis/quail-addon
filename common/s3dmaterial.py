@@ -169,3 +169,18 @@ def update_twosided(self, context):
     # Two-Sided ON  → disable culling
     # Two-Sided OFF → enable culling
     mat.use_backface_culling = not self.twosided
+
+def frame_signature(frame):
+    """Return a stable hash describing the files used by this frame."""
+
+    parts = []
+
+    for f in frame.files:
+        parts.append("|".join([
+            f.file_name,
+            f.image_name,
+            f.texture_mode,
+            str(getattr(f, "palette_index", 0)),
+        ]))
+
+    return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()

@@ -6,6 +6,7 @@ from ..wce.wce import wce
 from ..wce.simplespritedef import simplespritedef
 from .context import Context
 from ..common.image_loader import load_s3d_image
+from ..common.s3dmaterial import frame_signature
 from ..common import _add_group_socket, _get_group_io_sockets
 from ..common import state
 
@@ -235,10 +236,20 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
 
     print(f"[FRAME GROUP] create_frame_nodegroup: {frame.frame_name} rebuild={force_rebuild}")
 
-    group = bpy.data.node_groups.get(frame.frame_name)
+    signature = frame_signature(frame)
 
-    if group and not force_rebuild:
-        return group
+    group = None
+
+    for ng in bpy.data.node_groups:
+        if ng.bl_idname != "ShaderNodeTree":
+            continue
+
+        if ng.get("quaildef") != "simplesprite_frame":
+            continue
+
+        if ng.get("frame_signature") == signature:
+            group = ng
+            break
 
     if group and force_rebuild:
         group.nodes.clear()
@@ -247,6 +258,7 @@ def create_frame_nodegroup(ctx, frame, sprite_tag, force_rebuild=False):
         print("group_clear")
     else:
         group = bpy.data.node_groups.new(frame.frame_name, 'ShaderNodeTree')
+        group["frame_signature"] = signature
     group['quaildef'] = 'simplesprite_frame'
 
     nodes = group.nodes
