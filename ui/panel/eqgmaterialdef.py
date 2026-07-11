@@ -62,11 +62,21 @@ def eqg_apply(material:Material) -> str:
             print(f"Loaded image {texture_path}")
 
         texture_node.image = image
+
+        normal_map = material.node_tree.nodes.new("ShaderNodeNormalMap")
+        normal_map.label = "Normal Map"
+        normal_map.location = (-250, 0)
+
         material.node_tree.links.new( # type: ignore
             texture_node.outputs["Color"],
+            material.node_tree.nodes["Normal Map"].inputs["Color"] # type: ignore
+        )
+
+        material.node_tree.links.new( # type: ignore
+            normal_map.outputs["Normal"],
             material.node_tree.nodes["Principled BSDF"].inputs["Normal"] # type: ignore
         )
-        texture_node.location = (-350, 0)
+        texture_node.location = (-550, 0)
 
     if is_shader_property(shadertag, "e_fBumpiness0") and material.quail_eqgmaterialdef.e_fBumpiness0:
         bump_node = material.node_tree.nodes.new("ShaderNodeBump") # type: ignore
@@ -74,7 +84,7 @@ def eqg_apply(material:Material) -> str:
         bump_node.inputs["Strength"].default_value = material.quail_eqgmaterialdef.e_fBumpiness0
         bump_node.location = (-150, 0)
         material.node_tree.links.new( # type: ignore
-            material.node_tree.nodes["Normal Texture"].outputs["Color"], # type: ignore
+            material.node_tree.nodes["Normal Map"].outputs["Normal"], # type: ignore
             bump_node.inputs["Height"]
         )
         material.node_tree.links.new( # type: ignore
@@ -83,7 +93,7 @@ def eqg_apply(material:Material) -> str:
         )
 
     if is_shader_property(shadertag, "e_fShininess0") and material.quail_eqgmaterialdef.e_fShininess0:
-        bsdf_node.inputs["Specular IOR Level"].default_value = material.quail_eqgmaterialdef.e_fShininess0
+        bsdf_node.inputs["Specular IOR Level"].default_value = material.quail_eqgmaterialdef.e_fShininess0/128.0
 
     if is_shader_property(shadertag, "e_fGloss0") and material.quail_eqgmaterialdef.e_fGloss0:
         bsdf_node.inputs["Roughness"].default_value = float(material.quail_eqgmaterialdef.e_fGloss0)
