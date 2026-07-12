@@ -667,12 +667,6 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    hexoneflag: BoolProperty(
-        name="Hex One Flag",
-        description="Hex One Flag",
-        default=False
-    )
-
     animsleep: IntProperty(
         name="Anim Sleep",
         description="Anim Sleep",
@@ -881,9 +875,6 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
     if is_shader_property(shadertag, "e_TextureSecond0mapChannel"):
         row = box.row()
         row.prop(material.quail_eqgmaterialdef, "e_TextureSecond0mapChannel")
-
-    row = box.row()
-    row.prop(material.quail_eqgmaterialdef, "hexoneflag")
 
     row = box.row()
     row.prop(material.quail_eqgmaterialdef, "animsleep")
@@ -1146,10 +1137,6 @@ class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
         props.e_TexturePalette0 = ""
         props.e_TextureSecond0 = ""
         props.e_TextureSecond0mapChannel = ""
-
-        # 🔹 Flags
-        props.hexoneflag = False
-        props.animsleep = 0
 
         # 🔹 Apply shader ONCE
         err = eqg_apply(material)

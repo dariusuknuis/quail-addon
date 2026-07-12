@@ -21,13 +21,11 @@ class eqgmodeldef:
 	class materialtag:
 		materialtag:str
 		shadertag:str
-		hexoneflag:int
 		animsleep:int
 
 		def __init__(self):
 			self.materialtag = "" #3
 			self.shadertag = "" #3
-			self.hexoneflag = 0 #3
 			self.animsleep = 0 #3
 			self.properties = []
 			self.animtextures = []
@@ -118,8 +116,6 @@ class eqgmodeldef:
 			materialtagi.materialtag = str(records[1])
 			records = property(r, "SHADERTAG", 1)
 			materialtagi.shadertag = str(records[1])
-			records = property(r, "HEXONEFLAG", 1)
-			materialtagi.hexoneflag = int(records[1])
 			records = property(r, "NUMPROPERTIES", 1)
 			numproperties = int(records[1])
 
@@ -222,7 +218,6 @@ class eqgmodeldef:
 		for materialtagi in self.materials:
 			w.write(f"\t\tMATERIALTAG \"{materialtagi.materialtag}\"\n")
 			w.write(f"\t\tSHADERTAG \"{materialtagi.shadertag}\"\n")
-			w.write(f"\t\tHEXONEFLAG {materialtagi.hexoneflag}\n")
 			w.write(f"\t\tNUMPROPERTIES {len(materialtagi.properties)}\n")
 			for propertyj in materialtagi.properties:
 				w.write(f"\t\t\tPROPERTY {propertyj.property[0]} {propertyj.property[1]} {propertyj.property[2]}\n")
