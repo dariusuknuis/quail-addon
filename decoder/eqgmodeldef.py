@@ -27,7 +27,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         textures = []
         for _, tex in enumerate(mat.animtextures):
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, mat.hexoneflag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 

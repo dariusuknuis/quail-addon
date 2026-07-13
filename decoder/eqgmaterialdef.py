@@ -6,7 +6,7 @@ from ..wce.wce import wce
 from .context import Context
 from ..ui.panel.eqgmaterialdef import eqg_apply
 
-def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, hexoneflag: int, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
+def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
     matname = f"{modelname}_{materialname}"
     if matname in bpy.data.materials:
         if mesh.materials.get(matname) is None:
@@ -155,7 +155,6 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
         tex_item.texture_name = texture
 
     # Set flag
-    material.quail_eqgmaterialdef.hexoneflag = (hexoneflag == 1)
     material.quail_eqgmaterialdef.animsleep = animsleep
 
 
