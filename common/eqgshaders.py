@@ -5,10 +5,10 @@ from typing import Dict, List
 
 
 # =========================================================
-# Shader Techniques
+# Shader Alpha Modes
 # =========================================================
 
-TECHNIQUES = [
+ALPHA_MODES = [
     "Opaque",
     "Alpha",
     "AddAlpha",
@@ -18,8 +18,6 @@ TECHNIQUES = [
 
 # =========================================================
 # Shader Groups
-#
-# Used only to organize the UI.
 # =========================================================
 
 SHADER_GROUPS = [
@@ -51,9 +49,9 @@ class ShaderFamily:
     group: str
 
     #
-    # Techniques allowed for this shader.
+    # Alpha modes allowed for this shader.
     #
-    techniques: List[str]
+    alpha_modes: List[str]
 
     #
     # All filename aliases that map to this family.
@@ -81,7 +79,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "C1": ShaderFamily(
         name="C1",
         group="Basic",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxC1",
             "MPLBasic",
@@ -94,7 +92,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CB1": ShaderFamily(
         name="CB1",
         group="Bump",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCB1",
             "MPLBump",
@@ -111,7 +109,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CBS1": ShaderFamily(
         name="CBS1",
         group="Gloss",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCBS1",
         ],
@@ -125,7 +123,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CBSG1": ShaderFamily(
         name="CBSG1",
         group="Glow",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCBSG1",
         ],
@@ -139,7 +137,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CBSGE1": ShaderFamily(
         name="CBSGE1",
         group="Environment",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCBSGE1",
         ],
@@ -155,7 +153,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CE1": ShaderFamily(
         name="CE1",
         group="Environment",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCE1",
             "RegionCE1",
@@ -172,7 +170,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CG1": ShaderFamily(
         name="CG1",
         group="Glow",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MaxCG1",
             "SModelCG1",
@@ -186,7 +184,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "CSG1": ShaderFamily(
         name="CSG1",
         group="Glow",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MaxCSG1",
         ],
@@ -206,7 +204,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "BasicA": ShaderFamily(
         name="BasicA",
         group="Blend",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MPLBasicA",
         ],
@@ -223,7 +221,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "BasicAT": ShaderFamily(
         name="BasicAT",
         group="Blend",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MPLBasicAT",
         ],
@@ -240,7 +238,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "BumpA": ShaderFamily(
         name="BumpA",
         group="Blend",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MPLBumpA",
         ],
@@ -257,7 +255,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "BumpAT": ShaderFamily(
         name="BumpAT",
         group="Blend",
-        techniques=TECHNIQUES,
+        alpha_modes=ALPHA_MODES,
         aliases=[
             "MPLBumpAT",
         ],
@@ -274,7 +272,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "Blend": ShaderFamily(
         name="Blend",
         group="Blend",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MPLBlend",
             "MPLBlendNoBump",
@@ -300,7 +298,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "Terrain": ShaderFamily(
         name="Terrain",
         group="Terrain",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MaxTerrain",
         ],
@@ -322,7 +320,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "Water": ShaderFamily(
         name="Water",
         group="Water",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MaxWater",
         ],
@@ -346,7 +344,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "WaterFall": ShaderFamily(
         name="WaterFall",
         group="Water",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MaxWaterFall",
         ],
@@ -368,7 +366,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     "Lava": ShaderFamily(
         name="Lava",
         group="Lava",
-        techniques=["Opaque"],
+        alpha_modes=["Opaque"],
         aliases=[
             "MaxLava",
             "MaxLava2",
