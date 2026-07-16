@@ -81,8 +81,9 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
         group="Basic",
         alpha_modes=ALPHA_MODES,
         aliases=[
-            "MaxC1",
-            "MPLBasic",
+            "RegionC1",
+            "SkinMeshC1",
+            "SModelC1",
         ],
         properties=[
             "e_TextureDiffuse0",
