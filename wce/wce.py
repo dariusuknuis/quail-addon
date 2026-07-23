@@ -9,6 +9,7 @@ from .dmspritedef2 import dmspritedef2
 from .dmspritedefinition import dmspritedefinition
 from .dmtrackdef2 import dmtrackdef2
 from .eqganidef import eqganidef
+from .eqganldef import eqganldef
 from .eqglayerdef import eqglayerdef
 from .eqgmodeldef import eqgmodeldef
 from .eqgloddef import eqgloddef
@@ -49,6 +50,7 @@ class wce:
     dmspritedefinitions:dict[str, dmspritedefinition]
     dmtrackdef2s:dict[str, dmtrackdef2]
     eqganidefs:dict[str, eqganidef]
+    eqganldefs:dict[str, eqganldef]
     eqglayerdefs:dict[str, eqglayerdef]
     eqgmodeldefs:dict[str, eqgmodeldef]
     eqgloddefs:dict[str, eqgloddef]
@@ -105,6 +107,7 @@ class wce:
         self.dmspritedefinitions = {}
         self.dmtrackdef2s = {}
         self.eqganidefs = {}
+        self.eqganldefs = {}
         self.eqglayerdefs = {}
         self.eqgmodeldefs = {}
         self.eqgloddefs = {}
@@ -244,6 +247,14 @@ class wce:
                     self.folders[tag] = folder_name
                 except Exception as e:
                     raise Exception(f"{path_cursor} eqganidef: {e}")
+                continue
+
+            if line.startswith(eqganldef.definition()):
+                try:
+                    self.eqganldefs[tag] = self._instantiate_definition(eqganldef, tag, r)
+                    self.folders[tag] = folder_name
+                except Exception as e:
+                    raise Exception(f"{path_cursor} eqganldef: {e}")
                 continue
 
             if line.startswith(eqglayerdef.definition()):
@@ -471,6 +482,7 @@ class wce:
         for tag, dmspritedefinitions in self.dmspritedefinitions.items(): dmspritedefinitions.write(w)
         for tag, dmtrackdef2s in self.dmtrackdef2s.items(): dmtrackdef2s.write(w)
         for tag, eqganidefs in self.eqganidefs.items(): eqganidefs.write(w)
+        for tag, eqganldefs in self.eqganldefs.items(): eqganldefs.write(w)
         for tag, eqglayerdefs in self.eqglayerdefs.items(): eqglayerdefs.write(w)
         for tag, eqgmodeldefs in self.eqgmodeldefs.items(): eqgmodeldefs.write(w)
         for tag, eqgloddefs in self.eqgloddefs.items(): eqgloddefs.write(w)

@@ -5,6 +5,7 @@ from bpy.types import Mesh
 from ..wce.wce import wce
 from .context import Context
 from ..ui.panel.eqgmaterialdef import eqg_apply
+from ..common.eqgshaders import parse_shader_tag
 
 def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
     matname = f"{modelname}_{materialname}"
@@ -16,146 +17,231 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
     material = bpy.data.materials.new(matname)
     mesh.materials.append(material)
     material['quaildef'] = 'eqgmaterialdef'
-    material.quail_eqgmaterialdef.shadertag = shadertag
+
+    props = material.quail_eqgmaterialdef
+
+    props.shadertag = shadertag
+
+    alpha_mode, shader = parse_shader_tag(shadertag)
+
+    props.alpha_mode = alpha_mode
+    props.shader = shader
+
+    props.property_rows.clear()
     for prop in properties:
         if prop[0] == "e_fShininess0":
-            material.quail_eqgmaterialdef.e_fShininess0 = float(prop[2])
+            props.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
-            material.quail_eqgmaterialdef.e_TextureDiffuse0 = prop[2]
+            props.e_TextureDiffuse0 = prop[2]
             err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDiffuse0mapChannel":
-            material.quail_eqgmaterialdef.e_TextureDiffuse0mapChannel = prop[2]
+            props.e_TextureDiffuse0mapChannel = prop[2]
         elif prop[0] == "e_TextureDiffuse1":
-            material.quail_eqgmaterialdef.e_TextureDiffuse1 = prop[2]
+            props.e_TextureDiffuse1 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureEnvironment":
-            material.quail_eqgmaterialdef.e_TextureEnvironment = prop[2]
+            props.e_TextureEnvironment = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureEnvironment0":
-            material.quail_eqgmaterialdef.e_TextureEnvironment0 = prop[2]
+            props.e_TextureEnvironment0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureFallback":
-            material.quail_eqgmaterialdef.e_TextureFallback = prop[2]
+            props.e_TextureFallback = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureFallback0":
-            material.quail_eqgmaterialdef.e_TextureFallback0 = prop[2]
+            props.e_TextureFallback0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0":
-            material.quail_eqgmaterialdef.e_TextureNormal0 = prop[2]
+            props.e_TextureNormal0 = prop[2]
             err = load_texture(ctx, prop[2])
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0mapChannel":
-            material.quail_eqgmaterialdef.e_TextureNormal0mapChannel = prop[2]
+            props.e_TextureNormal0mapChannel = prop[2]
         elif prop[0] == "e_TextureNormal1":
-            material.quail_eqgmaterialdef.e_TextureNormal1 = prop[2]
+            props.e_TextureNormal1 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_fBumpiness0":
-            material.quail_eqgmaterialdef.e_fBumpiness0 = prop[2]
+            props.e_fBumpiness0 = float(prop[2])
         elif prop[0] == "e_fCoverageScale0":
-            material.quail_eqgmaterialdef.e_fCoverageScale0 = prop[2]
+            props.e_fCoverageScale0 = float(prop[2])
         elif prop[0] == "e_fEnvMapStrength0":
-            material.quail_eqgmaterialdef.e_fEnvMapStrength0 = prop[2]
+            props.e_fEnvMapStrength0 = float(prop[2])
         elif prop[0] == "e_fFresnelBias":
-            material.quail_eqgmaterialdef.e_fFresnelBias = prop[2]
+            props.e_fFresnelBias = float(prop[2])
         elif prop[0] == "e_fFresnelPower":
-            material.quail_eqgmaterialdef.e_fFresnelPower = prop[2]
+            props.e_fFresnelPower = float(prop[2])
         elif prop[0] == "e_fGloss0":
-            material.quail_eqgmaterialdef.e_fGloss0 = prop[2]
+            props.e_fGloss0 = float(prop[2])
         elif prop[0] == "e_fGrassDensity0":
-            material.quail_eqgmaterialdef.e_fGrassDensity0 = prop[2]
+            props.e_fGrassDensity0 = float(prop[2])
         elif prop[0] == "e_fGrassDensity1":
-            material.quail_eqgmaterialdef.e_fGrassDensity1 = prop[2]
+            props.e_fGrassDensity1 = float(prop[2])
         elif prop[0] == "e_fGrassDensity2":
-            material.quail_eqgmaterialdef.e_fGrassDensity2 = prop[2]
+            props.e_fGrassDensity2 = float(prop[2])
         elif prop[0] == "e_fGrassDensity3":
-            material.quail_eqgmaterialdef.e_fGrassDensity3 = prop[2]
+            props.e_fGrassDensity3 = float(prop[2])
         elif prop[0] == "e_fGrassDensity4":
-            material.quail_eqgmaterialdef.e_fGrassDensity4 = prop[2]
+            props.e_fGrassDensity4 = float(prop[2])
         elif prop[0] == "e_fGrassDensity5":
-            material.quail_eqgmaterialdef.e_fGrassDensity5 = prop[2]
+            props.e_fGrassDensity5 = float(prop[2])
         elif prop[0] == "e_fGrassDensity6":
-            material.quail_eqgmaterialdef.e_fGrassDensity6 = prop[2]
+            props.e_fGrassDensity6 = float(prop[2])
         elif prop[0] == "e_fGrassDensity7":
-            material.quail_eqgmaterialdef.e_fGrassDensity7 = prop[2]
+            props.e_fGrassDensity7 = float(prop[2])
         elif prop[0] == "e_fGrassDensity8":
-            material.quail_eqgmaterialdef.e_fGrassDensity8 = prop[2]
+            props.e_fGrassDensity8 = float(prop[2])
         elif prop[0] == "e_fGrassDensity9":
-            material.quail_eqgmaterialdef.e_fGrassDensity9 = prop[2]
+            props.e_fGrassDensity9 = float(prop[2])
         elif prop[0] == "e_fReflectionAmount":
-            material.quail_eqgmaterialdef.e_fReflectionAmount = prop[2]
+            props.e_fReflectionAmount = float(prop[2])
         elif prop[0] == "e_fReflectionColor":
-            material.quail_eqgmaterialdef.e_fReflectionColor = prop[2]
+            values = [float(x) / 255.0 for x in prop[2].split()]
+            if len(values) == 4:
+                a, r, g, b = values
+                props.e_fReflectionColor = (r, g, b, a)
         elif prop[0] == "e_fScale0":
-            material.quail_eqgmaterialdef.e_fScale0 = prop[2]
+            props.e_fScale0 = float(prop[2])
         elif prop[0] == "e_fScale1":
-            material.quail_eqgmaterialdef.e_fScale1 = prop[2]
+            props.e_fScale1 = float(prop[2])
         elif prop[0] == "e_fScale2":
-            material.quail_eqgmaterialdef.e_fScale2 = prop[2]
+            props.e_fScale2 = float(prop[2])
         elif prop[0] == "e_fScale3":
-            material.quail_eqgmaterialdef.e_fScale3 = prop[2]
+            props.e_fScale3 = float(prop[2])
         elif prop[0] == "e_fScale4":
-            material.quail_eqgmaterialdef.e_fScale4 = prop[2]
+            props.e_fScale4 = float(prop[2])
         elif prop[0] == "e_fScale5":
-            material.quail_eqgmaterialdef.e_fScale5 = prop[2]
+            props.e_fScale5 = float(prop[2])
         elif prop[0] == "e_fScale6":
-            material.quail_eqgmaterialdef.e_fScale6 = prop[2]
+            props.e_fScale6 = float(prop[2])
         elif prop[0] == "e_fScale7":
-            material.quail_eqgmaterialdef.e_fScale7 = prop[2]
+            props.e_fScale7 = float(prop[2])
         elif prop[0] == "e_fScale8":
-            material.quail_eqgmaterialdef.e_fScale8 = prop[2]
+            props.e_fScale8 = float(prop[2])
         elif prop[0] == "e_fScale9":
-            material.quail_eqgmaterialdef.e_fScale9 = prop[2]
+            props.e_fScale9 = float(prop[2])
         elif prop[0] == "e_fSlide1X":
-            material.quail_eqgmaterialdef.e_fSlide1X = prop[2]
+            props.e_fSlide1X = float(prop[2])
         elif prop[0] == "e_fSlide1Y":
-            material.quail_eqgmaterialdef.e_fSlide1Y = prop[2]
+            props.e_fSlide1Y = float(prop[2])
         elif prop[0] == "e_fSlide2X":
-            material.quail_eqgmaterialdef.e_fSlide2X = prop[2]
+            props.e_fSlide2X = float(prop[2])
         elif prop[0] == "e_fSlide2Y":
-            material.quail_eqgmaterialdef.e_fSlide2Y = prop[2]
+            props.e_fSlide2Y = float(prop[2])
         elif prop[0] == "e_fWaterColor1":
-            material.quail_eqgmaterialdef.e_fWaterColor1 = prop[2]
+            values = [float(x) / 255.0 for x in prop[2].split()]
+            if len(values) == 4:
+                a, r, g, b = values
+                props.e_fWaterColor1 = (r, g, b, a)
         elif prop[0] == "e_fWaterColor2":
-            material.quail_eqgmaterialdef.e_fWaterColor2 = prop[2]
+            values = [float(x) / 255.0 for x in prop[2].split()]
+            if len(values) == 4:
+                a, r, g, b = values
+                props.e_fWaterColor2 = (r, g, b, a)
         elif prop[0] == "e_TextureCoverage":
-            material.quail_eqgmaterialdef.e_TextureCoverage = prop[2]
+            props.e_TextureCoverage = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureCoverage0":
-            material.quail_eqgmaterialdef.e_TextureCoverage0 = prop[2]
+            props.e_TextureCoverage0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail0":
-            material.quail_eqgmaterialdef.e_TextureDetail0 = prop[2]
+            props.e_TextureDetail0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail1":
-            material.quail_eqgmaterialdef.e_TextureDetail1 = prop[2]
+            props.e_TextureDetail1 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail2":
-            material.quail_eqgmaterialdef.e_TextureDetail2 = prop[2]
+            props.e_TextureDetail2 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail3":
-            material.quail_eqgmaterialdef.e_TextureDetail3 = prop[2]
+            props.e_TextureDetail3 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail4":
-            material.quail_eqgmaterialdef.e_TextureDetail4 = prop[2]
+            props.e_TextureDetail4 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail5":
-            material.quail_eqgmaterialdef.e_TextureDetail5 = prop[2]
+            props.e_TextureDetail5 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail6":
-            material.quail_eqgmaterialdef.e_TextureDetail6 = prop[2]
+            props.e_TextureDetail6 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail7":
-            material.quail_eqgmaterialdef.e_TextureDetail7 = prop[2]
+            props.e_TextureDetail7 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail8":
-            material.quail_eqgmaterialdef.e_TextureDetail8 = prop[2]
+            props.e_TextureDetail8 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail9":
-            material.quail_eqgmaterialdef.e_TextureDetail9 = prop[2]
+            props.e_TextureDetail9 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureGlow0":
-            material.quail_eqgmaterialdef.e_TextureGlow0 = prop[2]
+            props.e_TextureGlow0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TexturePalette0":
-            material.quail_eqgmaterialdef.e_TexturePalette0 = prop[2]
+            props.e_TexturePalette0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureSecond0":
-            material.quail_eqgmaterialdef.e_TextureSecond0 = prop[2]
+            props.e_TextureSecond0 = prop[2]
+            err = load_texture(ctx, prop[2])
+            if err:
+                return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureSecond0mapChannel":
-            material.quail_eqgmaterialdef.e_TextureSecond0mapChannel = prop[2]
+            props.e_TextureSecond0mapChannel = prop[2]
         else:
             return f"unsupported property {prop[0]}"
 
+        property_row = props.property_rows.add()
+        property_row.property_name = prop[0]
+
     # Add textures to the collection
     for texture in textures:
-        tex_item = material.quail_eqgmaterialdef.textures.add()
+        tex_item = props.textures.add()
         tex_item.texture_name = texture
 
     # Set flag
-    material.quail_eqgmaterialdef.animsleep = animsleep
+    props.animsleep = animsleep
 
 
     err =  eqg_apply(material)
@@ -184,7 +270,8 @@ def load_texture(ctx: Context, name: str) -> str:
     texture_path = os.path.join(ctx.parser.assets_path, name)
 
     try:
-        bpy.data.images.load(texture_path)
+        img = bpy.data.images.load(texture_path, check_existing=True)
+        img.alpha_mode = 'CHANNEL_PACKED'
         print(f"Loaded texture {texture_path}")
     except Exception as e:
         return f"Error loading texture {texture_path}: {e}"

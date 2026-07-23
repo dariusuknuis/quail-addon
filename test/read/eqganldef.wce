@@ -1,0 +1,6 @@
+// EQG Animation List Definition
+EQGANLDEF "tag"
+	VERSION 1
+	NUMANIMATIONS 1
+		ANIMATION "1"
+	DEFAULTANIMATION "1"

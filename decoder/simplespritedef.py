@@ -8,7 +8,6 @@ from .context import Context
 from ..common.image_loader import load_s3d_image
 from ..common.s3dmaterial import frame_signature
 from ..common import _add_group_socket, _get_group_io_sockets
-from ..common import state
 
 def read_bmp_palette_color(file_path, color_index):
     """

@@ -3,250 +3,134 @@
 import bpy
 from bpy.types import Material
 import os
-from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
+from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 from ...logger.error import error
+from ...common.eqgshaders import SHADER_FAMILIES, eqg_apply, parse_shader_tag
+from ...common import state
 
-def eqg_apply(material:Material) -> str:
+
+def get_eqg_material(context):
+    material = getattr(context, "material", None)
+
     if material is None:
-        return "Material is None"
-    if material['quaildef'] != 'eqgmaterialdef':
-        return f"{material['quaildef']} is not a valid eqgmaterialdef"
+        obj = getattr(context, "object", None)
+        if obj is not None:
+            material = obj.active_material
 
-    material.use_nodes = True
+    if material is None:
+        return None
 
-    for node in material.node_tree.nodes: # type: ignore
-        material.node_tree.nodes.remove(node) # type: ignore
+    if material.get("quaildef") != "eqgmaterialdef":
+        return None
 
-    # make Principled BSDF
-    bsdf_node = material.node_tree.nodes.new("ShaderNodeBsdfPrincipled") # type: ignore
-    bsdf_node.location = (0, 0)
-    bsdf_node.label = "Principled BSDF"
-
-    shadertag = material.quail_eqgmaterialdef.shadertag
+    return material
 
 
-    if is_shader_property(shadertag, "e_TextureDiffuse0") and material.quail_eqgmaterialdef.e_TextureDiffuse0:
-        texture_path = material.quail_eqgmaterialdef.e_TextureDiffuse0
-        image = bpy.data.images.get(texture_path, None)
-        if image is None:
-            try:
-                image = bpy.data.images.load(texture_path)
-            except Exception as e:
-                return f"Error loading image {texture_path}: {e}"
-            texture_path = os.path.basename(texture_path)
-            material.quail_eqgmaterialdef.e_TextureDiffuse0 = texture_path
-            print(f"Loaded image {texture_path}")
+def shader_property_items(self, context):
+    """Dropdown choices for the currently parsed shader family."""
 
-        texture_node = material.node_tree.nodes.new("ShaderNodeTexImage") # type: ignore
-        texture_node.label = "Diffuse Texture"
+    material = get_eqg_material(context)
+    if material is None:
+        return ()
 
-        texture_node.image = image
-        material.node_tree.links.new( # type: ignore
-            texture_node.outputs["Color"],
-            material.node_tree.nodes["Principled BSDF"].inputs["Base Color"] # type: ignore
-        )
-        texture_node.location = (-350, 280)
-
-    if material.quail_eqgmaterialdef.e_TextureNormal0:
-        texture_node = material.node_tree.nodes.new("ShaderNodeTexImage") # type: ignore
-        texture_node.label = "Normal Texture"
-        texture_path = material.quail_eqgmaterialdef.e_TextureNormal0
-        image = bpy.data.images.get(texture_path, None)
-        if image is None:
-            try:
-                image = bpy.data.images.load(texture_path)
-            except Exception as e:
-                return f"Error loading image {texture_path}: {e}"
-            texture_path = os.path.basename(texture_path)
-            material.quail_eqgmaterialdef.e_TextureNormal0 = texture_path
-            print(f"Loaded image {texture_path}")
-
-        texture_node.image = image
-
-        normal_map = material.node_tree.nodes.new("ShaderNodeNormalMap")
-        normal_map.label = "Normal Map"
-        normal_map.location = (-250, 0)
-
-        material.node_tree.links.new( # type: ignore
-            texture_node.outputs["Color"],
-            material.node_tree.nodes["Normal Map"].inputs["Color"] # type: ignore
-        )
-
-        material.node_tree.links.new( # type: ignore
-            normal_map.outputs["Normal"],
-            material.node_tree.nodes["Principled BSDF"].inputs["Normal"] # type: ignore
-        )
-        texture_node.location = (-550, 0)
-
-    if is_shader_property(shadertag, "e_fBumpiness0") and material.quail_eqgmaterialdef.e_fBumpiness0:
-        bump_node = material.node_tree.nodes.new("ShaderNodeBump") # type: ignore
-        bump_node.label = "Bump"
-        bump_node.inputs["Strength"].default_value = material.quail_eqgmaterialdef.e_fBumpiness0
-        bump_node.location = (-150, 0)
-        material.node_tree.links.new( # type: ignore
-            material.node_tree.nodes["Normal Map"].outputs["Normal"], # type: ignore
-            bump_node.inputs["Height"]
-        )
-        material.node_tree.links.new( # type: ignore
-            bump_node.outputs["Normal"],
-            material.node_tree.nodes["Principled BSDF"].inputs["Normal"] # type: ignore
-        )
-
-    if is_shader_property(shadertag, "e_fShininess0") and material.quail_eqgmaterialdef.e_fShininess0:
-        bsdf_node.inputs["Specular IOR Level"].default_value = material.quail_eqgmaterialdef.e_fShininess0/128.0
-
-    if is_shader_property(shadertag, "e_fGloss0") and material.quail_eqgmaterialdef.e_fGloss0:
-        bsdf_node.inputs["Roughness"].default_value = float(material.quail_eqgmaterialdef.e_fGloss0)
-
-    if is_shader_property(shadertag, "e_fReflectionColor") and material.quail_eqgmaterialdef.e_fReflectionColor:
-        bsdf_node.inputs["Metallic"].default_value = float(material.quail_eqgmaterialdef.e_fReflectionColor)
-
-    # link bsdf to material output node
-
-    material_output_node = material.node_tree.nodes.new("ShaderNodeOutputMaterial") # type: ignore
-    material_output_node.location = (300, 0)
-    material.node_tree.links.new( # type: ignore
-        bsdf_node.outputs["BSDF"],
-        material_output_node.inputs["Surface"] # type: ignore
+    family = SHADER_FAMILIES.get(
+        material.quail_eqgmaterialdef.shader,
+        SHADER_FAMILIES["C1"],
     )
 
+    # Only family properties appear in the menu.
+    return tuple(
+        (property_name, property_name, "")
+        for property_name in family.properties
+    )
 
-    return ""
-
+class QuailEqgShaderPropertyRow(bpy.types.PropertyGroup):
+    # StringProperty allows an imported non-family property to be retained.
+    property_name: StringProperty(
+        name="Property",
+        default="",
+    )
 
 # Define Actor properties
 class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
     def update_shader(self, context):
-        """Update material shader when shadertag changes"""
-        # Find the material owning this property group
+        # Suppress callbacks during initial loading or another material rebuild.
+        if state.QUAIL_UPDATING:
+            return
+
         material = None
+
         for mat in bpy.data.materials:
-            if hasattr(mat, 'quail_eqgmaterialdef') and mat.quail_eqgmaterialdef == self:
+            if (
+                hasattr(mat, "quail_eqgmaterialdef")
+                and mat.quail_eqgmaterialdef == self
+            ):
                 material = mat
                 break
 
         if material is None:
             return
 
-        err = eqg_apply(material)
-        if err:
-            error(err)
-            return
+        state.QUAIL_UPDATING = True
 
-        # Force UI redraw
-        for area in context.screen.areas:
-            if area.type == 'PROPERTIES':
-                area.tag_redraw()
+        try:
+            err = eqg_apply(material)
+            if err:
+                error(err)
+                return
 
-    shadertag: EnumProperty(
+        finally:
+            state.QUAIL_UPDATING = False
+
+        if context.screen is not None:
+            for area in context.screen.areas:
+                if area.type == "PROPERTIES":
+                    area.tag_redraw()
+
+    property_rows: CollectionProperty(
+        type=QuailEqgShaderPropertyRow,
+    )
+
+    shadertag: StringProperty(
+        name="Shader Tag",
+        description="Original WCE shader tag",
+        default="",
+        #update=update_shadertag,
+    )
+
+    alpha_mode: EnumProperty(
+        name="Alpha Mode",
+        items=(
+            ("Opaque", "Opaque", ""),
+            ("Alpha", "Alpha", ""),
+            ("AddAlpha", "AddAlpha", ""),
+            ("Chroma", "Chroma", ""),
+        ),
+        default="Opaque",
+    )
+
+    shader: EnumProperty(
         name="Shader",
-        description="Shader",
-        items=[
-            ('AddAlpha_MaxC1.fx', 'AddAlpha_MaxC1.fx', ""),
-            ('AddAlpha_MaxCB1.fx', 'AddAlpha_MaxCB1.fx', ""),
-            ('AddAlpha_MaxCBSG1.fx', 'AddAlpha_MaxCBSG1.fx', ""),
-            ('AddAlpha_MaxCG1.fx', 'AddAlpha_MaxCG1.fx', ""),
-            ('AddAlpha_MPLBasicA.fx', 'AddAlpha_MPLBasicA.fx', ""),
-            ('AddAlpha_MPLBasicAT.fx', 'AddAlpha_MPLBasicAT.fx', ""),
-            ('AddAlpha_MPLBumpA.fx', 'AddAlpha_MPLBumpA.fx', ""),
-            ('AddAlphaC1Max.fx', 'AddAlphaC1Max.fx', ""),
-            ('Alpha_MaxC1.fx', 'Alpha_MaxC1.fx', ""),
-            ('Alpha_MaxCB1.fx', 'Alpha_MaxCB1.fx', ""),
-            ('Alpha_MaxCBS1.fx', 'Alpha_MaxCBS1.fx', ""),
-            ('Alpha_MaxCBSG1.fx', 'Alpha_MaxCBSG1.fx', ""),
-            ('Alpha_MaxCBSGE1.fx', 'Alpha_MaxCBSGE1.fx', ""),
-            ('Alpha_MaxCE1.fx', 'Alpha_MaxCE1.fx', ""),
-            ('Alpha_MPLBasicA.fx', 'Alpha_MPLBasicA.fx', ""),
-            ('Alpha_MPLBasicAT.fx', 'Alpha_MPLBasicAT.fx', ""),
-            ('Alpha_MPLBumpA.fx', 'Alpha_MPLBumpA.fx', ""),
-            ('Alpha_MPLBumpAT.fx', 'Alpha_MPLBumpAT.fx', ""),
-            ('AlphaRegionCE1Max.fx', 'AlphaRegionCE1Max.fx', ""),
-            ('AlphaSModelC1Max.fx', 'AlphaSModelC1Max.fx', ""),
-            ('AlphaSModelCB1Max.fx', 'AlphaSModelCB1Max.fx', ""),
-            ('AlphaSModelCBGG1Max.fx', 'AlphaSModelCBGG1Max.fx', ""),
-            ('Chroma_MaxC1.fx', 'Chroma_MaxC1.fx', ""),
-            ('Chroma_MaxCB1.fx', 'Chroma_MaxCB1.fx', ""),
-            ('Chroma_MaxCBS1.fx', 'Chroma_MaxCBS1.fx', ""),
-            ('Chroma_MaxCBSG1.fx', 'Chroma_MaxCBSG1.fx', ""),
-            ('Chroma_MaxCBSGE1.fx', 'Chroma_MaxCBSGE1.fx', ""),
-            ('Chroma_MPLBasicA.fx', 'Chroma_MPLBasicA.fx', ""),
-            ('Chroma_MPLBasicAT.fx', 'Chroma_MPLBasicAT.fx', ""),
-            ('Chroma_MPLBumpA.fx', 'Chroma_MPLBumpA.fx', ""),
-            ('Chroma_MPLBumpAT.fx', 'Chroma_MPLBumpAT.fx', ""),
-            ('Chroma_MPLGBAT.fx', 'Chroma_MPLGBAT.fx', ""),
-            ('Opaque_AddAlphaC1Max.fx', 'Opaque_AddAlphaC1Max.fx', ""),
-            ('Opaque_Default.fx', 'Opaque_Default.fx', ""),
-            ('Opaque_MaxC1_2UV.fx', 'Opaque_MaxC1_2UV.fx', ""),
-            ('Opaque_MaxC1.fx', 'Opaque_MaxC1.fx', ""),
-            ('Opaque_MaxC1DTP.fx', 'Opaque_MaxC1DTP.fx', ""),
-            ('Opaque_MaxCB1_2UV.fx', 'Opaque_MaxCB1_2UV.fx', ""),
-            ('Opaque_MaxCB1.fx', 'Opaque_MaxCB1.fx', ""),
-            ('Opaque_MaxCBE1.fx', 'Opaque_MaxCBE1.fx', ""),
-            ('Opaque_MaxCBS_2UV.fx', 'Opaque_MaxCBS_2UV.fx', ""),
-            ('Opaque_MaxCBS1.fx', 'Opaque_MaxCBS1.fx', ""),
-            ('Opaque_MaxCBSE1.fx', 'Opaque_MaxCBSE1.fx', ""),
-            ('Opaque_MaxCBSG1_2UV.fx', 'Opaque_MaxCBSG1_2UV.fx', ""),
-            ('Opaque_MaxCBSG1.fx', 'Opaque_MaxCBSG1.fx', ""),
-            ('Opaque_MaxCBSGE1.fx', 'Opaque_MaxCBSGE1.fx', ""),
-            ('Opaque_MaxCBST2_2UV.fx', 'Opaque_MaxCBST2_2UV.fx', ""),
-            ('Opaque_MaxCE1.fx', 'Opaque_MaxCE1.fx', ""),
-            ('Opaque_MaxCG1.fx', 'Opaque_MaxCG1.fx', ""),
-            ('Opaque_MaxCSG1.fx', 'Opaque_MaxCSG1.fx', ""),
-            ('Opaque_MaxLava.fx', 'Opaque_MaxLava.fx', ""),
-            ('Opaque_MaxLava2.fx', 'Opaque_MaxLava2.fx', ""),
-            ('Opaque_MaxSMLava2.fx', 'Opaque_MaxSMLava2.fx', ""),
-            ('Opaque_MaxTerrain.fx', 'Opaque_MaxTerrain.fx', ""),
-            ('Opaque_MaxWater.fx', 'Opaque_MaxWater.fx', ""),
-            ('Opaque_MaxWaterFall.fx', 'Opaque_MaxWaterFall.fx', ""),
-            ('Opaque_MPLBasic.fx', 'Opaque_MPLBasic.fx', ""),
-            ('Opaque_MPLBasicA.fx', 'Opaque_MPLBasicA.fx', ""),
-            ('Opaque_MPLBasicAT.fx', 'Opaque_MPLBasicAT.fx', ""),
-            ('Opaque_MPLBlend.fx', 'Opaque_MPLBlend.fx', ""),
-            ('Opaque_MPLBlendNoBump.fx', 'Opaque_MPLBlendNoBump.fx', ""),
-            ('Opaque_MPLBump.fx', 'Opaque_MPLBump.fx', ""),
-            ('Opaque_MPLBump2UV.fx', 'Opaque_MPLBump2UV.fx', ""),
-            ('Opaque_MPLBumpA.fx', 'Opaque_MPLBumpA.fx', ""),
-            ('Opaque_MPLBumpAT.fx', 'Opaque_MPLBumpAT.fx', ""),
-            ('Opaque_MPLFull.fx', 'Opaque_MPLFull.fx', ""),
-            ('Opaque_MPLFull2UV.fx', 'Opaque_MPLFull2UV.fx', ""),
-            ('Opaque_MPLGB.fx', 'Opaque_MPLGB.fx', ""),
-            ('Opaque_MPLGB2UV.fx', 'Opaque_MPLGB2UV.fx', ""),
-            ('Opaque_MPLRB.fx', 'Opaque_MPLRB.fx', ""),
-            ('Opaque_MPLRB2UV.fx', 'Opaque_MPLRB2UV.fx', ""),
-            ('Opaque_MPLSB.fx', 'Opaque_MPLSB.fx', ""),
-            ('Opaque_MPLSB2UV.fx', 'Opaque_MPLSB2UV.fx', ""),
-            ('Opaque_OpaqueRegionCB1Max.fx', 'Opaque_OpaqueRegionCB1Max.fx', ""),
-            ('Opaque_OpaqueRegionCBGG1Max.fx', 'Opaque_OpaqueRegionCBGG1Max.fx', ""),
-            ('Opaque_OpaqueSkinMeshCBGG1Max.fx', 'Opaque_OpaqueSkinMeshCBGG1Max.fx', ""),
-            ('Opaque_OpaqueSkinMeshCBGGE1Max.fx', 'Opaque_OpaqueSkinMeshCBGGE1Max.fx', ""),
-            ('Opaque_OpaqueSModelC1Max.fx', 'Opaque_OpaqueSModelC1Max.fx', ""),
-            ('Opaque_OpaqueSModelCB1Max.fx', 'Opaque_OpaqueSModelCB1Max.fx', ""),
-            ('Opaque_OpaqueSModelCBGG1Max.fx', 'Opaque_OpaqueSModelCBGG1Max.fx', ""),
-            ('Opaque_OpaqueSModelCG1Max.fx', 'Opaque_OpaqueSModelCG1Max.fx', ""),
-            ('OpaqueRegionC1DTPMax.fx', 'OpaqueRegionC1DTPMax.fx', ""),
-            ('OpaqueRegionC1Max.fx', 'OpaqueRegionC1Max.fx', ""),
-            ('OpaqueRegionCB1Max.fx', 'OpaqueRegionCB1Max.fx', ""),
-            ('OpaqueRegionCBGG1Max.fx', 'OpaqueRegionCBGG1Max.fx', ""),
-            ('OpaqueRegionCE1Max.fx', 'OpaqueRegionCE1Max.fx', ""),
-            ('OpaqueSModelCB1Max.fx', 'OpaqueSModelCB1Max.fx', ""),
-            ('OpaqueSModelCBGG1Max.fx', 'OpaqueSModelCBGG1Max.fx', ""),
-            ('OpaqueSModelCG1Max.fx', 'OpaqueSModelCG1Max.fx', ""),
-        ],
-        default='Opaque_MaxCB1.fx',
-        update=update_shader
+        items=tuple(
+            (name, name, "")
+            for name in SHADER_FAMILIES
+        ),
+        default="C1",
     )
 
     e_fShininess0: FloatProperty(
         name="e_fShininess0",
         description="Shininess",
-        default=0,
+        min=1.0,
+        max=128.0,
+        default=12.0,
         update=update_shader
     )
 
     e_TextureDiffuse0: StringProperty(
         name="e_TextureDiffuse0",
-        description="Diffuse Texture",
+        description="Diffuse Texture 0",
         default="",
         subtype='FILE_PATH',
         options={'TEXTEDIT_UPDATE'},
@@ -264,6 +148,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDiffuse1",
         description="Diffuse Texture 1",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -271,6 +157,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureEnvironment",
         description="Environment Texture",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -278,6 +166,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureEnvironment0",
         description="Environment Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -285,6 +175,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureFallback",
         description="Fallback Texture",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -292,12 +184,14 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureFallback0",
         description="Fallback Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
     e_TextureNormal0: StringProperty(
         name="e_TextureNormal0",
-        description="Normal Texture",
+        description="Normal Texture 0",
         default="",
         subtype='FILE_PATH',
         options={'TEXTEDIT_UPDATE'},
@@ -315,243 +209,279 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureNormal1",
         description="Normal Texture 1",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
-    e_fBumpiness0: StringProperty(
+    e_fBumpiness0: FloatProperty(
         name="e_fBumpiness0",
         description="Bumpiness",
-        default="",
+        soft_min=0.0,
+        soft_max=10.0,
+        default=0.0,
         update=update_shader
     )
 
-    e_fCoverageScale0: StringProperty(
+    e_fCoverageScale0: FloatProperty(
         name="e_fCoverageScale0",
         description="Coverage Scale",
-        default="",
+        min=0.0,
+        max=100.0,
+        default=0.05,
         update=update_shader
     )
 
-    e_fEnvMapStrength0: StringProperty(
+    e_fEnvMapStrength0: FloatProperty(
         name="e_fEnvMapStrength0",
         description="Env Map Strength",
-        default="",
+        min=0.1,
+        max=2.0,
+        default=1.0,
         update=update_shader
     )
-    e_fFresnelBias: StringProperty(
+    e_fFresnelBias: FloatProperty(
         name="e_fFresnelBias",
         description="Fresnel Bias",
-        default="",
+        min=0.0,
+        max=1.0,
+        default=0.3,
         update=update_shader
     )
 
-    e_fFresnelPower: StringProperty(
+    e_fFresnelPower: FloatProperty(
         name="e_fFresnelPower",
         description="Fresnel Power",
-        default="",
+        min=1.0,
+        max=10.0,
+        default=8.0,
         update=update_shader
     )
 
-    e_fGloss0: StringProperty(
+    e_fGloss0: FloatProperty(
         name="e_fGloss0",
         description="Gloss",
-        default="",
+        min=0.0,
+        max=1.0,
+        default=0.5,
         update=update_shader
     )
 
-    e_fGrassDensity0: StringProperty(
+    e_fGrassDensity0: FloatProperty(
         name="e_fGrassDensity0",
         description="Grass Density 0",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity1: StringProperty(
+    e_fGrassDensity1: FloatProperty(
         name="e_fGrassDensity1",
         description="Grass Density 1",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity2: StringProperty(
+    e_fGrassDensity2: FloatProperty(
         name="e_fGrassDensity2",
         description="Grass Density 2",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity3: StringProperty(
+    e_fGrassDensity3: FloatProperty(
         name="e_fGrassDensity3",
         description="Grass Density 3",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity4: StringProperty(
+    e_fGrassDensity4: FloatProperty(
         name="e_fGrassDensity4",
         description="Grass Density 4",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity5: StringProperty(
+    e_fGrassDensity5: FloatProperty(
         name="e_fGrassDensity5",
         description="Grass Density 5",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity6: StringProperty(
+    e_fGrassDensity6: FloatProperty(
         name="e_fGrassDensity6",
         description="Grass Density 6",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity7: StringProperty(
+    e_fGrassDensity7: FloatProperty(
         name="e_fGrassDensity7",
         description="Grass Density 7",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity8: StringProperty(
+    e_fGrassDensity8: FloatProperty(
         name="e_fGrassDensity8",
         description="Grass Density 8",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fGrassDensity9: StringProperty(
+    e_fGrassDensity9: FloatProperty(
         name="e_fGrassDensity9",
         description="Grass Density 9",
-        default="",
+        default=0.0,
         update=update_shader
     )
 
-    e_fReflectionAmount: StringProperty(
+    e_fReflectionAmount: FloatProperty(
         name="e_fReflectionAmount",
         description="Reflection Amount",
-        default="",
+        min=0.0,
+        max=2.0,
+        default=0.8,
         update=update_shader
     )
 
-    e_fReflectionColor: StringProperty(
+    e_fReflectionColor: FloatVectorProperty(
         name="e_fReflectionColor",
         description="Reflection Color",
-        default="",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
         update=update_shader
     )
 
-    e_fScale0: StringProperty(
+    e_fScale0: FloatProperty(
         name="e_fScale0",
         description="Scale 0",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale1: StringProperty(
+    e_fScale1: FloatProperty(
         name="e_fScale1",
         description="Scale 1",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale2: StringProperty(
+    e_fScale2: FloatProperty(
         name="e_fScale2",
         description="Scale 2",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale3: StringProperty(
+    e_fScale3: FloatProperty(
         name="e_fScale3",
         description="Scale 3",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale4: StringProperty(
+    e_fScale4: FloatProperty(
         name="e_fScale4",
         description="Scale 4",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale5: StringProperty(
+    e_fScale5: FloatProperty(
         name="e_fScale5",
         description="Scale 5",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale6: StringProperty(
+    e_fScale6: FloatProperty(
         name="e_fScale6",
         description="Scale 6",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale7: StringProperty(
+    e_fScale7: FloatProperty(
         name="e_fScale7",
         description="Scale 7",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale8: StringProperty(
+    e_fScale8: FloatProperty(
         name="e_fScale8",
         description="Scale 8",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fScale9: StringProperty(
+    e_fScale9: FloatProperty(
         name="e_fScale9",
         description="Scale 9",
-        default="",
+        default=1.0,
         update=update_shader
     )
 
-    e_fSlide1X: StringProperty(
+    e_fSlide1X: FloatProperty(
         name="e_fSlide1X",
-        description="Slide 1 X",
-        default="",
+        description="Slide Speed 1 X",
+        min=-100.0,
+        max=100.0,
+        default=0.02,
         update=update_shader
     )
 
-    e_fSlide1Y: StringProperty(
+    e_fSlide1Y: FloatProperty(
         name="e_fSlide1Y",
-        description="Slide 1 Y",
-        default="",
+        description="Slide Speed 1 Y",
+        min=-100.0,
+        max=100.0,
+        default=0.02,
         update=update_shader
     )
 
-    e_fSlide2X: StringProperty(
+    e_fSlide2X: FloatProperty(
         name="e_fSlide2X",
-        description="Slide 2 X",
-        default="",
+        description="Slide Speed 2 X",
+        min=-100.0,
+        max=100.0,
+        default=0.02,
         update=update_shader
     )
 
-    e_fSlide2Y: StringProperty(
+    e_fSlide2Y: FloatProperty(
         name="e_fSlide2Y",
-        description="Slide 2 Y",
-        default="",
+        description="Slide Speed 2 Y",
+        min=-100.0,
+        max=100.0,
+        default=0.02,
         update=update_shader
     )
 
-    e_fWaterColor1: StringProperty(
+    e_fWaterColor1: FloatVectorProperty(
         name="e_fWaterColor1",
         description="Water Color 1",
-        default="",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
         update=update_shader
     )
 
-    e_fWaterColor2: StringProperty(
+    e_fWaterColor2: FloatVectorProperty(
         name="e_fWaterColor2",
         description="Water Color 2",
-        default="",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
         update=update_shader
     )
 
@@ -559,6 +489,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureCoverage",
         description="Coverage Texture",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -566,6 +498,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureCoverage0",
         description="Coverage Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -573,6 +507,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail0",
         description="Detail Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -580,6 +516,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail1",
         description="Detail Texture 1",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -587,6 +525,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail2",
         description="Detail Texture 2",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -594,6 +534,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail3",
         description="Detail Texture 3",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -601,6 +543,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail4",
         description="Detail Texture 4",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -608,6 +552,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail5",
         description="Detail Texture 5",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -615,6 +561,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail6",
         description="Detail Texture 6",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -622,6 +570,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail7",
         description="Detail Texture 7",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -629,6 +579,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail8",
         description="Detail Texture 8",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -636,6 +588,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureDetail9",
         description="Detail Texture 9",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -643,6 +597,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureGlow0",
         description="Glow Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -650,6 +606,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TexturePalette0",
         description="Palette Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -657,6 +615,8 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="e_TextureSecond0",
         description="Second Texture 0",
         default="",
+        subtype='FILE_PATH',
+        options={'TEXTEDIT_UPDATE'},
         update=update_shader
     )
 
@@ -674,392 +634,142 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
     )
 
 def draw_eqgmaterialdefinition_in_transform(self, context):
-    obj = context.object
-    if not obj or not obj.active_material:
+    material = get_eqg_material(context)
+    if material is None:
         return
 
-    material = obj.active_material
-    if not material.get('quaildef') == 'eqgmaterialdef':
-        return
-
-    layout = self.layout
-    box = layout.box()
+    box = self.layout.box()
     box.label(text="EQGMATERIALDEF")
 
+    # Original WCE shader tag.
     row = box.row()
     row.prop(material.quail_eqgmaterialdef, "shadertag")
 
-    shadertag = material.quail_eqgmaterialdef.shadertag
-    if is_shader_property(shadertag, "e_fShininess0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fShininess0")
-    if is_shader_property(shadertag, "e_TextureDiffuse0"):
+    # Parsed classifications.
+    row = box.row(align=True)
+    row.prop(material.quail_eqgmaterialdef, "alpha_mode")
+    row.prop(material.quail_eqgmaterialdef, "shader")
+
+    # Actual properties present on this material.
+    for index, item in enumerate(material.quail_eqgmaterialdef.property_rows):
         row = box.row(align=True)
-        row.label(text="Diffuse0:")
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse0", text="")
-    if is_shader_property(shadertag, "e_TextureDiffuse0mapChannel"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse0mapChannel")
-    if is_shader_property(shadertag, "e_TextureDiffuse1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDiffuse1")
-    if is_shader_property(shadertag, "e_TextureEnvironment"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureEnvironment")
-    if is_shader_property(shadertag, "e_TextureEnvironment0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureEnvironment0")
-    if is_shader_property(shadertag, "e_TextureFallback"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureFallback")
-    if is_shader_property(shadertag, "e_TextureFallback0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureFallback0")
-    if is_shader_property(shadertag, "e_TextureNormal0"):
-        row = box.row(align=True)
-        row.label(text="Normal0:")
-        row.prop(material.quail_eqgmaterialdef, "e_TextureNormal0", text="")
-    if is_shader_property(shadertag, "e_TextureNormal0mapChannel"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureNormal0mapChannel")
-    if is_shader_property(shadertag, "e_TextureNormal1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureNormal1")
-    if is_shader_property(shadertag, "e_fBumpiness0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fBumpiness0")
-    if is_shader_property(shadertag, "e_fCoverageScale0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fCoverageScale0")
-    if is_shader_property(shadertag, "e_fEnvMapStrength0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fEnvMapStrength0")
-    if is_shader_property(shadertag, "e_fFresnelBias"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fFresnelBias")
-    if is_shader_property(shadertag, "e_fFresnelPower"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fFresnelPower")
-    if is_shader_property(shadertag, "e_fGloss0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGloss0")
-    if is_shader_property(shadertag, "e_fGrassDensity0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity0")
-    if is_shader_property(shadertag, "e_fGrassDensity1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity1")
-    if is_shader_property(shadertag, "e_fGrassDensity2"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity2")
-    if is_shader_property(shadertag, "e_fGrassDensity3"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity3")
-    if is_shader_property(shadertag, "e_fGrassDensity4"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity4")
-    if is_shader_property(shadertag, "e_fGrassDensity5"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity5")
-    if is_shader_property(shadertag, "e_fGrassDensity6"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity6")
-    if is_shader_property(shadertag, "e_fGrassDensity7"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity7")
-    if is_shader_property(shadertag, "e_fGrassDensity8"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity8")
-    if is_shader_property(shadertag, "e_fGrassDensity9"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fGrassDensity9")
-    if is_shader_property(shadertag, "e_fReflectionAmount"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fReflectionAmount")
-    if is_shader_property(shadertag, "e_fReflectionColor"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fReflectionColor")
-    if is_shader_property(shadertag, "e_fScale0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale0")
-    if is_shader_property(shadertag, "e_fScale1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale1")
-    if is_shader_property(shadertag, "e_fScale2"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale2")
-    if is_shader_property(shadertag, "e_fScale3"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale3")
-    if is_shader_property(shadertag, "e_fScale4"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale4")
-    if is_shader_property(shadertag, "e_fScale5"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale5")
-    if is_shader_property(shadertag, "e_fScale6"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale6")
-    if is_shader_property(shadertag, "e_fScale7"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale7")
-    if is_shader_property(shadertag, "e_fScale8"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale8")
-    if is_shader_property(shadertag, "e_fScale9"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fScale9")
-    if is_shader_property(shadertag, "e_fSlide1X"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fSlide1X")
-    if is_shader_property(shadertag, "e_fSlide1Y"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fSlide1Y")
-    if is_shader_property(shadertag, "e_fSlide2X"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fSlide2X")
-    if is_shader_property(shadertag, "e_fSlide2Y"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fSlide2Y")
-    if is_shader_property(shadertag, "e_fWaterColor1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fWaterColor1")
-    if is_shader_property(shadertag, "e_fWaterColor2"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_fWaterColor2")
-    if is_shader_property(shadertag, "e_TextureCoverage"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureCoverage")
-    if is_shader_property(shadertag, "e_TextureCoverage0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureCoverage0")
-    if is_shader_property(shadertag, "e_TextureDetail0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail0")
-    if is_shader_property(shadertag, "e_TextureDetail1"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail1")
-    if is_shader_property(shadertag, "e_TextureDetail2"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail2")
-    if is_shader_property(shadertag, "e_TextureDetail3"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail3")
-    if is_shader_property(shadertag, "e_TextureDetail4"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail4")
-    if is_shader_property(shadertag, "e_TextureDetail5"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail5")
-    if is_shader_property(shadertag, "e_TextureDetail6"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail6")
-    if is_shader_property(shadertag, "e_TextureDetail7"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail7")
-    if is_shader_property(shadertag, "e_TextureDetail8"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail8")
-    if is_shader_property(shadertag, "e_TextureDetail9"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureDetail9")
-    if is_shader_property(shadertag, "e_TextureGlow0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureGlow0")
-    if is_shader_property(shadertag, "e_TexturePalette0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TexturePalette0")
-    if is_shader_property(shadertag, "e_TextureSecond0"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureSecond0")
-    if is_shader_property(shadertag, "e_TextureSecond0mapChannel"):
-        row = box.row()
-        row.prop(material.quail_eqgmaterialdef, "e_TextureSecond0mapChannel")
+
+        property_name = item.property_name
+
+        # This button displays the stored property name.
+        # The popup only contains properties from settings.shader.
+        choose = row.operator_menu_enum(
+            "material.choose_eqg_shader_property",
+            "property_name",
+            text=property_name or "Choose Property",
+        )
+        choose.index = index
+
+        # Draw the corresponding typed Blender property.
+        if property_name and hasattr(material.quail_eqgmaterialdef, property_name):
+            row.prop(
+                material.quail_eqgmaterialdef,
+                property_name,
+                text="",
+            )
+        else:
+            row.label(
+                text="Unsupported property",
+                icon="ERROR",
+            )
+
+        remove = row.operator(
+            "material.remove_eqg_shader_property",
+            text="",
+            icon="X",
+        )
+        remove.index = index
+
+    # Add a new property from the current family's choices.
+    row = box.row()
+
+    add = row.operator_menu_enum(
+        "material.choose_eqg_shader_property",
+        "property_name",
+        text="Add Property",
+        icon="ADD",
+    )
+    add.index = -1
 
     row = box.row()
     row.prop(material.quail_eqgmaterialdef, "animsleep")
 
-def is_shader_property(shader:str, property:str):
-    if shader == 'Opaque_MaxCBSG1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Alpha_MPLBasicAT.fx' and (property == 'e_TextureDiffuse0' or property == 'e_fShininess0' or property == 'e_TextureFallback0'):
-        return True
-    if shader == 'Opaque_MPLRB.fx' and (property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureEnvironment0' or property == 'e_fEnvMapStrength0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MaxCB1_2UV.fx' and (property == 'e_TextureNormal0mapChannel' or property == 'e_TextureSecond0mapChannel' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureSecond0' or property == 'e_TextureDiffuse0mapChannel'):
-        return True
-    if shader == 'Opaque_MPLRB2UV.fx' and (property == 'e_fEnvMapStrength0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureEnvironment0'):
-        return True
-    if shader == 'Alpha_MPLBasicA.fx' and (property == 'e_fShininess0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0' or property == 'e_TextureCoverage0' or property == 'e_TextureNormal0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_OpaqueSModelCB1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AddAlpha_MPLBasicAT.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MaxCBE1.fx' and (property == 'e_fGloss0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment0'):
-        return True
-    if shader == 'Opaque_MPLBlend.fx' and (property == 'e_TextureFallback0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureDiffuse1' or property == 'e_TextureNormal1'):
-        return True
-    if shader == 'Opaque_AddAlphaC1Max.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MaxWaterFall.fx' and (property == 'e_fSlide2Y' or property == 'e_TextureDiffuse0' or property == 'e_fSlide1X' or property == 'e_fSlide1Y' or property == 'e_fSlide2X'):
-        return True
-    if shader == 'Opaque_OpaqueSModelC1Max.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'AddAlpha_MaxCBSG1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AlphaSModelCB1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AlphaRegionCE1Max.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment' or property == 'e_fGloss0'):
-        return True
-    if shader == 'AlphaSModelCBGG1Max.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fBumpiness0'):
-        return True
-    if shader == 'Opaque_MaxCG1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureGlow0'):
-        return True
-    if shader == 'Alpha_MaxC1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Alpha_MaxCBSG1.fx' and (property == 'e_TextureNormal0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Alpha_MaxCB1.fx' and (property == 'e_TextureNormal0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'OpaqueRegionC1DTPMax.fx' and (property == 'e_TextureDiffuse0' or property == 'e_fScale1' or property == 'e_TextureDetail2' or property == 'e_TextureDetail0' or property == 'e_fGrassDensity0' or property == 'e_fScale2' or property == 'e_fGrassDensity2' or property == 'e_fGrassDensity6' or property == 'e_TextureDetail9' or property == 'e_fGrassDensity9' or property == 'e_TextureDetail3' or property == 'e_fScale3' or property == 'e_fGrassDensity3' or property == 'e_TextureDetail8' or property == 'e_TextureDetail1' or property == 'e_fGrassDensity1' or property == 'e_fScale5' or property == 'e_TextureDetail6' or property == 'e_fGrassDensity7' or property == 'e_TextureDetail4' or property == 'e_fScale7' or property == 'e_fScale9' or property == 'e_TexturePalette0' or property == 'e_fGrassDensity5' or property == 'e_fScale6' or property == 'e_TextureDetail7' or property == 'e_fGrassDensity8' or property == 'e_fScale0' or property == 'e_fScale4' or property == 'e_fGrassDensity4' or property == 'e_TextureDetail5' or property == 'e_fScale8'):
-        return True
-    if shader == 'AddAlpha_MaxCG1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureGlow0'):
-        return True
-    if shader == 'Opaque_MaxC1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_OpaqueRegionCBGG1Max.fx' and (property == 'e_fBumpiness0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AddAlphaC1Max.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Chroma_MaxCBS1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'Alpha_MaxCBS1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Alpha_MPLBumpAT.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'Opaque_MPLBumpAT.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MPLBasic.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0'):
-        return True
-    if shader == 'Opaque_MPLGB.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Chroma_MaxCB1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MPLSB.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MaxC1DTP.fx' and (property == 'e_fScale8' or property == 'e_fGrassDensity8' or property == 'e_fGrassDensity3' or property == 'e_TextureDiffuse0' or property == 'e_TextureDetail0' or property == 'e_fScale2' or property == 'e_fScale3' or property == 'e_TextureDetail9' or property == 'e_fScale9' or property == 'e_fGrassDensity0' or property == 'e_fGrassDensity2' or property == 'e_TextureDetail3' or property == 'e_fGrassDensity7' or property == 'e_TextureDetail8' or property == 'e_TexturePalette0' or property == 'e_TextureDetail1' or property == 'e_fGrassDensity1' or property == 'e_fScale7' or property == 'e_fScale0' or property == 'e_fScale1' or property == 'e_TextureDetail4' or property == 'e_fScale4' or property == 'e_TextureDetail5' or property == 'e_fScale6' or property == 'e_TextureDetail2' or property == 'e_fGrassDensity5' or property == 'e_TextureDetail6' or property == 'e_TextureDetail7' or property == 'e_fGrassDensity4' or property == 'e_fScale5' or property == 'e_fGrassDensity6' or property == 'e_fGrassDensity9'):
-        return True
-    if shader == 'OpaqueRegionC1Max.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MPLBasicA.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_OpaqueSkinMeshCBGGE1Max.fx' and (property == 'e_TextureEnvironment0' or property == 'e_fBumpiness0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fEnvMapStrength0'):
-        return True
-    if shader == 'Opaque_MaxCB1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MPLBump2UV.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'Opaque_MaxLava.fx' and (property == 'e_fSlide1Y' or property == 'e_fSlide2X' or property == 'e_fSlide2Y' or property == 'e_TextureDiffuse0' or property == 'e_TextureDiffuse1' or property == 'e_TextureNormal0' or property == 'e_fSlide1X'):
-        return True
-    if shader == 'Opaque_MaxTerrain.fx' and (property == 'e_fCoverageScale' or property == 'e_TextureDetail1' or property == 'e_TextureDetail2' or property == 'e_TextureCoverage' or property == 'e_TextureFallback'):
-        return True
-    if shader == 'Opaque_MaxCBS_2UV.fx' and (property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Chroma_MPLBumpAT.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Alpha_MaxCE1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment' or property == 'e_fGloss0'):
-        return True
-    if shader == 'Chroma_MaxCBSG1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MPLFull.fx' and (property == 'e_fShininess0' or property == 'e_fCoverageScale0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0'):
-        return True
-    if shader == 'OpaqueChroma' and (property == 'e_TextureDiffuse0' or property == 'e_TextureDiffuse1'):
-        return True
-    if shader == 'Opaque_MaxCSG1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureGlow0'):
-        return True
-    if shader == 'OpaqueRegionCB1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MaxCBS1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MPLBasicAT.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_OpaqueSModelCG1Max.fx' and (property == 'e_TextureGlow0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'OpaqueSModelCB1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Chroma_MPLBasicAT.fx' and (property == 'e_TextureDiffuse0' or property == 'e_fShininess0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0'):
-        return True
-    if shader == 'Opaque_OpaqueRegionCB1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AlphaSModelC1Max.fx' and (property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MaxWater.fx' and (property == 'e_fSlide1Y' or property == 'e_fSlide2X' or property == 'e_fFresnelBias' or property == 'e_fFresnelPower' or property == 'e_fReflectionAmount' or property == 'e_fSlide1X' or property == 'e_fSlide2Y' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureEnvironment0' or property == 'e_fWaterColor1' or property == 'e_fWaterColor2' or property == 'e_fReflectionColor'):
-        return True
-    if shader == 'Opaque_MaxCBSE1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment0'):
-        return True
-    if shader == 'Opaque_MaxCBSGE1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment0'):
-        return True
-    if shader == 'Alpha_MaxCBSGE1.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment0'):
-        return True
-    if shader == 'Opaque_MaxCE1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment' or property == 'e_fGloss0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'AddAlpha_MaxCB1.fx' and (property == 'e_TextureNormal0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Chroma_MaxC1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Alpha_MPLBumpA.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MPLBlendNoBump.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureCoverage0' or property == 'e_TextureDiffuse1' or property == 'e_TextureFallback0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MaxCBSG1_2UV.fx' and (property == 'e_TextureNormal0' or property == 'e_TextureSecond0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0'):
-        return True
-    if shader == 'Opaque_MPLFull2UV.fx' and (property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0'):
-        return True
-    if shader == 'Chroma_MaxCBSGE1.fx' and (property == 'e_fEnvMapStrength0' or property == 'e_TextureEnvironment0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'OpaqueSModelCG1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureGlow0'):
-        return True
-    if shader == 'Opaque_MPLSB2UV.fx' and (property == 'e_TextureCoverage0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Chroma_MPLBasicA.fx' and (property == 'e_TextureDiffuse0' or property == 'e_fShininess0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Chroma_MPLBumpA.fx' and (property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'OpaqueRegionCBGG1Max.fx' and (property == 'e_fBumpiness0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'OpaqueRegionCE1Max.fx' and (property == 'e_TextureEnvironment' or property == 'e_fGloss0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_fEnvMapStrength0'):
-        return True
-    if shader == 'Chroma_MPLGBAT.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'AddAlpha_MPLBumpA.fx' and (property == 'e_fCoverageScale0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0'):
-        return True
-    if shader == 'Opaque_MaxCBST2_2UV.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureDiffuse1' or property == 'e_TextureNormal1' or property == 'e_TextureFallback0' or property == 'e_fShininess0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MPLBump.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_fCoverageScale0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'AddAlpha_MaxC1.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'Opaque_MPLGB2UV.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0'):
-        return True
-    if shader == 'Opaque_MaxC1_2UV.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureSecond0' or property == 'e_fGloss0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'Opaque_MPLBumpA.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_TextureCoverage0' or property == 'e_TextureFallback0' or property == 'e_fCoverageScale0'):
-        return True
-    if shader == 'Opaque_MaxSMLava2.fx' and (property == 'e_TextureNormal0' or property == 'e_TextureDiffuse1' or property == 'e_TextureNormal1' or property == 'e_fSlide1Y' or property == 'e_fSlide2Y' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_fSlide1X' or property == 'e_fSlide2X'):
-        return True
-    if shader == 'Opaque_OpaqueSkinMeshCBGG1Max.fx' and (property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0' or property == 'e_fBumpiness0' or property == 'e_fShininess0'):
-        return True
-    if shader == 'Opaque_MaxLava2.fx' and (property == 'e_fSlide2X' or property == 'e_fSlide2Y' or property == 'e_TextureNormal0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureDiffuse1' or property == 'e_TextureNormal1' or property == 'e_fSlide1X' or property == 'e_fSlide1Y'):
-        return True
-    if shader == 'Opaque_OpaqueSModelCBGG1Max.fx' and (property == 'e_fBumpiness0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'OpaqueSModelCBGG1Max.fx' and (property == 'e_fBumpiness0' or property == 'e_fShininess0' or property == 'e_TextureDiffuse0' or property == 'e_TextureNormal0'):
-        return True
-    if shader == 'AddAlpha_MPLBasicA.fx' and (property == 'e_TextureDiffuse0'):
-        return True
+class MATERIAL_OT_choose_eqg_shader_property(bpy.types.Operator):
+    bl_idname = "material.choose_eqg_shader_property"
+    bl_label = "Choose EQG Shader Property"
+    bl_options = {"REGISTER", "UNDO"}
 
+    # -1 means add a new row.
+    index: IntProperty(default=-1)
 
+    property_name: EnumProperty(
+        name="Property",
+        items=shader_property_items,
+    )
+
+    def execute(self, context):
+        material = get_eqg_material(context)
+        if material is None:
+            return {"CANCELLED"}
+
+        # Prevent duplicate rows.
+        for index, item in enumerate(material.quail_eqgmaterialdef.property_rows):
+            if index == self.index:
+                continue
+
+            if item.property_name == self.property_name:
+                self.report(
+                    {"WARNING"},
+                    f"{self.property_name} is already present",
+                )
+                return {"CANCELLED"}
+
+        if self.index == -1:
+            item = material.quail_eqgmaterialdef.property_rows.add()
+            item.property_name = self.property_name
+
+        elif 0 <= self.index < len(material.quail_eqgmaterialdef.property_rows):
+            item = material.quail_eqgmaterialdef.property_rows[self.index]
+            item.property_name = self.property_name
+
+        else:
+            return {"CANCELLED"}
+
+        err = eqg_apply(material)
+        if err:
+            self.report({"ERROR"}, err)
+            return {"CANCELLED"}
+
+        return {"FINISHED"}
+
+class MATERIAL_OT_remove_eqg_shader_property(bpy.types.Operator):
+    bl_idname = "material.remove_eqg_shader_property"
+    bl_label = "Remove EQG Shader Property"
+    bl_options = {"REGISTER", "UNDO"}
+
+    index: IntProperty()
+
+    def execute(self, context):
+        material = get_eqg_material(context)
+        if material is None:
+            return {"CANCELLED"}
+
+        if not 0 <= self.index < len(material.quail_eqgmaterialdef.property_rows):
+            return {"CANCELLED"}
+
+        material.quail_eqgmaterialdef.property_rows.remove(self.index)
+
+        err = eqg_apply(material)
+        if err:
+            self.report({"ERROR"}, err)
+            return {"CANCELLED"}
+
+        return {"FINISHED"}
 
 class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
     """Add default EQG Material Def properties to the selected material"""
@@ -1074,77 +784,67 @@ class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
     def execute(self, context):
         material = context.object.active_material
         if not material:
-            return {'CANCELLED'}
+            return {"CANCELLED"}
 
-        # 🔹 Tag as EQG material
-        material['quaildef'] = 'eqgmaterialdef'
+        material["quaildef"] = "eqgmaterialdef"
 
-        props = material.quail_eqgmaterialdef
+        previous_updating = state.QUAIL_UPDATING
+        state.QUAIL_UPDATING = True
 
-        # 🔹 Prevent repeated shader rebuild spam
-        # (temporarily disable update callbacks)
-        def suppress_updates(prop_group):
-            for attr in dir(prop_group):
-                try:
-                    prop = getattr(type(prop_group), attr, None)
-                    if hasattr(prop, "update"):
-                        setattr(prop_group, attr, getattr(prop_group, attr))
-                except:
-                    pass
+        try:
+            material.quail_eqgmaterialdef.shadertag = "Opaque_MaxCB1.fx"
 
-        # 🔹 Core defaults (correct types)
-        props.shadertag = 'Opaque_MaxCB1.fx'
-        props.e_fShininess0 = 0.0
-        props.e_TextureDiffuse0 = ""
-        props.e_TextureDiffuse0mapChannel = ""
-        props.e_TextureDiffuse1 = ""
-        props.e_TextureEnvironment = ""
-        props.e_TextureEnvironment0 = ""
-        props.e_TextureFallback = ""
-        props.e_TextureFallback0 = ""
-        props.e_TextureNormal0 = ""
-        props.e_TextureNormal0mapChannel = ""
-        props.e_TextureNormal1 = ""
+            alpha_mode, shader = parse_shader_tag(
+                material.quail_eqgmaterialdef.shadertag
+            )
 
-        # 🔹 Numeric shader params (store as strings only if your pipeline truly requires it)
-        props.e_fBumpiness0 = ""
-        props.e_fCoverageScale0 = ""
-        props.e_fEnvMapStrength0 = ""
-        props.e_fFresnelBias = ""
-        props.e_fFresnelPower = ""
-        props.e_fGloss0 = ""
-        props.e_fReflectionAmount = ""
-        props.e_fReflectionColor = ""
+            material.quail_eqgmaterialdef.alpha_mode = alpha_mode
+            material.quail_eqgmaterialdef.shader = shader
 
-        # 🔹 Scale / slide / misc
-        for i in range(10):
-            setattr(props, f"e_fScale{i}", "")
-            setattr(props, f"e_fGrassDensity{i}", "")
-            setattr(props, f"e_TextureDetail{i}", "")
+            material.quail_eqgmaterialdef.e_fShininess0 = 12.0
+            material.quail_eqgmaterialdef.e_fBumpiness0 = 0.0
+            material.quail_eqgmaterialdef.e_fCoverageScale0 = 0.05
+            material.quail_eqgmaterialdef.e_fEnvMapStrength0 = 1.0
+            material.quail_eqgmaterialdef.e_fFresnelBias = 0.3
+            material.quail_eqgmaterialdef.e_fFresnelPower = 8.0
+            material.quail_eqgmaterialdef.e_fGloss0 = 0.5
+            material.quail_eqgmaterialdef.e_fReflectionAmount = 0.8
 
-        props.e_fSlide1X = ""
-        props.e_fSlide1Y = ""
-        props.e_fSlide2X = ""
-        props.e_fSlide2Y = ""
+            material.quail_eqgmaterialdef.e_fReflectionColor = (
+                1.0, 1.0, 1.0, 1.0
+            )
+            material.quail_eqgmaterialdef.e_fWaterColor1 = (
+                1.0, 1.0, 1.0, 1.0
+            )
+            material.quail_eqgmaterialdef.e_fWaterColor2 = (
+                1.0, 1.0, 1.0, 1.0
+            )
 
-        props.e_fWaterColor1 = ""
-        props.e_fWaterColor2 = ""
+            for i in range(10):
+                setattr(material.quail_eqgmaterialdef, f"e_fScale{i}", 1.0)
+                setattr(material.quail_eqgmaterialdef, f"e_fGrassDensity{i}", 0.0)
+                setattr(material.quail_eqgmaterialdef, f"e_TextureDetail{i}", "")
 
-        # 🔹 Texture extras
-        props.e_TextureCoverage = ""
-        props.e_TextureCoverage0 = ""
-        props.e_TextureGlow0 = ""
-        props.e_TexturePalette0 = ""
-        props.e_TextureSecond0 = ""
-        props.e_TextureSecond0mapChannel = ""
+            material.quail_eqgmaterialdef.e_fSlide1X = 0.02
+            material.quail_eqgmaterialdef.e_fSlide1Y = 0.02
+            material.quail_eqgmaterialdef.e_fSlide2X = 0.02
+            material.quail_eqgmaterialdef.e_fSlide2Y = 0.02
 
-        # 🔹 Apply shader ONCE
+            # String texture properties can correctly use "".
+            material.quail_eqgmaterialdef.e_TextureDiffuse0 = ""
+            material.quail_eqgmaterialdef.e_TextureNormal0 = ""
+            material.quail_eqgmaterialdef.e_TextureCoverage0 = ""
+            # Continue resetting the remaining texture strings.
+
+        finally:
+            state.QUAIL_UPDATING = previous_updating
+
         err = eqg_apply(material)
         if err:
             error(err)
-            return {'CANCELLED'}
+            return {"CANCELLED"}
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 # Register classes

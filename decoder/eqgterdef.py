@@ -48,12 +48,23 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     for i, vertex in enumerate(eqgterdef.vertices):
         attr.data[i].vector = vertex.normal
 
-    uvlayer = mesh.uv_layers.new(name=eqgterdef.tag+"_uv")
+    color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
+    for i, vertex in enumerate(eqgterdef.vertices):
+        color_attribute.data[i].color = (
+            vertex.tint[0] / 255.0,
+            vertex.tint[1] / 255.0,
+            vertex.tint[2] / 255.0,
+            vertex.tint[3] / 255.0,
+        )
+
+    uvlayer = mesh.uv_layers.new(name="UVMap")
+    uv2layer = mesh.uv_layers.new(name="UVMap2")
     for _, triangle in enumerate(mesh.polygons):
         vertices = list(triangle.vertices)
         for j, vertex in enumerate(vertices):
             src_vert = eqgterdef.vertices[vertex]
             uvlayer.data[triangle.loop_indices[j]].uv = (src_vert.uv[0], src_vert.uv[1])
+            uv2layer.data[triangle.loop_indices[j]].uv = (src_vert.uv2[0], src_vert.uv2[1])
 
     for i, face in enumerate(eqgterdef.faces):
         poly = mesh.polygons[i]
