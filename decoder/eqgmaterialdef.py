@@ -6,8 +6,9 @@ from ..wce.wce import wce
 from .context import Context
 from ..ui.panel.eqgmaterialdef import eqg_apply
 from ..common.eqgshaders import parse_shader_tag
+from ..common.image_loader import load_eqg_image
 
-def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str]) -> str:
+def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str], flip_tex: bool = False) -> str:
     matname = f"{modelname}_{materialname}"
     if matname in bpy.data.materials:
         if mesh.materials.get(matname) is None:
@@ -33,46 +34,46 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             props.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
             props.e_TextureDiffuse0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDiffuse0mapChannel":
             props.e_TextureDiffuse0mapChannel = prop[2]
         elif prop[0] == "e_TextureDiffuse1":
             props.e_TextureDiffuse1 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureEnvironment":
             props.e_TextureEnvironment = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureEnvironment0":
             props.e_TextureEnvironment0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureFallback":
             props.e_TextureFallback = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureFallback0":
             props.e_TextureFallback0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0":
             props.e_TextureNormal0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureNormal0mapChannel":
             props.e_TextureNormal0mapChannel = prop[2]
         elif prop[0] == "e_TextureNormal1":
             props.e_TextureNormal1 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_fBumpiness0":
@@ -154,77 +155,77 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
                 props.e_fWaterColor2 = (r, g, b, a)
         elif prop[0] == "e_TextureCoverage":
             props.e_TextureCoverage = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureCoverage0":
             props.e_TextureCoverage0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail0":
             props.e_TextureDetail0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail1":
             props.e_TextureDetail1 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail2":
             props.e_TextureDetail2 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail3":
             props.e_TextureDetail3 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail4":
             props.e_TextureDetail4 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail5":
             props.e_TextureDetail5 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail6":
             props.e_TextureDetail6 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail7":
             props.e_TextureDetail7 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail8":
             props.e_TextureDetail8 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureDetail9":
             props.e_TextureDetail9 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureGlow0":
             props.e_TextureGlow0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TexturePalette0":
             props.e_TexturePalette0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureSecond0":
             props.e_TextureSecond0 = prop[2]
-            err = load_texture(ctx, prop[2])
+            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
         elif prop[0] == "e_TextureSecond0mapChannel":
@@ -247,33 +248,5 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
     err =  eqg_apply(material)
     if err:
         return f"eqg_apply: {err}"
-
-    return ""
-
-def load_texture(ctx: Context, name: str) -> str:
-
-    # Fallback: grid_standard.dds
-    if name.lower() == "grid_standard.dds":
-
-        img = bpy.data.images.get("grid_standard.dds")
-
-        if img is None:
-            img = bpy.data.images.new("grid_standard.dds", 1024, 1024)
-            img.generated_type = 'COLOR_GRID'
-            img.use_fake_user = True
-            print("Generated fallback grid_standard.dds")
-
-        return ""
-
-    # Load the texture
-    assert ctx.parser.assets_path is not None
-    texture_path = os.path.join(ctx.parser.assets_path, name)
-
-    try:
-        img = bpy.data.images.load(texture_path, check_existing=True)
-        img.alpha_mode = 'CHANNEL_PACKED'
-        print(f"Loaded texture {texture_path}")
-    except Exception as e:
-        return f"Error loading texture {texture_path}: {e}"
 
     return ""

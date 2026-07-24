@@ -18,6 +18,8 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     obj['quaildef'] = 'eqgterdef'
     obj.quail_eqgterdef.version = str(eqgterdef.version) # type: ignore
 
+    flip_tex = True
+
     for _, mat in enumerate(eqgterdef.materials):
         properties = []
         for _, prop in enumerate(mat.properties):
@@ -25,7 +27,7 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
         textures = []
         for tex in mat.animtextures:
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures, flip_tex)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 

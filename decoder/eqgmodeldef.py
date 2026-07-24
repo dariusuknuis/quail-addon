@@ -2,7 +2,6 @@
 
 import bpy
 import mathutils
-import math
 from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..common.mesh import get_vertex_normal_nodegroup
 from ..wce.eqgmodeldef import eqgmodeldef
@@ -20,6 +19,8 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
     obj['quaildef'] = 'eqgmodeldef'
     obj.quail_eqgmodeldef.version = str(eqgmodeldef.version) # type: ignore
 
+    flip_tex = len(eqgmodeldef.bones) == 0
+
     for _, mat in enumerate(eqgmodeldef.materials):
         properties = []
         for _, prop in enumerate(mat.properties):
@@ -27,7 +28,7 @@ def decode_eqgmodeldef(ctx:Context, eqgmodeldef:eqgmodeldef, location:mathutils.
         textures = []
         for _, tex in enumerate(mat.animtextures):
             textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgmodeldef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures, flip_tex)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 

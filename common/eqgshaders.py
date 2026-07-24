@@ -7,6 +7,7 @@ from typing import Dict
 import math, bpy
 import os
 from typing import Any, Callable, Optional
+from .material import create_palette_mask_node_group, create_blur_node_group
 from bpy.types import Image, Material, Node, NodeSocket, NodeTree
 from . import state
 
@@ -14,8 +15,6 @@ DEFAULT_UV_SCALE = 1.0
 CHROMA_CUTOFF = 0.5
 VERTEX_COLOR_ATTRIBUTE = "vertex_colors"
 SPHERE_MAP_GROUP_NAME = "EQG Sphere Map"
-PALETTE_MASK_GROUP_NAME = "EQG Palette Mask"
-PALETTE_MASK_GROUP_VERSION = 2
 
 ALPHA_MODES = [
     "Opaque",
@@ -642,6 +641,8 @@ class MaterialNodeBuilder:
         self.properties = material.quail_eqgmaterialdef
 
         self.bsdf = self.nodes.new("ShaderNodeBsdfPrincipled")
+        self.bsdf.inputs["Roughness"].default_value = 0.904
+        self.bsdf.inputs["Specular IOR Level"].default_value = 0.1
         self.bsdf.name = "Principled BSDF"
         self.bsdf.label = "Principled BSDF"
         self.bsdf.location = (700, 100)
@@ -660,8 +661,13 @@ class MaterialNodeBuilder:
 
     def value(self, name: str, default: Any = None) -> Any:
         value = getattr(self.properties, name, default)
-        if value in (None, ""):
+
+        if value is None:
             return default
+
+        if isinstance(value, str) and value in ("", "None"):
+            return default
+
         return value
 
     def float_value(self, name: str, default: float = 0.0) -> float:
@@ -985,19 +991,28 @@ class MaterialNodeBuilder:
 
     def shininess_to_roughness(self, shininess: float | NodeSocket) -> NodeSocket:
         """Approximate a Blinn-Phong exponent as Principled roughness.
-
-        roughness = sqrt(2 / (shininess + 2))
+        roughness = (2 / (shininess + 2)) ** 0.25
         """
 
         add = self.math("ADD", shininess, 2.0, "Shininess + 2")
         divide = self.math("DIVIDE", 2.0, add, "2 / (Shininess + 2)")
-        sqrt_node = self.nodes.new("ShaderNodeMath")
-        sqrt_node.name = self.unique_name("Shininess to Roughness")
-        sqrt_node.label = "sqrt(2 / (Shininess + 2))"
-        sqrt_node.operation = "SQRT"
-        self.links.new(divide, sqrt_node.inputs[0])
-        self.links.new(sqrt_node.outputs[0], self.bsdf.inputs["Roughness"])
-        return sqrt_node.outputs[0]
+
+        power_node = self.nodes.new("ShaderNodeMath")
+        power_node.name = self.unique_name("Shininess to Roughness")
+        power_node.label = "(2 / (Shininess + 2)) ^ 0.25"
+        power_node.operation = "POWER"
+        power_node.inputs[1].default_value = 0.25
+
+        self.links.new(divide, power_node.inputs[0])
+        self.links.new(power_node.outputs[0], self.bsdf.inputs["Roughness"])
+        return power_node.outputs[0]
+
+    def specular_level(self, shine_mask: NodeSocket, scale: float = 0.5) -> NodeSocket:
+        """Convert the legacy shine mask to Principled Specular IOR Level."""
+
+        specular_level = self.math("MULTIPLY", shine_mask, scale, "Shine Mask × Specular Scale")
+        self.links.new(specular_level, self.bsdf.inputs["Specular IOR Level"])
+        return specular_level
 
     def sphere_map_vector(self) -> NodeSocket:
         group_tree = get_or_create_sphere_map_group()
@@ -1152,70 +1167,6 @@ def get_or_create_sphere_map_group() -> NodeTree:
     return group
 
 
-def create_palette_mask_node_group(
-    palette_mask_node_group: NodeTree,
-    inner_tolerance: float = 0.002,
-    outer_tolerance: float = 0.03,
-) -> None:
-    """Create a palette-region mask with smooth deterministic edges.
-
-    This replaces UV white-noise jitter with a color-distance mask:
-
-        mask = 1 - smoothstep(inner_tolerance, outer_tolerance,
-                              distance(ClrPalette, NdxClr))
-
-    Set the palette Image Texture to Linear interpolation for a soft boundary,
-    or Closest for hard indexed regions.  The tolerances can be adjusted after
-    inspecting the real palette image; unlike UV jitter, this is stable between
-    frames and does not crawl during animation.
-    """
-
-    palette_mask_node_group.nodes.clear()
-    palette_mask_node_group.interface.clear()
-    palette_mask_node_group["eqg_palette_mask_version"] = PALETTE_MASK_GROUP_VERSION
-
-    _new_group_socket(palette_mask_node_group, "ClrPalette", "NodeSocketColor", "INPUT")
-    _new_group_socket(palette_mask_node_group, "NdxClr", "NodeSocketColor", "INPUT")
-    _new_group_socket(palette_mask_node_group, "Mask", "NodeSocketFloat", "OUTPUT")
-
-    nodes = palette_mask_node_group.nodes
-    links = palette_mask_node_group.links
-    group_input = nodes.new("NodeGroupInput")
-    group_output = nodes.new("NodeGroupOutput")
-
-    distance = nodes.new("ShaderNodeVectorMath")
-    distance.operation = "DISTANCE"
-    distance.label = "Palette color distance"
-
-    mask = nodes.new("ShaderNodeMapRange")
-    mask.interpolation_type = "SMOOTHERSTEP"
-    mask.clamp = True
-    mask.label = "Smooth palette boundary"
-    mask.inputs["From Min"].default_value = inner_tolerance
-    mask.inputs["From Max"].default_value = outer_tolerance
-    mask.inputs["To Min"].default_value = 1.0
-    mask.inputs["To Max"].default_value = 0.0
-
-    group_input.location = (-600, 0)
-    distance.location = (-380, 180)
-    mask.location = (-160, 180)
-    group_output.location = (100, 180)
-
-    links.new(group_input.outputs["ClrPalette"], distance.inputs[0])
-    links.new(group_input.outputs["NdxClr"], distance.inputs[1])
-    links.new(distance.outputs["Value"], mask.inputs["Value"])
-    links.new(mask.outputs["Result"], group_output.inputs["Mask"])
-
-
-def get_or_create_palette_mask_group() -> NodeTree:
-    group = bpy.data.node_groups.get(PALETTE_MASK_GROUP_NAME)
-    if group is None:
-        group = bpy.data.node_groups.new(PALETTE_MASK_GROUP_NAME, "ShaderNodeTree")
-    if group.get("eqg_palette_mask_version") != PALETTE_MASK_GROUP_VERSION:
-        create_palette_mask_node_group(group)
-    return group
-
-
 # ======================================================================
 # Verified shader-group recipes
 # ======================================================================
@@ -1286,7 +1237,7 @@ def _bump_shine(builder: MaterialNodeBuilder) -> BuildResult:
     diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
     normal = builder.texture("e_TextureNormal0", "Normal/Shine 0", uv0, non_color=True)
     builder.normal_map(normal.outputs["Color"])
-    builder.links.new(normal.outputs["Alpha"], builder.bsdf.inputs["Specular IOR Level"])
+    builder.specular_level(normal.outputs["Alpha"])
     builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
     return BuildResult(diffuse.outputs["Color"], diffuse.outputs["Alpha"])
 
@@ -1329,7 +1280,7 @@ def _bump_shine_glow(builder: MaterialNodeBuilder, two_uv: bool = False) -> Buil
     )
     packed_normal = builder.packed_normal_color(normal, encoded_z=0.95)
     builder.normal_map(packed_normal)
-    builder.links.new(normal.outputs["Alpha"], builder.bsdf.inputs["Specular IOR Level"])
+    builder.specular_level(normal.outputs["Alpha"])
     builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
 
     separate = builder.nodes.new("ShaderNodeSeparateColor")
@@ -1391,7 +1342,7 @@ def _bump_shine_glow_environment(builder: MaterialNodeBuilder) -> BuildResult:
     color = builder.add_color(diffuse.outputs["Color"], environment_color, "Diffuse + Environment")
 
     builder.normal_map(builder.packed_normal_color(normal, encoded_z=0.95))
-    builder.links.new(normal.outputs["Alpha"], builder.bsdf.inputs["Specular IOR Level"])
+    builder.specular_level(normal.outputs["Alpha"])
     builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
 
     separate = builder.nodes.new("ShaderNodeSeparateColor")
@@ -1436,13 +1387,13 @@ def _cbst2_2uv(builder: MaterialNodeBuilder) -> BuildResult:
     shine_mix = builder.math_mix(
         normal0.outputs["Alpha"], normal1.outputs["Alpha"], factor, "Shine 0/1 Layer"
     )
-    builder.links.new(shine_mix, builder.bsdf.inputs["Specular IOR Level"])
+    builder.specular_level(shine_mix)
     builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
     return BuildResult(diffuse_mix, None)
 
 
 def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
-    """Build the EQG detail-palette material using the S3D material recipe.
+    """Build the EQG detail palette with the existing S3D node groups.
 
     The EQG property list has no explicit per-detail palette-index property.
     By default, ``e_TextureDetail0`` uses BMP palette entry 0, Detail1 uses
@@ -1455,14 +1406,33 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
 
     uv0 = builder.uv("UVMap")
     diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+
+    blur_group = bpy.data.node_groups.get("Blur")
+    if blur_group is None:
+        blur_group = bpy.data.node_groups.new("Blur", "ShaderNodeTree")
+        create_blur_node_group(blur_group)
+
+    palette_mask_group = bpy.data.node_groups.get("PaletteMask")
+    if palette_mask_group is None:
+        palette_mask_group = bpy.data.node_groups.new(
+            "PaletteMask",
+            "ShaderNodeTree",
+        )
+        create_palette_mask_node_group(palette_mask_group)
+
+    blur_node = builder.nodes.new("ShaderNodeGroup")
+    blur_node.name = builder.unique_name("Palette Blur")
+    blur_node.label = "S3D Palette Blur"
+    blur_node.node_tree = blur_group
+    blur_node.location = (-1450, -1600)
+
     palette = builder.texture(
         "e_TexturePalette0",
         "Palette Regions",
-        uv0,
+        blur_node.outputs["Vector"],
         non_color=True,
-        interpolation="Linear",
+        interpolation="Closest",
     )
-
     if palette.image is None or "bmp_palette" not in palette.image:
         raise ValueError(
             "Detail Palette requires e_TexturePalette0 image['bmp_palette']"
@@ -1470,9 +1440,7 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
 
     bmp_palette = palette.image["bmp_palette"]
     palette_indices = builder.material.get("detail_palette_indices", [])
-    palette_mask_group = get_or_create_palette_mask_group()
     accumulated_color: Optional[NodeSocket] = None
-    accumulated_mask: Optional[NodeSocket] = None
 
     for detail_index in range(10):
         texture_property = f"e_TextureDetail{detail_index}"
@@ -1504,9 +1472,12 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
 
         red, green, blue = bmp_palette[palette_index]
         index_color = builder.nodes.new("ShaderNodeRGB")
-        index_color.name = builder.unique_name(f"Detail {detail_index} Palette Color")
+        index_color.name = builder.unique_name(
+            f"Detail {detail_index} Palette Color"
+        )
         index_color.label = f"Palette index {palette_index}"
-        index_color.outputs[0].default_value = (
+        index_color.location = (-650, -1200 - detail_index * 260)
+        index_color.outputs["Color"].default_value = (
             red / 255.0,
             green / 255.0,
             blue / 255.0,
@@ -1514,76 +1485,39 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
         )
 
         mask_node = builder.nodes.new("ShaderNodeGroup")
-        mask_node.name = builder.unique_name(f"Detail {detail_index} Palette Mask")
+        mask_node.name = builder.unique_name(
+            f"Detail {detail_index} Palette Mask"
+        )
         mask_node.label = f"Detail {detail_index} Palette Mask"
         mask_node.node_tree = palette_mask_group
-        builder.links.new(palette.outputs["Color"], mask_node.inputs["ClrPalette"])
-        builder.links.new(index_color.outputs["Color"], mask_node.inputs["NdxClr"])
-        detail_mask = mask_node.outputs["Mask"]
-
-        weighted_detail = builder.scaled_vector(
-            detail.outputs["Color"],
-            detail_mask,
-            f"Detail {detail_index} × Palette Mask",
+        mask_node.location = (-350, -1200 - detail_index * 260)
+        builder.links.new(
+            palette.outputs["Color"],
+            mask_node.inputs["ClrPalette"],
         )
-
-        if accumulated_color is None:
-            accumulated_color = weighted_detail
-            accumulated_mask = detail_mask
-        else:
-            accumulated_color = builder.add_color(
+        builder.links.new(
+            index_color.outputs["Color"],
+            mask_node.inputs["NdxClr"],
+        )
+        builder.links.new(
+            detail.outputs["Color"],
+            mask_node.inputs["Texture"],
+        )
+        if accumulated_color is not None:
+            builder.links.new(
                 accumulated_color,
-                weighted_detail,
-                f"Accumulate Detail {detail_index}",
-            )
-            accumulated_mask = builder.math(
-                "ADD",
-                accumulated_mask,
-                detail_mask,
-                f"Accumulate Mask {detail_index}",
+                mask_node.inputs["Mix"],
             )
 
-    if accumulated_color is None or accumulated_mask is None:
+        accumulated_color = mask_node.outputs["Color"]
+
+    if accumulated_color is None:
         return BuildResult(diffuse.outputs["Color"], diffuse.outputs["Alpha"])
 
-    # Smooth palette masks can overlap at region boundaries.  Normalize the
-    # weighted color by the total mask so overlapping details crossfade without
-    # creating bright seams or depending on the order in which they were added.
-    safe_mask = builder.math(
-        "MAXIMUM",
-        accumulated_mask,
-        0.0001,
-        "Palette Mask Maximum",
-    )
-    inverse_mask = builder.math(
-        "DIVIDE",
-        1.0,
-        safe_mask,
-        "Palette Mask Reciprocal",
-    )
-    normalized_detail = builder.scaled_vector(
-        accumulated_color,
-        inverse_mask,
-        "Normalize Palette Details",
-    )
-
-    detail_coverage = builder.clamp_value(
-        accumulated_mask,
-        "Palette Detail Coverage",
-    )
-    detail_factor = builder.math(
-        "MULTIPLY",
-        detail_coverage,
-        0.5,
-        "Palette Detail Strength",
-    )
-
-    # Preserve the S3D material's 50% detail strength, but only inside palette
-    # regions.  Pixels outside every selected region retain the full base color.
     color = builder.mix_color(
         diffuse.outputs["Color"],
-        normalized_detail,
-        detail_factor,
+        accumulated_color,
+        0.5,
         "Diffuse / Palette Detail",
     )
     return BuildResult(color, diffuse.outputs["Alpha"])
@@ -1659,9 +1593,8 @@ def _mpl_blend(builder: MaterialNodeBuilder, use_normal: bool = True) -> BuildRe
             clamp_factor=False,
         )
         builder.normal_map(normal_mix)
-        builder.links.new(
-            builder.vertex_color().outputs["Alpha"],
-            builder.bsdf.inputs["Specular IOR Level"],
+        builder.specular_level(
+            builder.vertex_color().outputs["Alpha"]
         )
         builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
 
@@ -1688,9 +1621,8 @@ def _mpl_full(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> 
     color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
     builder.normal_map(normal.outputs["Color"])
     builder.bsdf.inputs["Roughness"].default_value = math.sqrt(2.0 / 14.0)
-    builder.links.new(
-        builder.vertex_color().outputs["Alpha"],
-        builder.bsdf.inputs["Specular IOR Level"],
+    builder.specular_level(
+        builder.vertex_color().outputs["Alpha"]
     )
     return BuildResult(color, alpha)
 
