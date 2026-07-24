@@ -190,10 +190,10 @@ def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
     return image, None
 
-def load_eqg_image(ctx, name: str, flip_tex: bool = False) -> str:
+def load_eqg_image(ctx, name: str | None, flip_tex: bool = False) -> tuple[bpy.types.Image | None, str]:
 
     if not name or name == "None":
-        return ""
+        return None, ""
 
     # Fallback: grid_standard.dds
     if name.lower() == "grid_standard.dds":
@@ -206,39 +206,53 @@ def load_eqg_image(ctx, name: str, flip_tex: bool = False) -> str:
             img.use_fake_user = True
             print("Generated fallback grid_standard.dds")
 
-        return ""
+        return img, ""
 
     else:
         assert ctx.parser.assets_path is not None
         texture_path = os.path.join(ctx.parser.assets_path, name)
 
         if not os.path.exists(texture_path):
-            return f"Texture not found: {texture_path}"
+            return None, f"Texture not found: {texture_path}"
 
         try:
             img = bpy.data.images.load(texture_path, check_existing=True)
             img.alpha_mode = 'CHANNEL_PACKED'
             print(f"Loaded texture {texture_path}")
         except Exception as e:
-            return f"Error loading texture {texture_path}: {e}"
+            return None, f"Error loading texture {texture_path}: {e}"
 
         tex_type = detect_texture_type(texture_path)
 
-        if (
+        is_palette_bmp = (
             tex_type == "BMP"
             and name.upper().endswith("PAL.BMP")
-            and "bmp_palette" not in img
-        ):
+        )
+
+        if is_palette_bmp:
+            if "bmp_palette" not in img:
+                try:
+                    extract_bmp_palette(texture_path, img)
+                except Exception as e:
+                    return None, (
+                        f"Error extracting BMP palette "
+                        f"{texture_path}: {e}"
+                    )
             try:
-                extract_bmp_palette(texture_path, img)
-            except Exception as e:
-                return f"Error extracting BMP palette {texture_path}: {e}"
+                if img.colorspace_settings.name != "Non-Color":
+                    img.colorspace_settings.name = "Non-Color"
+            except TypeError:
+                pass
 
     if flip_tex and not img.get("quail_flipped", False):
         try:
             flip_image_vertically(img)
             img["quail_flipped"] = True
+            print(
+                f"[LOADED IMAGE] {img.name}: "
+                f"pointer={img.as_pointer()}"
+            )
         except Exception as e:
-            return f"Error flipping {name}: {e}"
+            return None, f"Error flipping {name}: {e}"
 
-    return ""
+    return img, ""

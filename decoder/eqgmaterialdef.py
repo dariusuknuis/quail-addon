@@ -33,49 +33,49 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
         if prop[0] == "e_fShininess0":
             props.e_fShininess0 = float(prop[2])
         elif prop[0] == "e_TextureDiffuse0":
-            props.e_TextureDiffuse0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDiffuse0 = image
         elif prop[0] == "e_TextureDiffuse0mapChannel":
             props.e_TextureDiffuse0mapChannel = prop[2]
         elif prop[0] == "e_TextureDiffuse1":
-            props.e_TextureDiffuse1 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDiffuse1 = image
         elif prop[0] == "e_TextureEnvironment":
-            props.e_TextureEnvironment = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureEnvironment = image
         elif prop[0] == "e_TextureEnvironment0":
-            props.e_TextureEnvironment0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureEnvironment0 = image
         elif prop[0] == "e_TextureFallback":
-            props.e_TextureFallback = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureFallback = image
         elif prop[0] == "e_TextureFallback0":
-            props.e_TextureFallback0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureFallback0 = image
         elif prop[0] == "e_TextureNormal0":
-            props.e_TextureNormal0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureNormal0 = image
         elif prop[0] == "e_TextureNormal0mapChannel":
             props.e_TextureNormal0mapChannel = prop[2]
         elif prop[0] == "e_TextureNormal1":
-            props.e_TextureNormal1 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureNormal1 = image
         elif prop[0] == "e_fBumpiness0":
             props.e_fBumpiness0 = float(prop[2])
         elif prop[0] == "e_fCoverageScale0":
@@ -154,80 +154,80 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
                 a, r, g, b = values
                 props.e_fWaterColor2 = (r, g, b, a)
         elif prop[0] == "e_TextureCoverage":
-            props.e_TextureCoverage = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureCoverage = image
         elif prop[0] == "e_TextureCoverage0":
-            props.e_TextureCoverage0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureCoverage0 = image
         elif prop[0] == "e_TextureDetail0":
-            props.e_TextureDetail0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail0 = image
         elif prop[0] == "e_TextureDetail1":
-            props.e_TextureDetail1 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail1 = image
         elif prop[0] == "e_TextureDetail2":
-            props.e_TextureDetail2 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail2 = image
         elif prop[0] == "e_TextureDetail3":
-            props.e_TextureDetail3 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail3 = image
         elif prop[0] == "e_TextureDetail4":
-            props.e_TextureDetail4 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail4 = image
         elif prop[0] == "e_TextureDetail5":
-            props.e_TextureDetail5 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail5 = image
         elif prop[0] == "e_TextureDetail6":
-            props.e_TextureDetail6 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail6 = image
         elif prop[0] == "e_TextureDetail7":
-            props.e_TextureDetail7 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail7 = image
         elif prop[0] == "e_TextureDetail8":
-            props.e_TextureDetail8 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail8 = image
         elif prop[0] == "e_TextureDetail9":
-            props.e_TextureDetail9 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureDetail9 = image
         elif prop[0] == "e_TextureGlow0":
-            props.e_TextureGlow0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureGlow0 = image
         elif prop[0] == "e_TexturePalette0":
-            props.e_TexturePalette0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TexturePalette0 = image
         elif prop[0] == "e_TextureSecond0":
-            props.e_TextureSecond0 = prop[2]
-            err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
             if err:
                 return f"load {prop[0]}: {err}"
+            props.e_TextureSecond0 = image
         elif prop[0] == "e_TextureSecond0mapChannel":
             props.e_TextureSecond0mapChannel = prop[2]
         else:

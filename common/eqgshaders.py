@@ -9,7 +9,6 @@ import os
 from typing import Any, Callable, Optional
 from .material import create_palette_mask_node_group, create_blur_node_group
 from bpy.types import Image, Material, Node, NodeSocket, NodeTree
-from . import state
 
 DEFAULT_UV_SCALE = 1.0
 CHROMA_CUTOFF = 0.5
@@ -700,6 +699,13 @@ class MaterialNodeBuilder:
         if image is None:
             image = bpy.data.images.load(texture_path, check_existing=True)
 
+        print(
+            f"[NODE IMAGE] {property_name}: "
+            f"name={image.name}, "
+            f"pointer={image.as_pointer()}, "
+            f"flipped={image.get('quail_flipped', False)}"
+        )
+
         return image
 
     def texture(
@@ -1034,14 +1040,14 @@ class MaterialNodeBuilder:
         self.connect_principled_inputs(result)
         alpha_mode = normalize_alpha_mode(alpha_mode)
 
-        if alpha_mode == "ALPHA":
+        if alpha_mode == "Alpha":
             if result.alpha is not None:
                 self.links.new(result.alpha, self.bsdf.inputs["Alpha"])
             set_transparent_render_method(self.material, chroma=False)
             self.links.new(self.bsdf.outputs["BSDF"], self.output.inputs["Surface"])
             return
 
-        if alpha_mode == "CHROMA":
+        if alpha_mode == "Chroma":
             if result.alpha is not None:
                 threshold = self.math(
                     "GREATER_THAN",
@@ -1054,7 +1060,7 @@ class MaterialNodeBuilder:
             self.links.new(self.bsdf.outputs["BSDF"], self.output.inputs["Surface"])
             return
 
-        if alpha_mode == "ADDALPHA":
+        if alpha_mode == "AddAlpha":
             # Blender has no portable Principled setting equivalent to the
             # legacy framebuffer blend SrcAlpha/One.  Transparent + premultiplied
             # Emission is the closest renderer-independent node approximation.
@@ -1430,7 +1436,7 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
         "e_TexturePalette0",
         "Palette Regions",
         blur_node.outputs["Vector"],
-        non_color=True,
+        #non_color=True,
         interpolation="Closest",
     )
     if palette.image is None or "bmp_palette" not in palette.image:
@@ -1708,23 +1714,9 @@ GROUP_BUILDERS: dict[str, Callable[[MaterialNodeBuilder], BuildResult]] = {
 
 
 def normalize_alpha_mode(alpha_mode: Optional[str]) -> str:
-    if not alpha_mode:
-        return "OPAQUE"
-    normalized = str(alpha_mode).replace("_", "").replace(" ", "").upper()
-    aliases = {
-        "NONE": "OPAQUE",
-        "OPAQUE": "OPAQUE",
-        "ALPHA": "ALPHA",
-        "BLEND": "ALPHA",
-        "CHROMA": "CHROMA",
-        "CHROMAKEY": "CHROMA",
-        "ALPHATEST": "CHROMA",
-        "CLIP": "CHROMA",
-        "ADD": "ADDALPHA",
-        "ADDITIVE": "ADDALPHA",
-        "ADDALPHA": "ADDALPHA",
-    }
-    return aliases.get(normalized, normalized)
+    if alpha_mode in ALPHA_MODES:
+        return alpha_mode
+    return "Opaque"
 
 
 def set_transparent_render_method(material: Material, *, chroma: bool) -> None:

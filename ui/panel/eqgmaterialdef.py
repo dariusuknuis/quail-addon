@@ -108,6 +108,7 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
             ("Chroma", "Chroma", ""),
         ),
         default="Opaque",
+        update=update_shader,
     )
 
     shader: EnumProperty(
@@ -117,6 +118,7 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
             for name in SHADER_FAMILIES
         ),
         default="C1",
+        update=update_shader,
     )
 
     e_fShininess0: FloatProperty(
@@ -128,13 +130,11 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    e_TextureDiffuse0: StringProperty(
+    e_TextureDiffuse0: PointerProperty(
         name="e_TextureDiffuse0",
         description="Diffuse Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
-        update=update_shader
+        type=bpy.types.Image,
+        update=update_shader,
     )
 
     e_TextureDiffuse0mapChannel: StringProperty(
@@ -144,57 +144,45 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    e_TextureDiffuse1: StringProperty(
+    e_TextureDiffuse1: PointerProperty(
         name="e_TextureDiffuse1",
         description="Diffuse Texture 1",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureEnvironment: StringProperty(
+    e_TextureEnvironment: PointerProperty(
         name="e_TextureEnvironment",
         description="Environment Texture",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureEnvironment0: StringProperty(
+    e_TextureEnvironment0: PointerProperty(
         name="e_TextureEnvironment0",
         description="Environment Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureFallback: StringProperty(
+    e_TextureFallback: PointerProperty(
         name="e_TextureFallback",
         description="Fallback Texture",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureFallback0: StringProperty(
+    e_TextureFallback0: PointerProperty(
         name="e_TextureFallback0",
         description="Fallback Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureNormal0: StringProperty(
+    e_TextureNormal0: PointerProperty(
         name="e_TextureNormal0",
         description="Normal Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
@@ -205,12 +193,10 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    e_TextureNormal1: StringProperty(
+    e_TextureNormal1: PointerProperty(
         name="e_TextureNormal1",
         description="Normal Texture 1",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
@@ -485,138 +471,108 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    e_TextureCoverage: StringProperty(
+    e_TextureCoverage: PointerProperty(
         name="e_TextureCoverage",
         description="Coverage Texture",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureCoverage0: StringProperty(
+    e_TextureCoverage0: PointerProperty(
         name="e_TextureCoverage0",
         description="Coverage Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail0: StringProperty(
+    e_TextureDetail0: PointerProperty(
         name="e_TextureDetail0",
         description="Detail Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail1: StringProperty(
+    e_TextureDetail1: PointerProperty(
         name="e_TextureDetail1",
         description="Detail Texture 1",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail2: StringProperty(
+    e_TextureDetail2: PointerProperty(
         name="e_TextureDetail2",
         description="Detail Texture 2",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail3: StringProperty(
+    e_TextureDetail3: PointerProperty(
         name="e_TextureDetail3",
         description="Detail Texture 3",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail4: StringProperty(
+    e_TextureDetail4: PointerProperty(
         name="e_TextureDetail4",
         description="Detail Texture 4",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail5: StringProperty(
+    e_TextureDetail5: PointerProperty(
         name="e_TextureDetail5",
         description="Detail Texture 5",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail6: StringProperty(
+    e_TextureDetail6: PointerProperty(
         name="e_TextureDetail6",
         description="Detail Texture 6",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail7: StringProperty(
+    e_TextureDetail7: PointerProperty(
         name="e_TextureDetail7",
         description="Detail Texture 7",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail8: StringProperty(
+    e_TextureDetail8: PointerProperty(
         name="e_TextureDetail8",
         description="Detail Texture 8",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureDetail9: StringProperty(
+    e_TextureDetail9: PointerProperty(
         name="e_TextureDetail9",
         description="Detail Texture 9",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureGlow0: StringProperty(
+    e_TextureGlow0: PointerProperty(
         name="e_TextureGlow0",
         description="Glow Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TexturePalette0: StringProperty(
+    e_TexturePalette0: PointerProperty(
         name="e_TexturePalette0",
         description="Palette Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
-    e_TextureSecond0: StringProperty(
+    e_TextureSecond0: PointerProperty(
         name="e_TextureSecond0",
         description="Second Texture 0",
-        default="",
-        subtype='FILE_PATH',
-        options={'TEXTEDIT_UPDATE'},
+        type=bpy.types.Image,
         update=update_shader
     )
 
@@ -667,11 +623,28 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
 
         # Draw the corresponding typed Blender property.
         if property_name and hasattr(material.quail_eqgmaterialdef, property_name):
-            row.prop(
-                material.quail_eqgmaterialdef,
-                property_name,
-                text="",
+            rna_property = material.quail_eqgmaterialdef.bl_rna.properties.get(
+                property_name
             )
+
+            is_image_property = (
+                rna_property is not None
+                and rna_property.type == 'POINTER'
+                and rna_property.fixed_type.identifier == "Image"
+            )
+
+            if is_image_property:
+                row.template_ID(
+                    material.quail_eqgmaterialdef,
+                    property_name,
+                    open="image.open",
+                )
+            else:
+                row.prop(
+                    material.quail_eqgmaterialdef,
+                    property_name,
+                    text="",
+                )
         else:
             row.label(
                 text="Unsupported property",
