@@ -50,6 +50,11 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     for i, vertex in enumerate(eqgterdef.vertices):
         attr.data[i].vector = vertex.normal
 
+    nodegroup = get_vertex_normal_nodegroup()
+
+    mod = obj.modifiers.new("VertexNormals", 'NODES')
+    mod.node_group = nodegroup
+
     color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
     for i, vertex in enumerate(eqgterdef.vertices):
         color_attribute.data[i].color = (

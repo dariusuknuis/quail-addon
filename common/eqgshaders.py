@@ -726,10 +726,10 @@ class MaterialNodeBuilder:
         node.interpolation = interpolation
         node.extension = "REPEAT"
 
-        if non_color and node.image is not None:
+        if (non_color and node.image is not None and node.image.colorspace_settings.name != "Non-Color"):
             try:
                 node.image.colorspace_settings.name = "Non-Color"
-            except TypeError:
+            except (TypeError, ValueError):
                 pass
 
         if vector is not None:
@@ -1061,27 +1061,37 @@ class MaterialNodeBuilder:
             return
 
         if alpha_mode == "AddAlpha":
-            # Blender has no portable Principled setting equivalent to the
-            # legacy framebuffer blend SrcAlpha/One.  Transparent + premultiplied
-            # Emission is the closest renderer-independent node approximation.
-            emission = self.nodes.new("ShaderNodeEmission")
-            emission.name = "AddAlpha Emission"
-            emission.label = "AddAlpha approximation"
-            self.links.new(result.color, emission.inputs["Color"])
-            if result.alpha is not None:
-                self.links.new(result.alpha, emission.inputs["Strength"])
-            else:
-                emission.inputs["Strength"].default_value = 1.0
-
             transparent = self.nodes.new("ShaderNodeBsdfTransparent")
             transparent.name = "AddAlpha Transparent"
+            transparent.label = "Destination contribution"
+            transparent.inputs["Color"].default_value = (
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+            )
 
             add_shader = self.nodes.new("ShaderNodeAddShader")
             add_shader.name = "AddAlpha"
-            self.links.new(transparent.outputs[0], add_shader.inputs[0])
-            self.links.new(emission.outputs[0], add_shader.inputs[1])
-            self.links.new(add_shader.outputs[0], self.output.inputs["Surface"])
-            set_transparent_render_method(self.material, chroma=False)
+            add_shader.label = "AddAlpha: Transparent + Principled"
+
+            self.links.new(
+                transparent.outputs["BSDF"],
+                add_shader.inputs[0],
+            )
+            self.links.new(
+                self.bsdf.outputs["BSDF"],
+                add_shader.inputs[1],
+            )
+            self.links.new(
+                add_shader.outputs[0],
+                self.output.inputs["Surface"],
+            )
+
+            set_transparent_render_method(
+                self.material,
+                chroma=False,
+            )
             return
 
         # Opaque and unknown modes remain opaque.
@@ -1543,7 +1553,7 @@ def _mpl_bump(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> 
         coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
 
     coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv, non_color=True
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
     )
     color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
     builder.normal_map(normal.outputs["Color"])
@@ -1574,7 +1584,7 @@ def _mpl_blend(builder: MaterialNodeBuilder, use_normal: bool = True) -> BuildRe
     )
     coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
     coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv, non_color=True
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
     )
 
     color = builder.multiply_color(
@@ -1589,8 +1599,8 @@ def _mpl_blend(builder: MaterialNodeBuilder, use_normal: bool = True) -> BuildRe
     color = builder.scale_color(color, 2.0, "Tinted Surface × 2", clamp=True)
 
     if use_normal:
-        normal0 = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
-        normal1 = builder.texture("e_TextureNormal1", "Normal 1", uv0, non_color=True)
+        normal0 = builder.texture("e_TextureNormal0", "Normal 0", uv0)
+        normal1 = builder.texture("e_TextureNormal1", "Normal 1", uv0)
         normal_mix = builder.mix_color(
             normal0.outputs["Color"],
             normal1.outputs["Color"],
@@ -1621,7 +1631,7 @@ def _mpl_full(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> 
         )
         coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
     coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv, non_color=True
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
     )
 
     color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
@@ -1642,7 +1652,7 @@ def _mpl_reflection(builder: MaterialNodeBuilder) -> BuildResult:
     )
     coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
     coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv, non_color=True
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
     )
     environment = builder.texture(
         "e_TextureEnvironment0",

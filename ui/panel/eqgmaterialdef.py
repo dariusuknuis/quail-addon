@@ -2,6 +2,7 @@
 
 import bpy
 from bpy.types import Material
+from bpy_extras.io_utils import ImportHelper
 import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 from ...logger.error import error
@@ -634,11 +635,21 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
             )
 
             if is_image_property:
-                row.template_ID(
+                row.prop_search(
                     material.quail_eqgmaterialdef,
                     property_name,
-                    open="image.open",
+                    bpy.data,
+                    "images",
+                    text="",
                 )
+
+                load = row.operator(
+                    "material.load_eqg_image",
+                    text="",
+                    icon="FILE_FOLDER",
+                )
+                load.material_name = material.name
+                load.property_name = property_name
             else:
                 row.prop(
                     material.quail_eqgmaterialdef,
@@ -671,6 +682,98 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
 
     row = box.row()
     row.prop(material.quail_eqgmaterialdef, "animsleep")
+
+from bpy_extras.io_utils import ImportHelper
+
+
+class MATERIAL_OT_load_eqg_image(bpy.types.Operator, ImportHelper):
+    bl_idname = "material.load_eqg_image"
+    bl_label = "Load EQG Image"
+    bl_options = {"REGISTER", "UNDO"}
+
+    filter_glob: StringProperty(
+        default="*.dds;*.bmp;*.png;*.tga",
+        options={"HIDDEN"},
+    )
+
+    material_name: StringProperty(
+        options={"HIDDEN"},
+    )
+
+    property_name: StringProperty(
+        options={"HIDDEN"},
+    )
+
+    def execute(self, context):
+        # Import locally to avoid an add-on initialization dependency loop.
+        from ...common.image_loader import load_eqg_image
+
+        material = bpy.data.materials.get(self.material_name)
+        if material is None:
+            self.report(
+                {"ERROR"},
+                f"Material not found: {self.material_name}",
+            )
+            return {"CANCELLED"}
+
+        if material.get("quaildef") != "eqgmaterialdef":
+            self.report(
+                {"ERROR"},
+                f"{material.name} is not an EQG material",
+            )
+            return {"CANCELLED"}
+
+        if not hasattr(
+            material.quail_eqgmaterialdef,
+            self.property_name,
+        ):
+            self.report(
+                {"ERROR"},
+                f"Unknown EQG property: {self.property_name}",
+            )
+            return {"CANCELLED"}
+
+        # load_eqg_image expects the filename separately from assets_path.
+        assets_path = os.path.dirname(self.filepath)
+        filename = bpy.path.basename(self.filepath)
+
+        loader_context = type(
+            "EqgImageLoaderContext",
+            (),
+            {
+                "parser": type(
+                    "EqgImageLoaderParser",
+                    (),
+                    {"assets_path": assets_path},
+                )()
+            },
+        )()
+
+
+        image, err = load_eqg_image(
+            loader_context,
+            filename,
+            flip_tex=False,
+        )
+
+        if err:
+            self.report({"ERROR"}, err)
+            return {"CANCELLED"}
+
+        if image is None:
+            self.report(
+                {"ERROR"},
+                f"Could not load image: {self.filepath}",
+            )
+            return {"CANCELLED"}
+
+        setattr(
+            material.quail_eqgmaterialdef,
+            self.property_name,
+            image,
+        )
+
+        return {"FINISHED"}
 
 class MATERIAL_OT_choose_eqg_shader_property(bpy.types.Operator):
     bl_idname = "material.choose_eqg_shader_property"

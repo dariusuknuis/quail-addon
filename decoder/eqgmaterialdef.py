@@ -65,14 +65,14 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
                 return f"load {prop[0]}: {err}"
             props.e_TextureFallback0 = image
         elif prop[0] == "e_TextureNormal0":
-            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex, non_color=True)
             if err:
                 return f"load {prop[0]}: {err}"
             props.e_TextureNormal0 = image
         elif prop[0] == "e_TextureNormal0mapChannel":
             props.e_TextureNormal0mapChannel = prop[2]
         elif prop[0] == "e_TextureNormal1":
-            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex)
+            image, err = load_eqg_image(ctx, prop[2], flip_tex=flip_tex, non_color=True)
             if err:
                 return f"load {prop[0]}: {err}"
             props.e_TextureNormal1 = image
