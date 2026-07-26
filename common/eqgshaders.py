@@ -1747,12 +1747,20 @@ def _waterfall(builder: MaterialNodeBuilder) -> BuildResult:
         "Waterfall Alpha",
         scrolling_uv(2, 0.03, 0.03),
     )
+    opacity = builder.value_node("Waterfall Opacity", 0.65)
+    alpha = builder.math(
+        "MULTIPLY",
+        alpha_sample.outputs["Alpha"],
+        opacity,
+        "Waterfall Texture Alpha × Opacity",
+    )
 
     # The first sample supplies RGB; the second sample supplies alpha.
-    # Principled BSDF supplies the scene-lighting term used by the Max shader.
+    # The opacity multiplier approximates the visibly translucent client blend
+    # and remains exposed as a node value for direct material tuning.
     return BuildResult(
         color=color_sample.outputs["Color"],
-        alpha=alpha_sample.outputs["Alpha"],
+        alpha=alpha,
     )
 
 
