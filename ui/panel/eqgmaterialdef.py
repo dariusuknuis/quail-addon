@@ -210,9 +210,18 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
+    e_fCoverageScale: FloatProperty(
+            name="e_fCoverageScale",
+            description="Coverage Scale",
+            min=0.0,
+            max=100.0,
+            default=0.05,
+            update=update_shader
+        )
+
     e_fCoverageScale0: FloatProperty(
         name="e_fCoverageScale0",
-        description="Coverage Scale",
+        description="Coverage Scale 0",
         min=0.0,
         max=100.0,
         default=0.05,
@@ -879,6 +888,7 @@ class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
 
             material.quail_eqgmaterialdef.e_fShininess0 = 12.0
             material.quail_eqgmaterialdef.e_fBumpiness0 = 0.0
+            material.quail_eqgmaterialdef.e_fCoverageScale = 0.05
             material.quail_eqgmaterialdef.e_fCoverageScale0 = 0.05
             material.quail_eqgmaterialdef.e_fEnvMapStrength0 = 1.0
             material.quail_eqgmaterialdef.e_fFresnelBias = 0.3

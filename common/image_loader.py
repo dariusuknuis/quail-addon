@@ -448,6 +448,42 @@ def process_bmp_image(path, image):
     # Optional: mark as processed
     image["bmp_processed"] = True
 
+def create_missing_eqg_image(
+    name: str,
+    texture_path: str,
+) -> bpy.types.Image:
+    """Create a visible placeholder for a missing EQG texture.
+
+    The metadata lets shader builders distinguish a missing source asset from
+    an image that exists but could not be decoded correctly.
+    """
+
+    source_name = os.path.basename(name)
+    placeholder_name = f"{source_name}__MISSING"
+    image = bpy.data.images.get(placeholder_name)
+
+    if image is None:
+        image = bpy.data.images.new(
+            placeholder_name,
+            width=2,
+            height=2,
+            alpha=True,
+        )
+        image.pixels[:] = (
+            1.0, 0.0, 1.0, 1.0,
+            0.0, 0.0, 0.0, 1.0,
+            0.0, 0.0, 0.0, 1.0,
+            1.0, 0.0, 1.0, 1.0,
+        )
+        image.update()
+        image.use_fake_user = True
+
+    image["quail_missing_texture"] = True
+    image["quail_source_name"] = source_name
+    image["quail_source_path"] = os.path.abspath(texture_path)
+    image["quail_missing_reason"] = "Texture file not found"
+    return image
+
 def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
     texture_path = os.path.join(ctx.parser.assets_path, name)
@@ -516,7 +552,17 @@ def load_eqg_image(
     texture_path = os.path.join(ctx.parser.assets_path, name)
     image_name = os.path.basename(name)
     if not os.path.exists(texture_path):
-        return None, f"Texture not found: {texture_path}"
+        img = create_missing_eqg_image(name, texture_path)
+        if non_color:
+            try:
+                img.colorspace_settings.name = "Non-Color"
+            except TypeError:
+                pass
+        print(
+            f"[WARN] Texture not found, using placeholder: "
+            f"{texture_path}"
+        )
+        return img, ""
 
     tex_type = detect_texture_type(texture_path)
     try:

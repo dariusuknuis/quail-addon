@@ -78,6 +78,8 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
             props.e_TextureNormal1 = image
         elif prop[0] == "e_fBumpiness0":
             props.e_fBumpiness0 = float(prop[2])
+        elif prop[0] == "e_fCoverageScale":
+            props.e_fCoverageScale = float(prop[2])
         elif prop[0] == "e_fCoverageScale0":
             props.e_fCoverageScale0 = float(prop[2])
         elif prop[0] == "e_fEnvMapStrength0":
