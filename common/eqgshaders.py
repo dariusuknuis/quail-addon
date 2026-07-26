@@ -49,6 +49,7 @@ SHADER_GROUPS = [
     "MPLShine2UV",
     "Terrain",
     "Water",
+    "Waterfall",
     "Lava",
     "Lava2",
 ]
@@ -684,6 +685,41 @@ class MaterialNodeBuilder:
         node.outputs[0].default_value = value
         return node.outputs[0]
 
+    def color_node(self, label: str, value: Any) -> NodeSocket:
+        node = self.nodes.new("ShaderNodeRGB")
+        node.name = self.unique_name(label)
+        node.label = label
+        rgba = tuple(value)
+        if len(rgba) == 3:
+            rgba += (1.0,)
+        node.outputs["Color"].default_value = rgba[:4]
+        return node.outputs["Color"]
+
+    def scene_time(self, label: str = "Scene Time") -> NodeSocket:
+        node = self.nodes.new("ShaderNodeValue")
+        node.name = self.unique_name(label)
+        node.label = label
+        node.outputs[0].default_value = 0.0
+
+        scene = bpy.context.scene
+        if scene is not None:
+            driver = node.outputs[0].driver_add("default_value").driver
+            driver.type = "SCRIPTED"
+            for name, data_path in (
+                ("current_frame", "frame_current"),
+                ("fps", "render.fps"),
+                ("fps_base", "render.fps_base"),
+            ):
+                variable = driver.variables.new()
+                variable.name = name
+                variable.type = "SINGLE_PROP"
+                variable.targets[0].id_type = "SCENE"
+                variable.targets[0].id = scene
+                variable.targets[0].data_path = data_path
+            driver.expression = "(current_frame * fps_base / fps) % 100.0"
+
+        return node.outputs[0]
+
     def find_or_load_image(self, property_name: str) -> Image:
         texture_path = self.value(property_name)
         if not texture_path:
@@ -785,6 +821,48 @@ class MaterialNodeBuilder:
             self.links.new(scale, node.inputs[3])
         else:
             node.inputs[3].default_value = float(scale)
+        return node.outputs["Vector"]
+
+    def vector_math(
+        self,
+        operation: str,
+        a: Any,
+        b: Any = None,
+        label: str = "Vector Math",
+    ) -> NodeSocket:
+        node = self.nodes.new("ShaderNodeVectorMath")
+        node.name = self.unique_name(label)
+        node.label = label
+        node.operation = operation
+
+        for index, value in enumerate((a, b)):
+            if value is None:
+                continue
+            if isinstance(value, NodeSocket):
+                self.links.new(value, node.inputs[index])
+            else:
+                node.inputs[index].default_value = value
+
+        if operation in {"DOT_PRODUCT", "DISTANCE", "LENGTH"}:
+            return node.outputs["Value"]
+        return node.outputs["Vector"]
+
+    def combine_xyz(
+        self,
+        label: str,
+        x: float | NodeSocket = 0.0,
+        y: float | NodeSocket = 0.0,
+        z: float | NodeSocket = 0.0,
+    ) -> NodeSocket:
+        node = self.nodes.new("ShaderNodeCombineXYZ")
+        node.name = self.unique_name(label)
+        node.label = label
+
+        for name, value in zip(("X", "Y", "Z"), (x, y, z)):
+            if isinstance(value, NodeSocket):
+                self.links.new(value, node.inputs[name])
+            else:
+                node.inputs[name].default_value = float(value)
         return node.outputs["Vector"]
 
     def vertex_color(self) -> Node:
@@ -1643,24 +1721,40 @@ def _mpl_full(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> 
     return BuildResult(color, alpha)
 
 
-def _mpl_reflection(builder: MaterialNodeBuilder) -> BuildResult:
+def _mpl_reflection(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
     uv0 = builder.uv("UVMap")
     diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture("e_TextureNormal0", "Normal/Reflection Mask 0", uv0, non_color=True)
-    coverage_scale = builder.value_node(
-        "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+    normal = builder.texture(
+        "e_TextureNormal0",
+        "Normal/Reflection Mask 0",
+        uv0,
+        non_color=True,
     )
-    coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-    coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv
-    )
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale",
+            builder.float_value("e_fCoverageScale0", 1.0),
+        )
+        coverage_uv = builder.scaled_vector(
+            uv0,
+            coverage_scale,
+            "Coverage UV Scale",
+        )
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
     environment = builder.texture(
         "e_TextureEnvironment0",
         "Environment 0",
         builder.sphere_map_vector(),
     )
 
-    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    surface, alpha = builder.legacy_surface(
+        diffuse,
+        coverage,
+        use_vertex_tint=True,
+    )
     environment_color = builder.scale_color(
         environment.outputs["Color"],
         builder.float_value("e_fEnvMapStrength0", 1.0),
@@ -1671,9 +1765,326 @@ def _mpl_reflection(builder: MaterialNodeBuilder) -> BuildResult:
         normal.outputs["Alpha"],
         "Environment × Normal Alpha",
     )
-    color = builder.add_color(surface, environment_color, "Surface + Reflection")
+
+    color = builder.add_color(
+        surface,
+        environment_color,
+        "Surface + Reflection",
+    )
     builder.normal_map(normal.outputs["Color"])
+
     return BuildResult(color, alpha)
+
+def _mpl_glow(
+    builder: MaterialNodeBuilder,
+    coverage_uses_uv2: bool = False,
+) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture(
+        "e_TextureNormal0", "Normal/Glow 0", uv0, non_color=True
+    )
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
+    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+
+    return BuildResult(
+        color=surface,
+        alpha=alpha,
+        emission_color=surface,
+        emission_strength=normal.outputs["Alpha"],
+    )
+
+def _mpl_shine(
+    builder: MaterialNodeBuilder,
+    coverage_uses_uv2: bool = False,
+) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture(
+        "e_TextureNormal0", "Normal/Shine 0", uv0, non_color=True
+    )
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
+    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+    builder.specular_level(normal.outputs["Alpha"])
+    builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
+    return BuildResult(surface, alpha)
+
+def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    weights = builder.uv("UVMap2")
+    coverage_scale = builder.value_node(
+        "Coverage Scale", builder.float_value("e_fCoverageScale", 0.1)
+    )
+    coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    detail1 = builder.texture("e_TextureDetail1", "Detail 1", uv0)
+    detail2 = builder.texture("e_TextureDetail2", "Detail 2", uv0)
+    coverage = builder.texture("e_TextureCoverage", "Coverage", coverage_uv)
+
+    separate = builder.nodes.new("ShaderNodeSeparateXYZ")
+    separate.name = builder.unique_name("Separate Terrain Weights")
+    separate.label = "UVMap2 X/Y = Detail Weights"
+    builder.links.new(weights, separate.inputs["Vector"])
+
+    detail1_color = builder.scale_color(
+        detail1.outputs["Color"], separate.outputs["X"], "Detail 1 × Weight X"
+    )
+    detail2_color = builder.scale_color(
+        detail2.outputs["Color"], separate.outputs["Y"], "Detail 2 × Weight Y"
+    )
+    detail_color = builder.add_color(
+        detail1_color, detail2_color, "Weighted Detail 1 + Detail 2"
+    )
+    coverage_color = builder.scale_color(
+        coverage.outputs["Color"], 2.0, "Coverage × 2"
+    )
+    color = builder.multiply_color(
+        detail_color, coverage_color, "Details × Coverage"
+    )
+    color = builder.multiply_color(
+        color,
+        builder.vertex_color().outputs["Color"],
+        "Terrain × Vertex RGB",
+    )
+    return BuildResult(color, None)
+
+def _water(builder: MaterialNodeBuilder) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    time = builder.scene_time()
+
+    slide1_x = builder.math(
+        "MULTIPLY", time, -builder.float_value("e_fSlide1X", 0.02), "Slide 1 X"
+    )
+    slide1_y = builder.math(
+        "MULTIPLY", time, -builder.float_value("e_fSlide1Y", 0.02), "Slide 1 Y"
+    )
+    slide2_x = builder.math(
+        "MULTIPLY", time, builder.float_value("e_fSlide2X", 0.03), "Slide 2 X"
+    )
+    slide2_y = builder.math(
+        "MULTIPLY", time, builder.float_value("e_fSlide2Y", 0.03), "Slide 2 Y"
+    )
+
+    uv1 = builder.vector_math(
+        "ADD",
+        uv0,
+        builder.combine_xyz("Slide 1 Offset", slide1_x, slide1_y),
+        "Water UV 1",
+    )
+    uv2 = builder.vector_math(
+        "ADD",
+        builder.scaled_vector(uv0, 2.0, "Water UV 2 Scale"),
+        builder.combine_xyz("Slide 2 Offset", slide2_x, slide2_y),
+        "Water UV 2",
+    )
+
+    normal1 = builder.texture(
+        "e_TextureNormal0", "Water Normal 1", uv1, non_color=True
+    )
+    normal2 = builder.texture(
+        "e_TextureNormal0", "Water Normal 2", uv2, non_color=True
+    )
+    decoded1 = builder.vector_math(
+        "SUBTRACT",
+        builder.scaled_vector(normal1.outputs["Color"], 2.0, "Decode Normal 1 × 2"),
+        (1.0, 1.0, 1.0),
+        "Decode Normal 1",
+    )
+    decoded2 = builder.vector_math(
+        "SUBTRACT",
+        builder.scaled_vector(normal2.outputs["Color"], 2.0, "Decode Normal 2 × 2"),
+        (1.0, 1.0, 1.0),
+        "Decode Normal 2",
+    )
+    combined_normal = builder.vector_math(
+        "ADD", decoded1, decoded2, "Combined Water Normal"
+    )
+
+    camera = builder.nodes.new("ShaderNodeCameraData")
+    camera.name = builder.unique_name("Water Camera Data")
+    camera.label = "Water Camera Data"
+    distance = builder.clamp_value(
+        builder.math(
+            "DIVIDE",
+            camera.outputs["View Z Depth"],
+            300.0,
+            "Water Depth / 300",
+        ),
+        "Clamp Water Distance",
+    )
+    flattening = builder.math(
+        "MULTIPLY", distance, 2.0, "Distance Normal Flattening"
+    )
+    combined_normal = builder.vector_math(
+        "ADD",
+        combined_normal,
+        builder.combine_xyz("Normal Flattening Z", z=flattening),
+        "Distance-Flattened Water Normal",
+    )
+    tangent_normal = builder.vector_math(
+        "NORMALIZE", combined_normal, label="Normalize Water Normal"
+    )
+    encoded_normal = builder.vector_math(
+        "ADD",
+        builder.scaled_vector(tangent_normal, 0.5, "Encode Water Normal × 0.5"),
+        (0.5, 0.5, 0.5),
+        "Encode Water Normal",
+    )
+    normal_map = builder.normal_map(encoded_normal, "Water Normal Map")
+    world_normal = normal_map.outputs["Normal"]
+
+    incident = builder.vector_math(
+        "NORMALIZE", camera.outputs["View Vector"], label="Camera to Water"
+    )
+    view = builder.scaled_vector(incident, -1.0, "Water to Camera")
+    facing_dot = builder.clamp_value(
+        builder.vector_math(
+            "DOT_PRODUCT", world_normal, view, "View · Water Normal"
+        ),
+        "Clamp Water Facing Dot",
+    )
+    facing = builder.math("SUBTRACT", 1.0, facing_dot, "Water Facing")
+
+    water_color1 = builder.color_node(
+        "Water Color 1",
+        builder.value("e_fWaterColor1", (0.0, 0.04, 0.11, 1.0)),
+    )
+    water_color2 = builder.color_node(
+        "Water Color 2",
+        builder.value("e_fWaterColor2", (0.0, 0.23, 0.17, 1.0)),
+    )
+    color = builder.mix_color(
+        water_color1, water_color2, facing, "Water Color"
+    )
+    color = builder.multiply_color(
+        color,
+        builder.vertex_color().outputs["Color"],
+        "Water × Vertex RGB",
+    )
+
+    fresnel_bias = builder.float_value("e_fFresnelBias", 0.25)
+    fresnel_power = builder.math(
+        "POWER",
+        facing,
+        builder.float_value("e_fFresnelPower", 8.0),
+        "Water Facing ^ Fresnel Power",
+    )
+    fresnel = builder.math(
+        "ADD",
+        fresnel_bias,
+        builder.math(
+            "MULTIPLY",
+            fresnel_power,
+            1.0 - fresnel_bias,
+            "Fresnel Power × (1 - Bias)",
+        ),
+        "Water Fresnel",
+    )
+
+    reflection_vector = builder.vector_math(
+        "REFLECT", incident, world_normal, "Water Reflection Vector"
+    )
+    environment = builder.nodes.new("ShaderNodeTexEnvironment")
+    environment.name = builder.unique_name("Water Environment")
+    environment.label = "Water Environment"
+    environment.image = builder.find_or_load_image("e_TextureEnvironment0")
+    environment.interpolation = "Linear"
+    environment.projection = "MIRROR_BALL"
+    builder.links.new(reflection_vector, environment.inputs["Vector"])
+
+    reflection_color = builder.multiply_color(
+        environment.outputs["Color"],
+        builder.color_node(
+            "Reflection Color",
+            builder.value("e_fReflectionColor", (1.0, 1.0, 1.0, 1.0)),
+        ),
+        "Environment × Reflection Color",
+    )
+    reflection_strength = builder.math(
+        "MULTIPLY",
+        fresnel,
+        builder.float_value("e_fReflectionAmount", 0.7),
+        "Reflection Amount × Fresnel",
+    )
+    alpha = builder.clamp_value(
+        builder.math("MULTIPLY", fresnel, 2.9, "Water Fresnel × 2.9"),
+        "Clamp Water Alpha",
+    )
+    return BuildResult(
+        color=color,
+        alpha=alpha,
+        emission_color=reflection_color,
+        emission_strength=reflection_strength,
+    )
+
+def _waterfall(builder: MaterialNodeBuilder) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    time = builder.scene_time()
+
+    def scrolling_uv(
+        index: int,
+        default_x: float,
+        default_y: float,
+    ) -> NodeSocket:
+        offset = builder.combine_xyz(
+            f"Waterfall {index} Offset",
+            builder.math(
+                "MULTIPLY",
+                time,
+                builder.float_value(f"e_fSlide{index}X", default_x),
+                f"Waterfall {index} Slide X",
+            ),
+            builder.math(
+                "MULTIPLY",
+                time,
+                builder.float_value(f"e_fSlide{index}Y", default_y),
+                f"Waterfall {index} Slide Y",
+            ),
+        )
+        return builder.vector_math(
+            "ADD",
+            uv0,
+            offset,
+            f"Waterfall UV {index}",
+        )
+
+    color_sample = builder.texture(
+        "e_TextureDiffuse0",
+        "Waterfall Color",
+        scrolling_uv(1, 0.02, 0.02),
+    )
+    alpha_sample = builder.texture(
+        "e_TextureDiffuse0",
+        "Waterfall Alpha",
+        scrolling_uv(2, 0.03, 0.03),
+    )
+
+    # The first sample supplies RGB; the second sample supplies alpha.
+    # Principled BSDF supplies the scene-lighting term used by the Max shader.
+    return BuildResult(
+        color=color_sample.outputs["Color"],
+        alpha=alpha_sample.outputs["Alpha"],
+    )
 
 
 def _unsupported(builder: MaterialNodeBuilder) -> BuildResult:
@@ -1694,25 +2105,25 @@ GROUP_BUILDERS: dict[str, Callable[[MaterialNodeBuilder], BuildResult]] = {
     "Bump/Shine/Glow/Environment": _bump_shine_glow_environment,
     "Environment": _environment,
     "CBST2_2UV": _cbst2_2uv,
+    "Detail Palette": _detail_palette,
     "MPLBump": lambda builder: _mpl_bump(builder, False),
     "MPLBump2UV": lambda builder: _mpl_bump(builder, True),
     "MPLBlend": lambda builder: _mpl_blend(builder, True),
     "MPLBlendNoBump": lambda builder: _mpl_blend(builder, False),
     "MPLFull": lambda builder: _mpl_full(builder, False),
     "MPLFull2UV": lambda builder: _mpl_full(builder, True),
-    "MPLReflection": _mpl_reflection,
+    "MPLReflection": lambda builder: _mpl_reflection(builder, False),
+    "MPLReflection2UV": lambda builder: _mpl_reflection(builder, True),
+    "MPLGlow": lambda builder: _mpl_glow(builder, False),
+    "MPLGlow2UV": lambda builder: _mpl_glow(builder, True),
+    "MPLShine": lambda builder: _mpl_shine(builder, False),
+    "MPLShine2UV": lambda builder: _mpl_shine(builder, True),
+    "Terrain": _terrain,
+    "Water": _water,
+    "Waterfall": _waterfall,
 
     # These remain explicit so an unreviewed shader never silently receives a
     # plausible-looking but incorrect material.
-    "Detail Palette": _detail_palette,
-    "MPLReflection2UV": _unsupported,
-    "MPLGlow": _unsupported,
-    "MPLGlow2UV": _unsupported,
-    "MPLShine": _unsupported,
-    "MPLShine2UV": _unsupported,
-    "Terrain": _unsupported,
-    "Water": _unsupported,
-    "Waterfall": _unsupported,
     "Lava": _unsupported,
     "Lava2": _unsupported,
 }
