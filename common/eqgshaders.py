@@ -1,4 +1,4 @@
-# eqg_shaders.py
+# eqgshaders.py
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import os
 from typing import Any, Callable, Optional
 from .material import create_palette_mask_node_group, create_blur_node_group
 from bpy.types import Image, Material, Node, NodeSocket, NodeTree
+
 
 DEFAULT_UV_SCALE = 1.0
 CHROMA_CUTOFF = 0.5
@@ -90,6 +91,7 @@ SHADERS_BY_MODE = {
     ],
 }
 
+
 @dataclass(frozen=True)
 class ShaderFamily:
 
@@ -101,11 +103,15 @@ class ShaderFamily:
 
 
 SHADER_FAMILIES: Dict[str, ShaderFamily] = {
-
-
     "C1": ShaderFamily(group="Basic", properties=["e_TextureDiffuse0"]),
-    "C1_2UV": ShaderFamily(group="Basic_2UV", properties=["e_TextureDiffuse0", "e_TextureSecond0"]),
-    "CB1": ShaderFamily(group="Bump", properties=["e_TextureDiffuse0", "e_TextureNormal0"]),
+    "C1_2UV": ShaderFamily(
+        group="Basic_2UV",
+        properties=["e_TextureDiffuse0", "e_TextureSecond0"],
+    ),
+    "CB1": ShaderFamily(
+        group="Bump",
+        properties=["e_TextureDiffuse0", "e_TextureNormal0"],
+    ),
 
     "CB1_2UV": ShaderFamily(
         group="Bump_2UV",
@@ -185,7 +191,10 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
         ],
     ),
 
-    "CG1": ShaderFamily(group="Glow", properties=["e_TextureDiffuse0", "e_TextureGlow0"]),
+    "CG1": ShaderFamily(
+        group="Glow",
+        properties=["e_TextureDiffuse0", "e_TextureGlow0"],
+    ),
     "CSG1": ShaderFamily(group="Basic", properties=["e_TextureDiffuse0"]),
 
     "C1DTP": ShaderFamily(
@@ -237,9 +246,18 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
         ],
     ),
 
-    "MPLBasic": ShaderFamily(group="Basic", properties=["e_TextureDiffuse0"]),
-    "MPLBasicA": ShaderFamily(group="Basic", properties=["e_TextureDiffuse0"]),
-    "MPLBasicAT": ShaderFamily(group="Basic", properties=["e_TextureDiffuse0"]),
+    "MPLBasic": ShaderFamily(
+        group="Basic",
+        properties=["e_TextureDiffuse0"],
+    ),
+    "MPLBasicA": ShaderFamily(
+        group="Basic",
+        properties=["e_TextureDiffuse0"],
+    ),
+    "MPLBasicAT": ShaderFamily(
+        group="Basic",
+        properties=["e_TextureDiffuse0"],
+    ),
 
     "MPLBump": ShaderFamily(
         group="MPLBump",
@@ -459,6 +477,7 @@ SHADER_FAMILIES: Dict[str, ShaderFamily] = {
     ),
 }
 
+
 @dataclass(frozen=True, slots=True)
 class ParsedShaderTag:
     alpha_mode: str
@@ -473,12 +492,22 @@ SPECIAL_SHADER_RULES: tuple[tuple[str, str], ...] = (
     ("Terrain", "Terrain"),
     ("Lava2", "Lava2"),
     ("Lava", "Lava"),
-    ("C1DTP", "C1DTP"),
 )
+
+# These shader groups own their render state in the client and therefore ignore
+# the material panel's ordinary Opaque/Alpha/AddAlpha/Chroma selection.
+SPECIAL_GROUP_ALPHA_MODES: dict[str, str] = {
+    "Waterfall": "Alpha",
+    "Water": "Alpha",
+    "Terrain": "Opaque",
+    "Lava2": "Opaque",
+    "Lava": "Opaque",
+}
 
 
 OPAQUE_SHADER_RULES: tuple[tuple[str, str], ...] = (
     # Longer overlapping names first.
+    ("C1DTP", "C1DTP"),
     ("CBST2_2UV", "CBST2_2UV"),
     ("CBSG1_2UV", "CBSG1_2UV"),
     ("CB1_2UV", "CB1_2UV"),
@@ -610,6 +639,7 @@ def parse_shader_tag(shadertag: str) -> tuple[str, str]:
 
     return alpha_mode, "C1"
 
+
 @dataclass
 class BuildResult:
     """Sockets produced by a shader-group builder."""
@@ -729,9 +759,27 @@ class MaterialNodeBuilder:
             return texture_path
 
         texture_path = str(texture_path)
-        image = bpy.data.images.get(texture_path)
+        source_name = os.path.basename(texture_path)
+
+        # DDS cubemaps are converted by load_eqg_image() into an in-memory
+        # equirectangular image.  Prefer that generated image over either an
+        # empty source DDS datablock or another attempt to load the cubemap.
+        image = bpy.data.images.get(
+            f"{source_name}__EQG_EQUIRECTANGULAR"
+        )
         if image is None:
-            image = bpy.data.images.get(os.path.basename(texture_path))
+            for candidate in bpy.data.images:
+                if (
+                    candidate.get("quail_cubemap_equirectangular", False)
+                    and candidate.get("quail_source_name") == source_name
+                ):
+                    image = candidate
+                    break
+
+        if image is None:
+            image = bpy.data.images.get(texture_path)
+        if image is None:
+            image = bpy.data.images.get(source_name)
         if image is None:
             image = bpy.data.images.load(texture_path, check_existing=True)
 
@@ -762,10 +810,10 @@ class MaterialNodeBuilder:
         node.interpolation = interpolation
         node.extension = "REPEAT"
 
-        if (non_color and node.image is not None and node.image.colorspace_settings.name != "Non-Color"):
+        if non_color and node.image is not None:
             try:
                 node.image.colorspace_settings.name = "Non-Color"
-            except (TypeError, ValueError):
+            except TypeError:
                 pass
 
         if vector is not None:
@@ -1091,11 +1139,23 @@ class MaterialNodeBuilder:
         self.links.new(power_node.outputs[0], self.bsdf.inputs["Roughness"])
         return power_node.outputs[0]
 
-    def specular_level(self, shine_mask: NodeSocket, scale: float = 0.5) -> NodeSocket:
+    def specular_level(
+        self,
+        shine_mask: NodeSocket,
+        scale: float = 0.5,
+    ) -> NodeSocket:
         """Convert the legacy shine mask to Principled Specular IOR Level."""
 
-        specular_level = self.math("MULTIPLY", shine_mask, scale, "Shine Mask × Specular Scale")
-        self.links.new(specular_level, self.bsdf.inputs["Specular IOR Level"])
+        specular_level = self.math(
+            "MULTIPLY",
+            shine_mask,
+            scale,
+            "Shine Mask × Specular Scale",
+        )
+        self.links.new(
+            specular_level,
+            self.bsdf.inputs["Specular IOR Level"],
+        )
         return specular_level
 
     def sphere_map_vector(self) -> NodeSocket:
@@ -1139,37 +1199,27 @@ class MaterialNodeBuilder:
             return
 
         if alpha_mode == "AddAlpha":
+            # Blender has no portable Principled setting equivalent to the
+            # legacy framebuffer blend SrcAlpha/One.  Transparent + premultiplied
+            # Emission is the closest renderer-independent node approximation.
+            emission = self.nodes.new("ShaderNodeEmission")
+            emission.name = "AddAlpha Emission"
+            emission.label = "AddAlpha approximation"
+            self.links.new(result.color, emission.inputs["Color"])
+            if result.alpha is not None:
+                self.links.new(result.alpha, emission.inputs["Strength"])
+            else:
+                emission.inputs["Strength"].default_value = 1.0
+
             transparent = self.nodes.new("ShaderNodeBsdfTransparent")
             transparent.name = "AddAlpha Transparent"
-            transparent.label = "Destination contribution"
-            transparent.inputs["Color"].default_value = (
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-            )
 
             add_shader = self.nodes.new("ShaderNodeAddShader")
             add_shader.name = "AddAlpha"
-            add_shader.label = "AddAlpha: Transparent + Principled"
-
-            self.links.new(
-                transparent.outputs["BSDF"],
-                add_shader.inputs[0],
-            )
-            self.links.new(
-                self.bsdf.outputs["BSDF"],
-                add_shader.inputs[1],
-            )
-            self.links.new(
-                add_shader.outputs[0],
-                self.output.inputs["Surface"],
-            )
-
-            set_transparent_render_method(
-                self.material,
-                chroma=False,
-            )
+            self.links.new(transparent.outputs[0], add_shader.inputs[0])
+            self.links.new(emission.outputs[0], add_shader.inputs[1])
+            self.links.new(add_shader.outputs[0], self.output.inputs["Surface"])
+            set_transparent_render_method(self.material, chroma=False)
             return
 
         # Opaque and unknown modes remain opaque.
@@ -1524,7 +1574,6 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
         "e_TexturePalette0",
         "Palette Regions",
         blur_node.outputs["Vector"],
-        #non_color=True,
         interpolation="Closest",
     )
     if palette.image is None or "bmp_palette" not in palette.image:
@@ -1617,218 +1666,6 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
     return BuildResult(color, diffuse.outputs["Alpha"])
 
 
-def _mpl_bump(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
-
-    if coverage_uses_uv2:
-        coverage_uv = builder.uv("UVMap2")
-    else:
-        coverage_scale = builder.value_node(
-            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
-        )
-        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-
-    coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv
-    )
-    color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
-    builder.normal_map(normal.outputs["Color"])
-    return BuildResult(color, alpha)
-
-
-def _mpl_blend(builder: MaterialNodeBuilder, use_normal: bool = True) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    uv1 = builder.uv("UVMap2")
-    separate = builder.nodes.new("ShaderNodeSeparateXYZ")
-    separate.name = "Separate UVMap2"
-    separate.label = "UVMap2 X controls blend"
-    builder.links.new(uv1, separate.inputs["Vector"])
-    factor = builder.math("SUBTRACT", 1.0, separate.outputs["X"], "1 - UVMap2.X")
-
-    diffuse0 = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    diffuse1 = builder.texture("e_TextureDiffuse1", "Diffuse 1", uv0)
-    diffuse_mix = builder.mix_color(
-        diffuse0.outputs["Color"],
-        diffuse1.outputs["Color"],
-        factor,
-        "Diffuse Layer Blend",
-        clamp_factor=False,
-    )
-
-    coverage_scale = builder.value_node(
-        "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
-    )
-    coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-    coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv
-    )
-
-    color = builder.multiply_color(
-        diffuse_mix, coverage.outputs["Color"], "Blended Diffuse × Coverage"
-    )
-    color = builder.scale_color(color, 2.0, "Covered Diffuse × 2", clamp=True)
-    color = builder.multiply_color(
-        color,
-        builder.vertex_color().outputs["Color"],
-        "Surface × Vertex RGB",
-    )
-    color = builder.scale_color(color, 2.0, "Tinted Surface × 2", clamp=True)
-
-    if use_normal:
-        normal0 = builder.texture("e_TextureNormal0", "Normal 0", uv0)
-        normal1 = builder.texture("e_TextureNormal1", "Normal 1", uv0)
-        normal_mix = builder.mix_color(
-            normal0.outputs["Color"],
-            normal1.outputs["Color"],
-            factor,
-            "Normal Layer Blend",
-            clamp_factor=False,
-        )
-        builder.normal_map(normal_mix)
-        builder.specular_level(
-            builder.vertex_color().outputs["Alpha"]
-        )
-        builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
-
-    # Both reviewed Region_Blend pixel shaders force output alpha to 1.
-    return BuildResult(color, None)
-
-
-def _mpl_full(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
-
-    if coverage_uses_uv2:
-        coverage_uv = builder.uv("UVMap2")
-    else:
-        coverage_scale = builder.value_node(
-            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
-        )
-        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-    coverage = builder.texture(
-        "e_TextureCoverage0", "Coverage 0", coverage_uv
-    )
-
-    color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
-    builder.normal_map(normal.outputs["Color"])
-    builder.bsdf.inputs["Roughness"].default_value = math.sqrt(2.0 / 14.0)
-    builder.specular_level(
-        builder.vertex_color().outputs["Alpha"]
-    )
-    return BuildResult(color, alpha)
-
-
-def _mpl_reflection(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture(
-        "e_TextureNormal0",
-        "Normal/Reflection Mask 0",
-        uv0,
-        non_color=True,
-    )
-    if coverage_uses_uv2:
-        coverage_uv = builder.uv("UVMap2")
-    else:
-        coverage_scale = builder.value_node(
-            "Coverage Scale",
-            builder.float_value("e_fCoverageScale0", 1.0),
-        )
-        coverage_uv = builder.scaled_vector(
-            uv0,
-            coverage_scale,
-            "Coverage UV Scale",
-        )
-
-    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
-    environment = builder.texture(
-        "e_TextureEnvironment0",
-        "Environment 0",
-        builder.sphere_map_vector(),
-    )
-
-    surface, alpha = builder.legacy_surface(
-        diffuse,
-        coverage,
-        use_vertex_tint=True,
-    )
-    environment_color = builder.scale_color(
-        environment.outputs["Color"],
-        builder.float_value("e_fEnvMapStrength0", 1.0),
-        "Environment × Strength",
-    )
-    environment_color = builder.scale_color(
-        environment_color,
-        normal.outputs["Alpha"],
-        "Environment × Normal Alpha",
-    )
-
-    color = builder.add_color(
-        surface,
-        environment_color,
-        "Surface + Reflection",
-    )
-    builder.normal_map(normal.outputs["Color"])
-
-    return BuildResult(color, alpha)
-
-def _mpl_glow(
-    builder: MaterialNodeBuilder,
-    coverage_uses_uv2: bool = False,
-) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture(
-        "e_TextureNormal0", "Normal/Glow 0", uv0, non_color=True
-    )
-
-    if coverage_uses_uv2:
-        coverage_uv = builder.uv("UVMap2")
-    else:
-        coverage_scale = builder.value_node(
-            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
-        )
-        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-
-    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
-    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
-    builder.normal_map(normal.outputs["Color"])
-
-    return BuildResult(
-        color=surface,
-        alpha=alpha,
-        emission_color=surface,
-        emission_strength=normal.outputs["Alpha"],
-    )
-
-def _mpl_shine(
-    builder: MaterialNodeBuilder,
-    coverage_uses_uv2: bool = False,
-) -> BuildResult:
-    uv0 = builder.uv("UVMap")
-    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
-    normal = builder.texture(
-        "e_TextureNormal0", "Normal/Shine 0", uv0, non_color=True
-    )
-
-    if coverage_uses_uv2:
-        coverage_uv = builder.uv("UVMap2")
-    else:
-        coverage_scale = builder.value_node(
-            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
-        )
-        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
-
-    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
-    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
-    builder.normal_map(normal.outputs["Color"])
-    builder.specular_level(normal.outputs["Alpha"])
-    builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
-    return BuildResult(surface, alpha)
-
 def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
     uv0 = builder.uv("UVMap")
     weights = builder.uv("UVMap2")
@@ -1867,6 +1704,57 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
         "Terrain × Vertex RGB",
     )
     return BuildResult(color, None)
+
+
+def _waterfall(builder: MaterialNodeBuilder) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    time = builder.scene_time()
+
+    def scrolling_uv(
+        index: int,
+        default_x: float,
+        default_y: float,
+    ) -> NodeSocket:
+        offset = builder.combine_xyz(
+            f"Waterfall {index} Offset",
+            builder.math(
+                "MULTIPLY",
+                time,
+                builder.float_value(f"e_fSlide{index}X", default_x),
+                f"Waterfall {index} Slide X",
+            ),
+            builder.math(
+                "MULTIPLY",
+                time,
+                builder.float_value(f"e_fSlide{index}Y", default_y),
+                f"Waterfall {index} Slide Y",
+            ),
+        )
+        return builder.vector_math(
+            "ADD",
+            uv0,
+            offset,
+            f"Waterfall UV {index}",
+        )
+
+    color_sample = builder.texture(
+        "e_TextureDiffuse0",
+        "Waterfall Color",
+        scrolling_uv(1, 0.02, 0.02),
+    )
+    alpha_sample = builder.texture(
+        "e_TextureDiffuse0",
+        "Waterfall Alpha",
+        scrolling_uv(2, 0.03, 0.03),
+    )
+
+    # The first sample supplies RGB; the second sample supplies alpha.
+    # Principled BSDF supplies the scene-lighting term used by the Max shader.
+    return BuildResult(
+        color=color_sample.outputs["Color"],
+        alpha=alpha_sample.outputs["Alpha"],
+    )
+
 
 def _water(builder: MaterialNodeBuilder) -> BuildResult:
     uv0 = builder.uv("UVMap")
@@ -1953,10 +1841,13 @@ def _water(builder: MaterialNodeBuilder) -> BuildResult:
     normal_map = builder.normal_map(encoded_normal, "Water Normal Map")
     world_normal = normal_map.outputs["Normal"]
 
-    incident = builder.vector_math(
-        "NORMALIZE", camera.outputs["View Vector"], label="Camera to Water"
+    geometry = builder.nodes.new("ShaderNodeNewGeometry")
+    geometry.name = builder.unique_name("Water Geometry")
+    geometry.label = "Water Geometry"
+    view = builder.vector_math(
+        "NORMALIZE", geometry.outputs["Incoming"], label="Water to Camera"
     )
-    view = builder.scaled_vector(incident, -1.0, "Water to Camera")
+    incident = builder.scaled_vector(view, -1.0, "Camera to Water")
     facing_dot = builder.clamp_value(
         builder.vector_math(
             "DOT_PRODUCT", world_normal, view, "View · Water Normal"
@@ -2009,8 +1900,9 @@ def _water(builder: MaterialNodeBuilder) -> BuildResult:
     environment.label = "Water Environment"
     environment.image = builder.find_or_load_image("e_TextureEnvironment0")
     environment.interpolation = "Linear"
-    environment.projection = "MIRROR_BALL"
+    environment.projection = "EQUIRECTANGULAR"
     builder.links.new(reflection_vector, environment.inputs["Vector"])
+    builder.bsdf.inputs["Roughness"].default_value = 0.0
 
     reflection_color = builder.multiply_color(
         environment.outputs["Color"],
@@ -2026,8 +1918,33 @@ def _water(builder: MaterialNodeBuilder) -> BuildResult:
         builder.float_value("e_fReflectionAmount", 0.7),
         "Reflection Amount × Fresnel",
     )
+
+    # Deliberately broaden and strengthen only the transparency response while
+    # leaving the source reflection Fresnel calculation unchanged.
+    alpha_fresnel_power = builder.math(
+        "POWER",
+        facing,
+        builder.float_value("e_fFresnelPower", 8.0) * 1.1,
+        "Water Alpha Facing ^ (Fresnel Power × 1.1)",
+    )
+    alpha_fresnel = builder.math(
+        "ADD",
+        fresnel_bias,
+        builder.math(
+            "MULTIPLY",
+            alpha_fresnel_power,
+            1.0 - fresnel_bias,
+            "Water Alpha Power × (1 - Bias)",
+        ),
+        "Water Alpha Fresnel",
+    )
     alpha = builder.clamp_value(
-        builder.math("MULTIPLY", fresnel, 2.9, "Water Fresnel × 2.9"),
+        builder.math(
+            "MULTIPLY",
+            alpha_fresnel,
+            2.61,
+            "Water Alpha Fresnel × 2.61",
+        ),
         "Clamp Water Alpha",
     )
     return BuildResult(
@@ -2037,54 +1954,204 @@ def _water(builder: MaterialNodeBuilder) -> BuildResult:
         emission_strength=reflection_strength,
     )
 
-def _waterfall(builder: MaterialNodeBuilder) -> BuildResult:
+
+def _mpl_bump(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
     uv0 = builder.uv("UVMap")
-    time = builder.scene_time()
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
 
-    def scrolling_uv(
-        index: int,
-        default_x: float,
-        default_y: float,
-    ) -> NodeSocket:
-        offset = builder.combine_xyz(
-            f"Waterfall {index} Offset",
-            builder.math(
-                "MULTIPLY",
-                time,
-                builder.float_value(f"e_fSlide{index}X", default_x),
-                f"Waterfall {index} Slide X",
-            ),
-            builder.math(
-                "MULTIPLY",
-                time,
-                builder.float_value(f"e_fSlide{index}Y", default_y),
-                f"Waterfall {index} Slide Y",
-            ),
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
         )
-        return builder.vector_math(
-            "ADD",
-            uv0,
-            offset,
-            f"Waterfall UV {index}",
-        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
 
-    color_sample = builder.texture(
-        "e_TextureDiffuse0",
-        "Waterfall Color",
-        scrolling_uv(1, 0.02, 0.02),
+    coverage = builder.texture(
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
     )
-    alpha_sample = builder.texture(
-        "e_TextureDiffuse0",
-        "Waterfall Alpha",
-        scrolling_uv(2, 0.03, 0.03),
+    color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+    return BuildResult(color, alpha)
+
+
+def _mpl_blend(builder: MaterialNodeBuilder, use_normal: bool = True) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    uv1 = builder.uv("UVMap2")
+    separate = builder.nodes.new("ShaderNodeSeparateXYZ")
+    separate.name = "Separate UVMap2"
+    separate.label = "UVMap2 X controls blend"
+    builder.links.new(uv1, separate.inputs["Vector"])
+    factor = builder.math("SUBTRACT", 1.0, separate.outputs["X"], "1 - UVMap2.X")
+
+    diffuse0 = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    diffuse1 = builder.texture("e_TextureDiffuse1", "Diffuse 1", uv0)
+    diffuse_mix = builder.mix_color(
+        diffuse0.outputs["Color"],
+        diffuse1.outputs["Color"],
+        factor,
+        "Diffuse Layer Blend",
+        clamp_factor=False,
     )
 
-    # The first sample supplies RGB; the second sample supplies alpha.
-    # Principled BSDF supplies the scene-lighting term used by the Max shader.
+    coverage_scale = builder.value_node(
+        "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+    )
+    coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+    coverage = builder.texture(
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
+    )
+
+    color = builder.multiply_color(
+        diffuse_mix, coverage.outputs["Color"], "Blended Diffuse × Coverage"
+    )
+    color = builder.scale_color(color, 2.0, "Covered Diffuse × 2", clamp=True)
+    color = builder.multiply_color(
+        color,
+        builder.vertex_color().outputs["Color"],
+        "Surface × Vertex RGB",
+    )
+    color = builder.scale_color(color, 2.0, "Tinted Surface × 2", clamp=True)
+
+    if use_normal:
+        normal0 = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
+        normal1 = builder.texture("e_TextureNormal1", "Normal 1", uv0, non_color=True)
+        normal_mix = builder.mix_color(
+            normal0.outputs["Color"],
+            normal1.outputs["Color"],
+            factor,
+            "Normal Layer Blend",
+            clamp_factor=False,
+        )
+        builder.normal_map(normal_mix)
+        builder.specular_level(
+            builder.vertex_color().outputs["Alpha"]
+        )
+        builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
+
+    # Both reviewed Region_Blend pixel shaders force output alpha to 1.
+    return BuildResult(color, None)
+
+
+def _mpl_full(builder: MaterialNodeBuilder, coverage_uses_uv2: bool = False) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture("e_TextureNormal0", "Normal 0", uv0, non_color=True)
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+    coverage = builder.texture(
+        "e_TextureCoverage0", "Coverage 0", coverage_uv
+    )
+
+    color, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+    builder.bsdf.inputs["Roughness"].default_value = math.sqrt(2.0 / 14.0)
+    builder.specular_level(
+        builder.vertex_color().outputs["Alpha"]
+    )
+    return BuildResult(color, alpha)
+
+
+def _mpl_reflection(
+    builder: MaterialNodeBuilder,
+    coverage_uses_uv2: bool = False,
+) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture("e_TextureNormal0", "Normal/Reflection Mask 0", uv0, non_color=True)
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
+    environment = builder.texture(
+        "e_TextureEnvironment0",
+        "Environment 0",
+        builder.sphere_map_vector(),
+    )
+
+    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    environment_color = builder.scale_color(
+        environment.outputs["Color"],
+        builder.float_value("e_fEnvMapStrength0", 1.0),
+        "Environment × Strength",
+    )
+    environment_color = builder.scale_color(
+        environment_color,
+        normal.outputs["Alpha"],
+        "Environment × Normal Alpha",
+    )
+    color = builder.add_color(surface, environment_color, "Surface + Reflection")
+    builder.normal_map(normal.outputs["Color"])
+    return BuildResult(color, alpha)
+
+
+def _mpl_glow(
+    builder: MaterialNodeBuilder,
+    coverage_uses_uv2: bool = False,
+) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture(
+        "e_TextureNormal0", "Normal/Glow 0", uv0, non_color=True
+    )
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
+    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+
     return BuildResult(
-        color=color_sample.outputs["Color"],
-        alpha=alpha_sample.outputs["Alpha"],
+        color=surface,
+        alpha=alpha,
+        emission_color=surface,
+        emission_strength=normal.outputs["Alpha"],
     )
+
+
+def _mpl_shine(
+    builder: MaterialNodeBuilder,
+    coverage_uses_uv2: bool = False,
+) -> BuildResult:
+    uv0 = builder.uv("UVMap")
+    diffuse = builder.texture("e_TextureDiffuse0", "Diffuse 0", uv0)
+    normal = builder.texture(
+        "e_TextureNormal0", "Normal/Shine 0", uv0, non_color=True
+    )
+
+    if coverage_uses_uv2:
+        coverage_uv = builder.uv("UVMap2")
+    else:
+        coverage_scale = builder.value_node(
+            "Coverage Scale", builder.float_value("e_fCoverageScale0", 1.0)
+        )
+        coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
+
+    coverage = builder.texture("e_TextureCoverage0", "Coverage 0", coverage_uv)
+    surface, alpha = builder.legacy_surface(diffuse, coverage, use_vertex_tint=True)
+    builder.normal_map(normal.outputs["Color"])
+    builder.specular_level(normal.outputs["Alpha"])
+    builder.shininess_to_roughness(builder.float_value("e_fShininess0", 12.0))
+    return BuildResult(surface, alpha)
 
 
 def _unsupported(builder: MaterialNodeBuilder) -> BuildResult:
@@ -2105,7 +2172,6 @@ GROUP_BUILDERS: dict[str, Callable[[MaterialNodeBuilder], BuildResult]] = {
     "Bump/Shine/Glow/Environment": _bump_shine_glow_environment,
     "Environment": _environment,
     "CBST2_2UV": _cbst2_2uv,
-    "Detail Palette": _detail_palette,
     "MPLBump": lambda builder: _mpl_bump(builder, False),
     "MPLBump2UV": lambda builder: _mpl_bump(builder, True),
     "MPLBlend": lambda builder: _mpl_blend(builder, True),
@@ -2124,6 +2190,7 @@ GROUP_BUILDERS: dict[str, Callable[[MaterialNodeBuilder], BuildResult]] = {
 
     # These remain explicit so an unreviewed shader never silently receives a
     # plausible-looking but incorrect material.
+    "Detail Palette": _detail_palette,
     "Lava": _unsupported,
     "Lava2": _unsupported,
 }
@@ -2190,7 +2257,10 @@ def eqg_apply(material: Material) -> str:
         result = build_group(builder)
         builder.finish(
             result,
-            material.quail_eqgmaterialdef.alpha_mode,
+            SPECIAL_GROUP_ALPHA_MODES.get(
+                group_name,
+                material.quail_eqgmaterialdef.alpha_mode,
+            ),
             CHROMA_CUTOFF,
         )
         return ""
