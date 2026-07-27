@@ -7,6 +7,7 @@ import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 from ...logger.error import error
 from ...common.eqgshaders import SHADER_FAMILIES, eqg_apply, parse_shader_tag
+from ...common.eqgshaders import replace_shadertag_alpha_mode, replace_shadertag_shader
 from ...common import state
 
 
@@ -89,6 +90,40 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
                 if area.type == "PROPERTIES":
                     area.tag_redraw()
 
+    def update_alpha_mode(self, context):
+        """Update only the alpha-mode marker, then rebuild the material."""
+
+        if state.QUAIL_UPDATING:
+            return
+
+        state.QUAIL_UPDATING = True
+        try:
+            self.shadertag = replace_shadertag_alpha_mode(
+                self.shadertag,
+                self.alpha_mode,
+            )
+        finally:
+            state.QUAIL_UPDATING = False
+
+        self.update_shader(context)
+
+    def update_shader_family(self, context):
+        """Update only the shader marker, then rebuild the material."""
+
+        if state.QUAIL_UPDATING:
+            return
+
+        state.QUAIL_UPDATING = True
+        try:
+            self.shadertag = replace_shadertag_shader(
+                self.shadertag,
+                self.shader,
+            )
+        finally:
+            state.QUAIL_UPDATING = False
+
+        self.update_shader(context)
+
     property_rows: CollectionProperty(
         type=QuailEqgShaderPropertyRow,
     )
@@ -97,7 +132,6 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         name="Shader Tag",
         description="Original WCE shader tag",
         default="",
-        #update=update_shadertag,
     )
 
     alpha_mode: EnumProperty(
@@ -109,7 +143,7 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
             ("Chroma", "Chroma", ""),
         ),
         default="Opaque",
-        update=update_shader,
+        update=update_alpha_mode,
     )
 
     shader: EnumProperty(
@@ -119,7 +153,7 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
             for name in SHADER_FAMILIES
         ),
         default="C1",
-        update=update_shader,
+        update=update_shader_family,
     )
 
     e_fShininess0: FloatProperty(

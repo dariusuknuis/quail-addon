@@ -621,35 +621,89 @@ SHADER_RULES_BY_ALPHA_MODE = {
 }
 
 
-def parse_shader_tag(shadertag: str) -> tuple[str, str]:
-    """Return (alpha_mode, shader) using client-style precedence."""
+def _alpha_mode_from_shadertag(shadertag: str) -> str:
+    """Classify the tag's alpha mode using client-style precedence."""
 
-    special_shader: str | None = None
+    if "AddAlpha" in shadertag:
+        return "AddAlpha"
+    if "Alpha" in shadertag:
+        return "Alpha"
+    if "Chroma" in shadertag:
+        return "Chroma"
+    return "Opaque"
 
-    # Special shader classification takes priority over ordinary shaders.
+
+def _matching_shader_rule(
+    shadertag: str,
+    alpha_mode: str,
+) -> tuple[str, str] | None:
+    """Return the matched (tag marker, shader) using parser precedence."""
+
     for marker, shader in SPECIAL_SHADER_RULES:
         if marker in shadertag:
-            special_shader = shader
-            break
-
-    # Alpha mode is classified independently.
-    if "AddAlpha" in shadertag:
-        alpha_mode = "AddAlpha"
-    elif "Alpha" in shadertag:
-        alpha_mode = "Alpha"
-    elif "Chroma" in shadertag:
-        alpha_mode = "Chroma"
-    else:
-        alpha_mode = "Opaque"
-
-    if special_shader is not None:
-        return alpha_mode, special_shader
+            return marker, shader
 
     for marker, shader in SHADER_RULES_BY_ALPHA_MODE[alpha_mode]:
         if marker in shadertag:
-            return alpha_mode, shader
+            return marker, shader
+
+    # C1 is the parser's default shader and is intentionally absent from some
+    # rule tables. Retain its literal marker when one is actually present so a
+    # panel shader change can replace it.
+    if "C1" in shadertag:
+        return "C1", "C1"
+
+    return None
+
+
+def parse_shader_tag(shadertag: str) -> tuple[str, str]:
+    """Return (alpha_mode, shader) using client-style precedence."""
+
+    alpha_mode = _alpha_mode_from_shadertag(shadertag)
+    match = _matching_shader_rule(shadertag, alpha_mode)
+    if match is not None:
+        return alpha_mode, match[1]
 
     return alpha_mode, "C1"
+
+
+def replace_shadertag_alpha_mode(
+    shadertag: str,
+    alpha_mode: str,
+) -> str:
+    """Replace exactly one alpha-mode marker in an existing shader tag."""
+
+    if alpha_mode not in ALPHA_MODES:
+        return shadertag
+
+    # AddAlpha must be tested before Alpha because it contains "Alpha".
+    # Opaque is only eligible when none of the other three modes is present.
+    for marker in ("AddAlpha", "Alpha", "Chroma"):
+        if marker in shadertag:
+            return shadertag.replace(marker, alpha_mode, 1)
+
+    if "Opaque" in shadertag:
+        return shadertag.replace("Opaque", alpha_mode, 1)
+
+    return shadertag
+
+
+def replace_shadertag_shader(
+    shadertag: str,
+    shader: str,
+) -> str:
+    """Replace exactly one shader marker using parser lookup precedence."""
+
+    if not shader:
+        return shadertag
+
+    alpha_mode = _alpha_mode_from_shadertag(shadertag)
+    match = _matching_shader_rule(shadertag, alpha_mode)
+    if match is None:
+        return shadertag
+
+    marker, _parsed_shader = match
+    return shadertag.replace(marker, shader, 1)
 
 
 @dataclass
@@ -1733,14 +1787,14 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
 
     separate = builder.nodes.new("ShaderNodeSeparateXYZ")
     separate.name = builder.unique_name("Separate Terrain Weights")
-    separate.label = "UVMap2 X/Y = Detail Weights"
+    separate.label = "UVMap2 Y = Detail 1 / X = Detail 2"
     builder.links.new(weights, separate.inputs["Vector"])
 
     detail1_color = builder.scale_color(
-        detail1.outputs["Color"], separate.outputs["X"], "Detail 1 × Weight X"
+        detail1.outputs["Color"], separate.outputs["Y"], "Detail 1 × Weight Y"
     )
     detail2_color = builder.scale_color(
-        detail2.outputs["Color"], separate.outputs["Y"], "Detail 2 × Weight Y"
+        detail2.outputs["Color"], separate.outputs["X"], "Detail 2 × Weight X"
     )
     detail_color = builder.add_color(
         detail1_color, detail2_color, "Weighted Detail 1 + Detail 2"
@@ -2112,12 +2166,34 @@ def _lava2(builder: MaterialNodeBuilder) -> BuildResult:
     """Build the four-map RegionLava2 effect.
 
     Diffuse/Normal 0 use the base UVs. Diffuse 1 and Normal 1 scroll
-    independently. Diffuse 0 alpha blends between the lit base and the moving
+    independently at the game's decisecond time rate and use its inverted V
+    orientation. Diffuse 0 alpha blends between the lit base and the moving
     glow layer; Normal 0 B/A provide glow and shine masks respectively.
     """
 
     uv0 = builder.uv("UVMap")
-    time = builder.scene_time()
+    time = builder.math(
+        "DIVIDE",
+        builder.scene_time(),
+        10.0,
+        "Lava2 Scene Time / 10",
+    )
+
+    # EQ's animated Lava2 coordinates run in the opposite V orientation from
+    # Blender's UV sampling. Keep the stationary Diffuse0/Normal0 paths on the
+    # original UVs and invert V only for the two scrolling layers.
+    scrolling_uv_mapping = builder.nodes.new("ShaderNodeMapping")
+    scrolling_uv_mapping.name = builder.unique_name(
+        "Lava2 Scrolling UV Y Flip"
+    )
+    scrolling_uv_mapping.label = "Lava2 Scrolling UV: Y × -1"
+    scrolling_uv_mapping.vector_type = "POINT"
+    scrolling_uv_mapping.inputs["Scale"].default_value = (1.0, -1.0, 1.0)
+    builder.links.new(
+        uv0,
+        scrolling_uv_mapping.inputs["Vector"],
+    )
+    scrolling_uv_base = scrolling_uv_mapping.outputs["Vector"]
 
     def scrolling_uv(
         index: int,
@@ -2141,7 +2217,7 @@ def _lava2(builder: MaterialNodeBuilder) -> BuildResult:
         )
         return builder.vector_math(
             "ADD",
-            uv0,
+            scrolling_uv_base,
             offset,
             f"Lava2 UV {index}",
         )
