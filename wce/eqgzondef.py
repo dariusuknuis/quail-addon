@@ -40,10 +40,10 @@ class eqgzondef:
 			self.lits = []
 
 		class lit:
-			lit:int
+			lit:tuple[int, int, int, int]
 
 			def __init__(self):
-				self.lit = 0 #4
+				self.lit = (0, 0, 0, 0) #4
 
 	class area:
 		area:str
@@ -107,8 +107,8 @@ class eqgzondef:
 			modeltagi.lits = []
 			for j in range(numlits):
 				litj = type(modeltagi).lit()
-				records = property(r, "LIT", 1)
-				litj.lit = int(records[1])
+				records = property(r, "LIT", 4)
+				litj.lit = (int(records[1]), int(records[2]), int(records[3]), int(records[4]))
 				modeltagi.lits.append(litj)
 			self.instances.append(modeltagi)
 		records = property(r, "NUMAREAS", 1)
@@ -158,7 +158,7 @@ class eqgzondef:
 			w.write(f"\t\tSCALE {format(modeltagi.scale, '.8e')}\n")
 			w.write(f"\t\tNUMLITS {len(modeltagi.lits)}\n")
 			for litj in modeltagi.lits:
-				w.write(f"\t\t\tLIT {litj.lit}\n")
+				w.write(f"\t\t\tLIT {litj.lit[0]} {litj.lit[1]} {litj.lit[2]} {litj.lit[3]}\n")
 		w.write(f"\tNUMAREAS {len(self.areas)}\n")
 		for areai in self.areas:
 			w.write(f"\t\tAREA \"{areai.area}\"\n")

@@ -10,7 +10,12 @@ EQGZONDEF "tag"
 		ROTATION 1.12345678 2.12345678 3.12345678
 		SCALE 1.12345678
 		NUMLITS 1
-			LIT 1
+
+ 			 // Argument 1 (%d): Red
+ 			 // Argument 2 (%d): Green
+ 			 // Argument 3 (%d): Blue
+ 			 // Argument 4 (%d): Alpha
+			LIT 1 2 3 4
 	NUMAREAS 1
 		AREA "1"
 		POSITION 1.12345678 2.12345678 3.12345678
