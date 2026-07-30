@@ -1,0 +1,9 @@
+// EQG Vertex Lighting for Instances
+EQGLIT "tag"
+	NUMLITS 1
+
+ 		 // Argument 1 (%d): Red
+ 		 // Argument 2 (%d): Green
+ 		 // Argument 3 (%d): Blue
+ 		 // Argument 4 (%d): Alpha
+		LIT 1 2 3 4

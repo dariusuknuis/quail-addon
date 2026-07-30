@@ -335,60 +335,148 @@ def apply_overlays(mat, base_bsdf, overlays):
             prev_out = mix.outputs['Shader']
         tree.links.new(prev_out, out.inputs['Surface'])
 
-def ensure_zone_material(obj):
-    props = obj.quail_zone
+def ensure_zone_material_from_rules(
+    obj,
+    prefix,
+    *,
+    is_pvp=False,
+    has_tp=False,
+    slippery=False,
+):
+    """Create/reuse a zone-volume material without reading quail_zone.
 
-    prefix = props.zone_type
+    This is shared by S3D zone volumes and EQG area volumes.
+    """
 
-    base_name, hexcol, alpha = ZONE_MAT_MAP.get(prefix, ZONE_MAT_MAP["DR"])
+    base_name, hexcol, alpha = ZONE_MAT_MAP.get(
+        prefix,
+        ZONE_MAT_MAP["DR"],
+    )
 
     overlay_codes = []
 
-    if props.is_pvp:
+    if is_pvp:
         overlay_codes.append("PVP")
 
-    if props.has_tp:
+    if has_tp:
         overlay_codes.append("TP")
 
-    if props.slippery:
+    if slippery:
         overlay_codes.append("SLP")
 
     base_key = base_name[:-5]
-    suffix = "".join(f"_{c}" for c in overlay_codes)
+    suffix = "".join(f"_{code}" for code in overlay_codes)
     final_name = f"{base_key}{suffix}_ZONE"
 
     mat = bpy.data.materials.get(final_name)
-    if mat:
-        obj.data.materials.clear()
-        obj.data.materials.append(mat)
-        return mat
 
-    mat = bpy.data.materials.new(final_name)
-    mat.use_nodes = True
-    mat.blend_method = 'BLEND'
-    mat.use_backface_culling = True
+    if mat is None:
+        mat = bpy.data.materials.new(final_name)
+        mat.use_nodes = True
 
-    r = ((hexcol >> 16) & 0xFF) / 255.0
-    g = ((hexcol >> 8) & 0xFF) / 255.0
-    b = (hexcol & 0xFF) / 255.0
+        if hasattr(mat, "surface_render_method"):
+            try:
+                mat.surface_render_method = "DITHERED"
+            except (TypeError, ValueError):
+                pass
 
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
-    if bsdf:
-        bsdf.inputs["Base Color"].default_value = (r, g, b, 1)
-        bsdf.inputs["Alpha"].default_value = alpha
+        if hasattr(mat, "blend_method"):
+            try:
+                mat.blend_method = "BLEND"
+            except (TypeError, ValueError):
+                pass
 
-        overlays = []
-        for code in overlay_codes:
-            if code == "PVP":
-                overlays.append((ensure_pvp_node_group(), "PVP"))
-            elif code == "TP":
-                overlays.append((ensure_tp_node_group(), "TP"))
-            elif code == "SLP":
-                overlays.append((ensure_slippery_node_group(), "SLP"))
+        mat.use_backface_culling = True
 
-        apply_overlays(mat, bsdf, overlays)
+        r = ((hexcol >> 16) & 0xFF) / 255.0
+        g = ((hexcol >> 8) & 0xFF) / 255.0
+        b = (hexcol & 0xFF) / 255.0
+
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+
+        if bsdf is not None:
+            bsdf.inputs["Base Color"].default_value = (
+                r,
+                g,
+                b,
+                1.0,
+            )
+            bsdf.inputs["Alpha"].default_value = alpha
+
+            overlays = []
+
+            for code in overlay_codes:
+                if code == "PVP":
+                    overlays.append((
+                        ensure_pvp_node_group(),
+                        "PVP",
+                    ))
+
+                elif code == "TP":
+                    overlays.append((
+                        ensure_tp_node_group(),
+                        "TP",
+                    ))
+
+                elif code == "SLP":
+                    overlays.append((
+                        ensure_slippery_node_group(),
+                        "SLP",
+                    ))
+
+            apply_overlays(mat, bsdf, overlays)
 
     obj.data.materials.clear()
     obj.data.materials.append(mat)
 
     return mat
+
+
+def ensure_zone_material(obj):
+    """Apply a material to an existing S3D zone-volume object."""
+
+    props = obj.quail_zone
+
+    return ensure_zone_material_from_rules(
+        obj,
+        props.zone_type,
+        is_pvp=props.is_pvp,
+        has_tp=props.has_tp,
+        slippery=props.slippery,
+    )
+
+
+EQG_AREA_MATERIAL_RULES = {
+    # Prefix: (base zone type, PvP, teleport, slippery)
+    "AWT": ("WT", False, False, False),
+    "ALV": ("LA", False, False, False),
+    "AVW": ("VW", False, False, False),
+    "APK": ("DR", True,  False, False),
+    "ATP": ("DR", False, True,  False),
+    "ASL": ("SL", False, False, False),
+}
+
+
+def ensure_eqg_area_material(obj, area_name):
+    """Apply a zone-volume material based on an EQG area name.
+
+    This does not read or modify obj.quail_zone and does not classify the
+    object as an S3D zone volume.
+    """
+
+    prefix = area_name[:3].upper()
+
+    zone_type, is_pvp, has_tp, slippery = (
+        EQG_AREA_MATERIAL_RULES.get(
+            prefix,
+            ("DR", False, False, False),
+        )
+    )
+
+    return ensure_zone_material_from_rules(
+        obj,
+        zone_type,
+        is_pvp=is_pvp,
+        has_tp=has_tp,
+        slippery=slippery,
+    )

@@ -26,6 +26,7 @@ from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgterdef import decode_eqgterdef
 from .eqganidef import decode_eqganidef
+from .eqgzondef import decode_eqgzondef
 from ..logger.error import error
 from .context import Context
 from ..common import state
@@ -347,6 +348,14 @@ def wce_decode(path: str, parent_collection=None):
         err = decode_eqganidef(ctx, eqgani)
         if err:
             error(err)
+
+    for _, eqgzon in parser.eqgzondefs.items():
+            ctx.collection = base_collection
+            ctx.parent = base_parent
+
+            err = decode_eqgzondef(ctx, eqgzon)
+            if err:
+                error(err)
 
     organize_collections(parser, base_collection)
 

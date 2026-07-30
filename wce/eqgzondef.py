@@ -48,13 +48,13 @@ class eqgzondef:
 	class area:
 		area:str
 		position:tuple[float, float, float]
-		color:tuple[float, float, float]
+		orientation:tuple[float, float, float]
 		extents:tuple[float, float, float]
 
 		def __init__(self):
 			self.area = "" #3
 			self.position = (0.0, 0.0, 0.0) #3
-			self.color = (0.0, 0.0, 0.0) #3
+			self.orientation = (0.0, 0.0, 0.0) #3
 			self.extents = (0.0, 0.0, 0.0) #3
 
 	class light:
@@ -121,8 +121,8 @@ class eqgzondef:
 			areai.area = str(records[1])
 			records = property(r, "POSITION", 3)
 			areai.position = (float(records[1]), float(records[2]), float(records[3]))
-			records = property(r, "COLOR", 3)
-			areai.color = (float(records[1]), float(records[2]), float(records[3]))
+			records = property(r, "ORIENTATION", 3)
+			areai.orientation = (float(records[1]), float(records[2]), float(records[3]))
 			records = property(r, "EXTENTS", 3)
 			areai.extents = (float(records[1]), float(records[2]), float(records[3]))
 			self.areas.append(areai)
@@ -163,7 +163,7 @@ class eqgzondef:
 		for areai in self.areas:
 			w.write(f"\t\tAREA \"{areai.area}\"\n")
 			w.write(f"\t\tPOSITION {format(areai.position[0], '.8e')} {format(areai.position[1], '.8e')} {format(areai.position[2], '.8e')}\n")
-			w.write(f"\t\tCOLOR {format(areai.color[0], '.8e')} {format(areai.color[1], '.8e')} {format(areai.color[2], '.8e')}\n")
+			w.write(f"\t\tORIENTATION {format(areai.orientation[0], '.8e')} {format(areai.orientation[1], '.8e')} {format(areai.orientation[2], '.8e')}\n")
 			w.write(f"\t\tEXTENTS {format(areai.extents[0], '.8e')} {format(areai.extents[1], '.8e')} {format(areai.extents[2], '.8e')}\n")
 		w.write(f"\tNUMLIGHTS {len(self.lights)}\n")
 		for lighti in self.lights:
