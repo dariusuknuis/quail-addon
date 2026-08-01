@@ -343,10 +343,10 @@ def _decode_eqg_instances(
                 instance_tag,
             )
 
-            _apply_eqg_instance_transform(obj, instance)
+        _apply_eqg_instance_transform(obj, instance)
 
-            if source.get("quaildef") == "eqgterdef":
-                _cancel_ter_instance_transform(obj, source)
+        if source.get("quaildef") == "eqgterdef":
+            _cancel_ter_instance_transform(obj, source)
 
 
 # ======================================================================

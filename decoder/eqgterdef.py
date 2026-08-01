@@ -4,6 +4,7 @@ import bpy
 import mathutils
 from ..wce.eqgterdef import eqgterdef
 from ..common.mesh import get_vertex_normal_nodegroup
+from ..common.eqgshaders import get_failsafe_material
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 from ..ui.panel.eqgface import set_face_property
@@ -50,11 +51,6 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     for i, vertex in enumerate(eqgterdef.vertices):
         attr.data[i].vector = vertex.normal
 
-    nodegroup = get_vertex_normal_nodegroup()
-
-    mod = obj.modifiers.new("VertexNormals", 'NODES')
-    mod.node_group = nodegroup
-
     color_attribute = mesh.color_attributes.new(name="vertex_colors", domain="POINT", type='FLOAT_COLOR')
     for i, vertex in enumerate(eqgterdef.vertices):
         color_attribute.data[i].color = (
@@ -76,9 +72,17 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
     for i, face in enumerate(eqgterdef.faces):
         poly = mesh.polygons[i]
 
-        poly.material_index = mesh.materials.find(f"{eqgterdef.tag}_{face.material}")
-        if poly.material_index == -1:
-            return f"Material {eqgterdef.tag}_{face.material} not found"
+        if face.material.casefold() == "failsafeshader":
+            material = get_failsafe_material(mesh)
+            material_index = mesh.materials.find(material.name)
+        else:
+            material_name = f"{eqgterdef.tag}_{face.material}"
+            material_index = mesh.materials.find(material_name)
+
+            if material_index == -1:
+                return f"Material {material_name} not found"
+
+        poly.material_index = material_index
 
         set_face_property(mesh, i, "passable", face.passable)
         set_face_property(mesh, i, "collisionrequired", face.collisionrequired)

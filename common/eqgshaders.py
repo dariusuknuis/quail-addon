@@ -1776,40 +1776,116 @@ def _detail_palette(builder: MaterialNodeBuilder) -> BuildResult:
 def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
     uv0 = builder.uv("UVMap")
     weights = builder.uv("UVMap2")
-    coverage_scale = builder.value_node(
-        "Coverage Scale", builder.float_value("e_fCoverageScale", 0.1)
-    )
-    coverage_uv = builder.scaled_vector(uv0, coverage_scale, "Coverage UV Scale")
 
-    detail1 = builder.texture("e_TextureDetail1", "Detail 1", uv0)
-    detail2 = builder.texture("e_TextureDetail2", "Detail 2", uv0)
-    coverage = builder.texture("e_TextureCoverage", "Coverage", coverage_uv)
+    coverage_scale = builder.value_node(
+        "Coverage Scale",
+        builder.float_value("e_fCoverageScale", 0.1),
+    )
+    coverage_uv = builder.scaled_vector(
+        uv0,
+        coverage_scale,
+        "Coverage UV Scale",
+    )
+
+    detail1 = builder.texture(
+        "e_TextureDetail1",
+        "Detail 1",
+        uv0,
+    )
+    detail2 = builder.texture(
+        "e_TextureDetail2",
+        "Detail 2",
+        uv0,
+    )
+    coverage = builder.texture(
+        "e_TextureCoverage",
+        "Coverage",
+        coverage_uv,
+    )
+
+    # ------------------------------------------------
+    # Detail texture weights
+    # ------------------------------------------------
 
     separate = builder.nodes.new("ShaderNodeSeparateXYZ")
     separate.name = builder.unique_name("Separate Terrain Weights")
-    separate.label = "UVMap2 Y = Detail 1 / X = Detail 2"
-    builder.links.new(weights, separate.inputs["Vector"])
+    separate.label = "UVMap2 Y/X = Detail 1/2 Weights"
 
+    builder.links.new(
+        weights,
+        separate.inputs["Vector"],
+    )
+
+    # EQG Terrain uses UV2.Y for Detail 1 and UV2.X for Detail 2.
     detail1_color = builder.scale_color(
-        detail1.outputs["Color"], separate.outputs["Y"], "Detail 1 × Weight Y"
+        detail1.outputs["Color"],
+        separate.outputs["Y"],
+        "Detail 1 × Weight Y",
     )
     detail2_color = builder.scale_color(
-        detail2.outputs["Color"], separate.outputs["X"], "Detail 2 × Weight X"
+        detail2.outputs["Color"],
+        separate.outputs["X"],
+        "Detail 2 × Weight X",
     )
+
     detail_color = builder.add_color(
-        detail1_color, detail2_color, "Weighted Detail 1 + Detail 2"
+        detail1_color,
+        detail2_color,
+        "Weighted Detail 1 + Detail 2",
     )
+
     coverage_color = builder.scale_color(
-        coverage.outputs["Color"], 2.0, "Coverage × 2"
+        coverage.outputs["Color"],
+        2.0,
+        "Coverage × 2",
     )
+
+    terrain_color = builder.multiply_color(
+        detail_color,
+        coverage_color,
+        "Details × Coverage",
+    )
+
+    # ------------------------------------------------
+    # EQG baked vertex lighting
+    # ------------------------------------------------
+
+    # Valid LIT data replaces the model's ordinary COLOR0 vertex tint.
+    lit = builder.nodes.new("ShaderNodeVertexColor")
+    lit.name = builder.unique_name("EQG LIT")
+    lit.label = "EQG Baked Vertex Lighting"
+    lit.layer_name = "lits"
+    lit.location = (-450, -1050)
+
+    # Recovered EQG vertex shaders use:
+    #
+    #     lighting.rgb = LIT.rgb + ambient.rgb * LIT.a
+    #
+    # LIT alpha is a lighting weight, not material transparency.
+    ambient = builder.color_node(
+        "EQG Ambient Light",
+        (0.2, 0.2, 0.2, 1.0),
+    )
+
+    ambient_from_lit_alpha = builder.scale_color(
+        ambient,
+        lit.outputs["Alpha"],
+        "Ambient × LIT Alpha",
+    )
+
+    vertex_lighting = builder.add_color(
+        lit.outputs["Color"],
+        ambient_from_lit_alpha,
+        "LIT RGB + Ambient",
+    )
+
     color = builder.multiply_color(
-        detail_color, coverage_color, "Details × Coverage"
+        terrain_color,
+        vertex_lighting,
+        "Terrain × Vertex Lighting",
     )
-    color = builder.multiply_color(
-        color,
-        builder.vertex_color().outputs["Color"],
-        "Terrain × Vertex RGB",
-    )
+
+    # Terrain remains opaque. LIT alpha must not be connected to BSDF Alpha.
     return BuildResult(color, None)
 
 
@@ -2722,3 +2798,61 @@ def eqg_apply(material: Material) -> str:
         return str(error)
     except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError) as error:
         return f"Could not build EQG material nodes: {error}"
+
+def get_failsafe_material(
+    mesh: bpy.types.Mesh,
+) -> bpy.types.Material:
+    """Get/create the transparent FailsafeShader and add it to the mesh."""
+
+    material_name = "FailsafeShader"
+    material = bpy.data.materials.get(material_name)
+
+    if material is None:
+        material = bpy.data.materials.new(material_name)
+        material.use_nodes = True
+
+        # Viewport material color.
+        material.diffuse_color = (
+            0.65,
+            0.75,
+            0.80,
+            0.06,
+        )
+
+        nodes = material.node_tree.nodes
+        principled = nodes.get("Principled BSDF")
+
+        if principled is not None:
+            principled.inputs["Base Color"].default_value = (
+                0.65,
+                0.75,
+                0.80,
+                1.0,
+            )
+            principled.inputs["Roughness"].default_value = 0.35
+            principled.inputs["Alpha"].default_value = 0.06
+
+            # Blender renamed this input in newer versions.
+            transmission = principled.inputs.get("Transmission Weight")
+            if transmission is None:
+                transmission = principled.inputs.get("Transmission")
+
+            if transmission is not None:
+                transmission.default_value = 0.15
+
+        # Blender 4.2+.
+        if hasattr(material, "surface_render_method"):
+            material.surface_render_method = "DITHERED"
+
+        # Older Blender versions.
+        elif hasattr(material, "blend_method"):
+            material.blend_method = "BLEND"
+
+        material.use_backface_culling = False
+        material.show_transparent_back = True
+
+    # Add it to this mesh only once.
+    if mesh.materials.find(material.name) == -1:
+        mesh.materials.append(material)
+
+    return material
