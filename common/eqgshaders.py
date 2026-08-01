@@ -1804,7 +1804,7 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
     )
 
     # ------------------------------------------------
-    # Detail texture weights
+    # Hierarchical detail texture blend
     # ------------------------------------------------
 
     separate = builder.nodes.new("ShaderNodeSeparateXYZ")
@@ -1816,23 +1816,86 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
         separate.inputs["Vector"],
     )
 
-    # EQG Terrain uses UV2.Y for Detail 1 and UV2.X for Detail 2.
-    detail1_color = builder.scale_color(
-        detail1.outputs["Color"],
-        separate.outputs["Y"],
-        "Detail 1 × Weight Y",
-    )
-    detail2_color = builder.scale_color(
-        detail2.outputs["Color"],
+    # Keep the two terrain control channels in the 0–1 range.
+    detail2_weight = builder.nodes.new("ShaderNodeClamp")
+    detail2_weight.name = builder.unique_name("Detail 2 Weight")
+    detail2_weight.label = "Clamp UV2 X"
+    detail2_weight.clamp_type = "MINMAX"
+    detail2_weight.inputs["Min"].default_value = 0.0
+    detail2_weight.inputs["Max"].default_value = 1.0
+
+    builder.links.new(
         separate.outputs["X"],
-        "Detail 2 × Weight X",
+        detail2_weight.inputs["Value"],
     )
 
-    detail_color = builder.add_color(
-        detail1_color,
-        detail2_color,
-        "Weighted Detail 1 + Detail 2",
+    detail1_priority = builder.nodes.new("ShaderNodeClamp")
+    detail1_priority.name = builder.unique_name("Detail 1 Priority")
+    detail1_priority.label = "Clamp UV2 Y"
+    detail1_priority.clamp_type = "MINMAX"
+    detail1_priority.inputs["Min"].default_value = 0.0
+    detail1_priority.inputs["Max"].default_value = 1.0
+
+    builder.links.new(
+        separate.outputs["Y"],
+        detail1_priority.inputs["Value"],
     )
+
+    # Detail 1 takes priority when UV2 Y is set. This makes both
+    # (0, 1) and (1, 1) resolve to Detail 1.
+    inverse_detail1_priority = builder.nodes.new("ShaderNodeMath")
+    inverse_detail1_priority.name = builder.unique_name(
+        "Inverse Detail 1 Priority"
+    )
+    inverse_detail1_priority.label = "1 - UV2 Y"
+    inverse_detail1_priority.operation = "SUBTRACT"
+    inverse_detail1_priority.inputs[0].default_value = 1.0
+
+    builder.links.new(
+        detail1_priority.outputs["Result"],
+        inverse_detail1_priority.inputs[1],
+    )
+
+    # Detail 2 contributes only when X is present and Y does not
+    # select the higher-priority Detail 1 texture.
+    detail2_factor = builder.nodes.new("ShaderNodeMath")
+    detail2_factor.name = builder.unique_name("Detail 2 Blend Factor")
+    detail2_factor.label = "UV2 X × (1 - UV2 Y)"
+    detail2_factor.operation = "MULTIPLY"
+
+    builder.links.new(
+        detail2_weight.outputs["Result"],
+        detail2_factor.inputs[0],
+    )
+    builder.links.new(
+        inverse_detail1_priority.outputs["Value"],
+        detail2_factor.inputs[1],
+    )
+
+    detail_mix = builder.nodes.new("ShaderNodeMixRGB")
+    detail_mix.name = builder.unique_name("Terrain Detail Blend")
+    detail_mix.label = "Detail 1 / Detail 2 Blend"
+    detail_mix.blend_type = "MIX"
+    detail_mix.use_clamp = True
+
+    builder.links.new(
+        detail2_factor.outputs["Value"],
+        detail_mix.inputs["Fac"],
+    )
+    builder.links.new(
+        detail1.outputs["Color"],
+        detail_mix.inputs["Color1"],
+    )
+    builder.links.new(
+        detail2.outputs["Color"],
+        detail_mix.inputs["Color2"],
+    )
+
+    detail_color = detail_mix.outputs["Color"]
+
+    # ------------------------------------------------
+    # Coverage modulation
+    # ------------------------------------------------
 
     coverage_color = builder.scale_color(
         coverage.outputs["Color"],
@@ -1843,25 +1906,19 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
     terrain_color = builder.multiply_color(
         detail_color,
         coverage_color,
-        "Details × Coverage",
+        "Blended Details × Coverage",
     )
 
     # ------------------------------------------------
     # EQG baked vertex lighting
     # ------------------------------------------------
 
-    # Valid LIT data replaces the model's ordinary COLOR0 vertex tint.
     lit = builder.nodes.new("ShaderNodeVertexColor")
     lit.name = builder.unique_name("EQG LIT")
     lit.label = "EQG Baked Vertex Lighting"
     lit.layer_name = "lits"
     lit.location = (-450, -1050)
 
-    # Recovered EQG vertex shaders use:
-    #
-    #     lighting.rgb = LIT.rgb + ambient.rgb * LIT.a
-    #
-    # LIT alpha is a lighting weight, not material transparency.
     ambient = builder.color_node(
         "EQG Ambient Light",
         (0.2, 0.2, 0.2, 1.0),
@@ -1885,7 +1942,8 @@ def _terrain(builder: MaterialNodeBuilder) -> BuildResult:
         "Terrain × Vertex Lighting",
     )
 
-    # Terrain remains opaque. LIT alpha must not be connected to BSDF Alpha.
+    # Ordinary terrain remains opaque. FailsafeShader handles the
+    # genuinely transparent barrier geometry separately.
     return BuildResult(color, None)
 
 
