@@ -393,6 +393,5 @@ def decode_eqgzondef(ctx: Context, zon: eqgzondef) -> str:
         ensure_eqg_area_material(obj, area_name)
 
         obj["quaildef"] = "eqgzonarea"
-        obj.show_in_front = True
 
     return ""
