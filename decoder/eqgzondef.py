@@ -9,6 +9,11 @@ from ..common.zone import ensure_eqg_area_material
 from ..wce.eqgzondef import eqgzondef
 
 
+SKELETAL_OFFSET_GROUP = "EQG Skeletal Local Offset"
+SKELETAL_OFFSET_MODIFIER = "EQG Skeletal Local Offset"
+SKELETAL_LOCAL_OFFSET = (0.0, 0.0, -3.0)
+
+
 # ======================================================================
 # Shared helpers
 # ======================================================================
@@ -126,6 +131,21 @@ def _find_model_object(model_tag: str) -> bpy.types.Object | None:
     return None
 
 
+def _find_source_armature(
+    source: bpy.types.Object,
+) -> bpy.types.Object | None:
+    """Return the armature that deforms a source EQG mesh, if any."""
+
+    for modifier in source.modifiers:
+        if modifier.type == "ARMATURE" and modifier.object is not None:
+            return modifier.object
+
+    if source.parent is not None and source.parent.type == "ARMATURE":
+        return source.parent
+
+    return None
+
+
 def _find_external_eqglit(
     ctx: Context,
     instance_tag: str,
@@ -232,6 +252,119 @@ def _create_realized_eqg_instance(
     _add_lit_color_layer(obj.data, colors)
 
     return obj
+
+
+def _get_skeletal_offset_node_group() -> bpy.types.GeometryNodeTree:
+    """Return the single node group reused by all skeletal EQG instances."""
+
+    node_group = bpy.data.node_groups.get(SKELETAL_OFFSET_GROUP)
+
+    if node_group is not None:
+        return node_group
+
+    node_group = bpy.data.node_groups.new(
+        SKELETAL_OFFSET_GROUP,
+        "GeometryNodeTree",
+    )
+
+    node_group.interface.new_socket(
+        name="Geometry",
+        in_out="INPUT",
+        socket_type="NodeSocketGeometry",
+    )
+    node_group.interface.new_socket(
+        name="Geometry",
+        in_out="OUTPUT",
+        socket_type="NodeSocketGeometry",
+    )
+
+    group_input = node_group.nodes.new("NodeGroupInput")
+    group_input.location = (-300, 0)
+
+    transform = node_group.nodes.new("GeometryNodeTransform")
+    transform.name = "Local Skeletal Offset"
+    transform.label = "Local Skeletal Offset"
+    transform.location = (0, 0)
+    transform.inputs["Translation"].default_value = SKELETAL_LOCAL_OFFSET
+
+    group_output = node_group.nodes.new("NodeGroupOutput")
+    group_output.location = (300, 0)
+
+    node_group.links.new(
+        group_input.outputs["Geometry"],
+        transform.inputs["Geometry"],
+    )
+    node_group.links.new(
+        transform.outputs["Geometry"],
+        group_output.inputs["Geometry"],
+    )
+
+    return node_group
+
+
+def _add_skeletal_offset_modifier(obj: bpy.types.Object) -> None:
+    """Add the shared local-space skeletal offset after deformation."""
+
+    modifier = obj.modifiers.get(SKELETAL_OFFSET_MODIFIER)
+
+    if modifier is None:
+        modifier = obj.modifiers.new(
+            name=SKELETAL_OFFSET_MODIFIER,
+            type="NODES",
+        )
+
+    modifier.node_group = _get_skeletal_offset_node_group()
+
+    # Keep the offset last so it translates the completed skinned result.
+    current_index = obj.modifiers.find(modifier.name)
+    last_index = len(obj.modifiers) - 1
+
+    if current_index != last_index:
+        obj.modifiers.move(current_index, last_index)
+
+
+def _attach_instance_armature(
+    source: bpy.types.Object,
+    obj: bpy.types.Object,
+    collection: bpy.types.Collection,
+) -> bpy.types.Object | None:
+    """Copy the source armature and parent its instance mesh beneath it."""
+
+    source_armature = _find_source_armature(source)
+
+    if source_armature is None:
+        return None
+
+    armature = source_armature.copy()
+    armature.data = source_armature.data
+    armature.parent = None
+    armature.name = obj.name
+    armature["quaildef"] = "eqgzoninst"
+
+    collection.objects.link(armature)
+
+    for modifier in obj.modifiers:
+        if (
+            modifier.type == "ARMATURE"
+            and modifier.object == source_armature
+        ):
+            modifier.object = armature
+
+    # Preserve the source mesh's transform relative to its armature. The
+    # copied armature receives the ZON transform later; the mesh itself keeps
+    # only this model-local relationship.
+    source_relative_matrix = (
+        source_armature.matrix_world.inverted_safe()
+        @ source.matrix_world
+    )
+
+    obj.parent = armature
+    obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
+    obj.matrix_basis = source_relative_matrix
+
+    _add_skeletal_offset_modifier(obj)
+
+    return armature
 
 
 def _apply_eqg_instance_transform(obj: bpy.types.Object, instance) -> None:
@@ -343,7 +476,22 @@ def _decode_eqg_instances(
                 instance_tag,
             )
 
-        _apply_eqg_instance_transform(obj, instance)
+        # A copied mesh retains an Armature modifier that still points to the
+        # source armature. Give every skeletal instance its own armature object
+        # and retarget the modifier. The shared Geometry Nodes group supplies
+        # the local -3 Z correction after armature deformation.
+        armature = _attach_instance_armature(
+            source,
+            obj,
+            collection,
+        )
+
+        if armature is not None:
+            # Skeletal instances carry their imported ZON transform on the
+            # armature. Their mesh children retain only model-local transforms.
+            _apply_eqg_instance_transform(armature, instance)
+        else:
+            _apply_eqg_instance_transform(obj, instance)
 
         if source.get("quaildef") == "eqgterdef":
             _cancel_ter_instance_transform(obj, source)

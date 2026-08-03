@@ -482,7 +482,62 @@ def create_missing_eqg_image(
     image["quail_source_name"] = source_name
     image["quail_source_path"] = os.path.abspath(texture_path)
     image["quail_missing_reason"] = "Texture file not found"
+
     return image
+
+def _eqg_texture_cache_key(name: str) -> str:
+    """Create a consistent cache key for an EQG texture reference."""
+
+    return os.path.normcase(
+        os.path.normpath(name)
+    ).replace("\\", "/")
+
+
+def _find_eqg_image_variant(
+    name: str,
+    flipped: bool,
+) -> bpy.types.Image | None:
+    """Find the cached orientation variant of an EQG image."""
+
+    source_key = _eqg_texture_cache_key(name)
+
+    for image in bpy.data.images:
+        if image.get("quail_source_texture", "") != source_key:
+            continue
+
+        if bool(image.get("quail_flipped", False)) == flipped:
+            return image
+
+    return None
+
+
+def _ensure_eqg_image_variant(
+    image: bpy.types.Image,
+    name: str,
+    flipped: bool,
+) -> tuple[bpy.types.Image | None, str]:
+    """Return an image datablock with the requested vertical orientation."""
+
+    source_key = _eqg_texture_cache_key(name)
+    current_flipped = bool(image.get("quail_flipped", False))
+
+    if current_flipped != flipped:
+        image = image.copy()
+
+        orientation = "FLIPPED" if flipped else "UNFLIPPED"
+        image.name = f"{os.path.basename(name)}_{orientation}"
+
+        try:
+            flip_image_vertically(image)
+            image.gl_free()
+            image.update()
+        except Exception as e:
+            return None, f"Error changing orientation of {name}: {e}"
+
+    image["quail_source_texture"] = source_key
+    image["quail_flipped"] = flipped
+
+    return image, ""
 
 def load_s3d_image(ctx, name: str) -> tuple[bpy.types.Image | None, str | None]:
 
@@ -538,45 +593,130 @@ def load_eqg_image(
     if not name or name == "None":
         return None, ""
 
-    # Fallback: grid_standard.dds
+    # ------------------------------------------------
+    # Generated fallback
+    # ------------------------------------------------
+
     if name.lower() == "grid_standard.dds":
         img = bpy.data.images.get("grid_standard.dds")
+
         if img is None:
-            img = bpy.data.images.new("grid_standard.dds", 1024, 1024)
-            img.generated_type = 'COLOR_GRID'
+            img = bpy.data.images.new(
+                "grid_standard.dds",
+                1024,
+                1024,
+            )
+            img.generated_type = "COLOR_GRID"
             img.use_fake_user = True
+
         return img, ""
 
     assert ctx.parser.assets_path is not None
 
-    texture_path = os.path.join(ctx.parser.assets_path, name)
+    texture_path = os.path.join(
+        ctx.parser.assets_path,
+        name,
+    )
     image_name = os.path.basename(name)
-    if not os.path.exists(texture_path):
-        img = create_missing_eqg_image(name, texture_path)
+
+    # ------------------------------------------------
+    # Determine texture type
+    # ------------------------------------------------
+
+    if os.path.exists(texture_path):
+        tex_type = detect_texture_type(texture_path)
+
+        try:
+            is_cubemap = (
+                tex_type == "DDS"
+                and is_dds_cubemap(texture_path)
+            )
+        except Exception as e:
+            return None, (
+                f"Error reading DDS cubemap "
+                f"{texture_path}: {e}"
+            )
+    else:
+        tex_type = None
+        is_cubemap = False
+
+    # Cubemaps are never vertically flipped.
+    requested_flip = bool(
+        flip_tex and not is_cubemap
+    )
+
+    # ------------------------------------------------
+    # Look for the exact cached orientation
+    # ------------------------------------------------
+
+    img = _find_eqg_image_variant(
+        name,
+        requested_flip,
+    )
+
+    if img is not None:
         if non_color:
             try:
                 img.colorspace_settings.name = "Non-Color"
             except TypeError:
                 pass
+
+        return img, ""
+
+    # ------------------------------------------------
+    # Missing texture
+    # ------------------------------------------------
+
+    if not os.path.exists(texture_path):
+        img = create_missing_eqg_image(
+            name,
+            texture_path,
+        )
+
+        img["quail_source_texture"] = (
+            _eqg_texture_cache_key(name)
+        )
+        img["quail_flipped"] = False
+
+        if non_color:
+            try:
+                img.colorspace_settings.name = "Non-Color"
+            except TypeError:
+                pass
+
         print(
             f"[WARN] Texture not found, using placeholder: "
             f"{texture_path}"
         )
+
         return img, ""
 
-    tex_type = detect_texture_type(texture_path)
-    try:
-        is_cubemap = tex_type == "DDS" and is_dds_cubemap(texture_path)
-    except Exception as e:
-        return None, f"Error reading DDS cubemap {texture_path}: {e}"
+    # ------------------------------------------------
+    # Load cubemap
+    # ------------------------------------------------
 
     if is_cubemap:
         try:
-            img = load_dds_cubemap(texture_path, image_name)
+            img = load_dds_cubemap(
+                texture_path,
+                image_name,
+            )
         except Exception as e:
-            return None, f"Error converting DDS cubemap {texture_path}: {e}"
+            return None, (
+                f"Error converting DDS cubemap "
+                f"{texture_path}: {e}"
+            )
+
+    # ------------------------------------------------
+    # Load ordinary image
+    # ------------------------------------------------
+
     else:
+        # This may find a legacy image loaded before orientation-aware
+        # caching was introduced. Its quail_flipped property determines
+        # whether it can be used directly or must be copied and reversed.
         img = bpy.data.images.get(name)
+
         if img is None:
             img = bpy.data.images.get(image_name)
 
@@ -586,9 +726,32 @@ def load_eqg_image(
                     texture_path,
                     check_existing=True,
                 )
-                img.alpha_mode = 'CHANNEL_PACKED'
+                img.alpha_mode = "CHANNEL_PACKED"
             except Exception as e:
-                return None, f"Error loading texture {texture_path}: {e}"
+                return None, (
+                    f"Error loading texture "
+                    f"{texture_path}: {e}"
+                )
+
+    # ------------------------------------------------
+    # Produce requested orientation
+    # ------------------------------------------------
+
+    img, err = _ensure_eqg_image_variant(
+        img,
+        name,
+        requested_flip,
+    )
+
+    if err:
+        return None, err
+
+    if img is None:
+        return None, f"Unable to load image {name}"
+
+    # ------------------------------------------------
+    # BMP palette
+    # ------------------------------------------------
 
     is_palette_bmp = (
         tex_type == "BMP"
@@ -597,12 +760,19 @@ def load_eqg_image(
 
     if is_palette_bmp and "bmp_palette" not in img:
         try:
-            extract_bmp_palette(texture_path, img)
+            extract_bmp_palette(
+                texture_path,
+                img,
+            )
         except Exception as e:
             return None, (
                 f"Error extracting BMP palette "
                 f"{texture_path}: {e}"
             )
+
+    # ------------------------------------------------
+    # Color space
+    # ------------------------------------------------
 
     if non_color or is_palette_bmp:
         try:
@@ -610,20 +780,5 @@ def load_eqg_image(
                 img.colorspace_settings.name = "Non-Color"
         except TypeError:
             pass
-
-    if (
-        flip_tex
-        and not is_cubemap
-        and not img.get("quail_flipped", False)
-    ):
-        try:
-            flip_image_vertically(img)
-            img["quail_flipped"] = True
-
-            img.gl_free()
-            img.update()
-
-        except Exception as e:
-            return None, f"Error flipping {name}: {e}"
 
     return img, ""
