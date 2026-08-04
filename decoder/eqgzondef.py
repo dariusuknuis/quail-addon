@@ -103,6 +103,54 @@ def _create_area_box(
 
 
 # ======================================================================
+# EQG lights
+# ======================================================================
+
+
+def _create_eqg_light(
+    collection: bpy.types.Collection,
+    name: str,
+    position: tuple[float, float, float],
+    color: tuple[float, float, float],
+    radius: float,
+) -> bpy.types.Object:
+    """Create a Blender point light from an EQG ZON light record."""
+
+    light_data = bpy.data.lights.new(
+        name=name,
+        type="POINT",
+    )
+
+    light_data.color = (
+        float(color[0]),
+        float(color[1]),
+        float(color[2]),
+    )
+
+    light_radius = max(float(radius), 0.0)
+
+    # Match the Blender setup used by the S3D point-light decoder. EQG does
+    # not provide a separate light-level value, so use the equivalent full
+    # light level as the base energy.
+    light_data.energy = 50.0
+    light_data.exposure = 9.0
+    light_data.shadow_soft_size = light_radius
+
+    obj = bpy.data.objects.new(name, light_data)
+    collection.objects.link(obj)
+
+    obj.location = (
+        float(position[1]),
+        float(position[0]),
+        float(position[2]),
+    )
+
+    obj["quaildef"] = "eqgzonlight"
+
+    return obj
+
+
+# ======================================================================
 # EQG model instances
 # ======================================================================
 
@@ -410,6 +458,67 @@ def _cancel_ter_instance_transform(
     constraint.mix_mode = "REPLACE"
 
 
+def _move_object_to_collection(
+    obj: bpy.types.Object,
+    collection: bpy.types.Collection,
+) -> None:
+    """Move an object into one collection without changing its transform."""
+
+    if collection not in obj.users_collection:
+        collection.objects.link(obj)
+
+    for current_collection in list(obj.users_collection):
+        if current_collection != collection:
+            current_collection.objects.unlink(obj)
+
+
+def _organize_eqg_source_objects(
+    archive_collection: bpy.types.Collection,
+) -> None:
+    """Move and hide source models after their ZON instances are created."""
+
+    # Take the snapshot before moving anything because all_objects changes as
+    # objects are relinked into the new child collection.
+    archive_objects = list(archive_collection.all_objects)
+
+    source_models = [
+        obj
+        for obj in archive_objects
+        if obj.get("quaildef") == "eqgmodeldef"
+    ]
+
+    if source_models:
+        objects_collection = ensure_child_collection(
+            archive_collection,
+            "OBJECTS",
+        )
+
+        objects_to_move: set[bpy.types.Object] = set(source_models)
+
+        for source in source_models:
+            if source.parent is not None and source.parent.type == "ARMATURE":
+                objects_to_move.add(source.parent)
+
+        for obj in objects_to_move:
+            _move_object_to_collection(
+                obj,
+                objects_collection,
+            )
+
+            # Hide the source object in the current view layer without
+            # changing its render visibility or the collection visibility.
+            obj.hide_set(True)
+
+    # Terrain remains in the archive's existing collection because the client
+    # effectively uses it as the zone base. Hide only the original TER object;
+    # its copied eqgzoninst object is unaffected.
+    for obj in archive_objects:
+        if obj.get("quaildef") != "eqgterdef":
+            continue
+
+        obj.hide_set(True)
+
+
 def _decode_eqg_instances(
     ctx: Context,
     zon: eqgzondef,
@@ -541,5 +650,32 @@ def decode_eqgzondef(ctx: Context, zon: eqgzondef) -> str:
         ensure_eqg_area_material(obj, area_name)
 
         obj["quaildef"] = "eqgzonarea"
+
+    # ------------------------------------------------
+    # Point lights
+    # ------------------------------------------------
+
+    light_collection = ensure_child_collection(
+        ctx.collection,
+        f"{zon.tag}_LIGHTS",
+    )
+
+    for index, light in enumerate(zon.lights):
+        light_name = str(light.light or "").strip()
+
+        if not light_name:
+            light_name = f"EQG_LIGHT_{index:05d}"
+
+        _create_eqg_light(
+            light_collection,
+            light_name,
+            light.lightpos,
+            light.lightcolor,
+            light.lightradius,
+        )
+
+    # Organize the source objects last so instance copies do not inherit
+    # hidden object settings from their source meshes or armatures.
+    _organize_eqg_source_objects(ctx.collection)
 
     return ""
