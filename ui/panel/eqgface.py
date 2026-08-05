@@ -11,51 +11,121 @@ FACE_PROPS = ["passable", "collisionrequired", "transparent", "culled", "degener
 
 # Create custom data layers for face properties using the new attributes system
 def ensure_face_layers(mesh):
-    """Ensure all required face property layers exist on the mesh"""
+    """Ensure all required face Boolean layers exist."""
+
     try:
-        for prop_name in FACE_PROPS:
-            layer_name = f"quail_{prop_name}"
-            if layer_name not in mesh.attributes:
-                attr = mesh.attributes.new(name=layer_name, type='BOOLEAN', domain='FACE')
-                # Initialize all faces to False
-                for i in range(len(mesh.polygons)):
-                    attr.data[i].value = False
+        if mesh.is_editmode:
+            bm = bmesh.from_edit_mesh(mesh)
+
+            for prop_name in FACE_PROPS:
+                layer_name = f"quail_{prop_name}"
+
+                if bm.faces.layers.bool.get(layer_name) is None:
+                    bm.faces.layers.bool.new(layer_name)
+
+            bmesh.update_edit_mesh(
+                mesh,
+                loop_triangles=False,
+                destructive=False,
+            )
+
+        else:
+            for prop_name in FACE_PROPS:
+                layer_name = f"quail_{prop_name}"
+
+                if layer_name not in mesh.attributes:
+                    mesh.attributes.new(
+                        name=layer_name,
+                        type='BOOLEAN',
+                        domain='FACE',
+                    )
+
     except Exception as e:
         print(f"Error in ensure_face_layers: {e}")
 
 # Helper functions to get/set face properties
 def get_face_property(mesh, face_index, prop_name):
-    """Get boolean face property from attribute layer"""
+    """Read a Boolean face property in either Edit or Object Mode."""
+
     try:
         layer_name = f"quail_{prop_name}"
-        if layer_name in mesh.attributes:
-            # Check if face index is in range
-            if 0 <= face_index < len(mesh.attributes[layer_name].data):
-                return mesh.attributes[layer_name].data[face_index].value
+
+        if mesh.is_editmode:
+            bm = bmesh.from_edit_mesh(mesh)
+            bm.faces.ensure_lookup_table()
+
+            layer = bm.faces.layers.bool.get(layer_name)
+
+            if layer is None:
+                return False
+
+            if 0 <= face_index < len(bm.faces):
+                return bool(bm.faces[face_index][layer])
+
+            return False
+
+        attribute = mesh.attributes.get(layer_name)
+
+        if (
+            attribute is not None
+            and 0 <= face_index < len(attribute.data)
+        ):
+            return bool(attribute.data[face_index].value)
+
         return False
+
     except Exception as e:
-        print(f"Error in get_face_property (prop={prop_name}, face={face_index}): {e}")
+        print(
+            f"Error in get_face_property "
+            f"(prop={prop_name}, face={face_index}): {e}"
+        )
         return False
 
 def set_face_property(mesh, face_index, prop_name, value):
-    """Set boolean face property in attribute layer"""
+    """Write a Boolean face property in either Edit or Object Mode."""
+
     try:
         layer_name = f"quail_{prop_name}"
 
-        # Create attribute if it doesn't exist
-        if layer_name not in mesh.attributes:
-            attr = mesh.attributes.new(name=layer_name, type='BOOLEAN', domain='FACE')
-            # Initialize all faces to False first
-            for i in range(len(mesh.polygons)):
-                attr.data[i].value = False
-        else:
-            attr = mesh.attributes[layer_name]
+        if mesh.is_editmode:
+            bm = bmesh.from_edit_mesh(mesh)
+            bm.faces.ensure_lookup_table()
 
-        # Check if the face index is valid
-        if 0 <= face_index < len(attr.data):
-            attr.data[face_index].value = value
+            layer = bm.faces.layers.bool.get(layer_name)
+
+            if layer is None:
+                layer = bm.faces.layers.bool.new(layer_name)
+
+            if 0 <= face_index < len(bm.faces):
+                bm.faces[face_index][layer] = bool(value)
+
+                bmesh.update_edit_mesh(
+                    mesh,
+                    loop_triangles=False,
+                    destructive=False,
+                )
+
+            return
+
+        attribute = mesh.attributes.get(layer_name)
+
+        if attribute is None:
+            attribute = mesh.attributes.new(
+                name=layer_name,
+                type='BOOLEAN',
+                domain='FACE',
+            )
+
+        if 0 <= face_index < len(attribute.data):
+            attribute.data[face_index].value = bool(value)
+            mesh.update()
+
     except Exception as e:
-        print(f"Error in set_face_property (prop={prop_name}, face={face_index}, value={value}): {e}")
+        print(
+            f"Error in set_face_property "
+            f"(prop={prop_name}, face={face_index}, "
+            f"value={value}): {e}"
+        )
 
 class QuailEqgFaceProperties(bpy.types.PropertyGroup):
     """Properties for the current face in the UI"""
@@ -115,34 +185,6 @@ class MESH_OT_quail_update_face_property(bpy.types.Operator):
         except Exception as e:
             self.report({'ERROR'}, f"Error updating face property: {e}")
             return {'CANCELLED'}
-
-# Update the decoder/eqgmodeldef.py code to use these functions
-def decode_eqgmodeldef(ctx, eqgmodeldef, location):
-    # ...existing code...
-
-    mesh = bpy.data.meshes.new(eqgmodeldef.tag)
-    # ...existing mesh creation code...
-
-    # Ensure face property layers exist
-    ensure_face_layers(mesh)
-
-    # ...existing vertex/face creation...
-
-    # When setting face properties
-    for i, face in enumerate(eqgmodeldef.faces):
-        poly = mesh.polygons[i]
-
-        # Set material index
-        if f"{eqgmodeldef.tag}_{face.material}" not in bpy.data.materials:
-            return f"Material {eqgmodeldef.tag}_{face.material} not found"
-        poly.material_index = bpy.data.materials.find(face.material)
-
-        # Set face properties using custom layers
-        set_face_property(mesh, i, "passable", face.passable)
-        set_face_property(mesh, i, "collisionrequired", face.collisionrequired)
-        set_face_property(mesh, i, "transparent", face.transparent)
-        set_face_property(mesh, i, "culled", face.culled)
-        set_face_property(mesh, i, "degenerate", face.degenerate)
 
 # Register classes
 def register():

@@ -129,6 +129,7 @@ def wce_decode(path: str, parent_collection=None):
         base_file_name = os.path.splitext(os.path.basename(path))[0]
 
     parser = wce(base_dir)
+    parser.archive_name = base_file_name
     with open(root_path, "r") as r:
         parser.parse_definitions(base_dir, r)
 

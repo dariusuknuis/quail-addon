@@ -41,6 +41,7 @@ from .zone import zone
 
 class wce:
     path:str
+    archive_name: str
     assets_path: str | None
 
     actordefs:dict[str, actordef]
@@ -99,6 +100,7 @@ class wce:
 
     def __init__(self, path:str):
         self.path = path
+        self.archive_name = ""
         self.assets_path: str | None = None
 
         self.actordefs = {}
