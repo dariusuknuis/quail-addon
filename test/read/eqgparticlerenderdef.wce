@@ -1,17 +1,30 @@
-// EQG Particle Point Definition
+// EQG Particle Render Definition
 EQGPARTICLERENDERDEF "tag"
+	// PRT format version
 	VERSION 1
+	// Number of actor particle render entries
 	NUMRENDERS 1
+		// Emitter definition ID
 		RENDER 1
-		ID2 1
+		// Particle attachment-point name
 		PARTICLEPOINT "1"
-		PARTICLESUFFIX "1"
-		UNKNOWNA1 1
-		UNKNOWNA2 1
-		UNKNOWNA3 1
-		UNKNOWNA4 1
-		UNKNOWNA5 1
-		DURATION 1
-		UNKNOWNB 1
-		UNKNOWNFFFFFFFF 1
-		UNKNOWNC 1
+		// Persistent or animation-based particle type
+		PARTICLETYPE 1
+		// Animation number
+		ANIMNUMBER 1
+		// Animation variation
+		ANIMVARIATION 1
+		// Random animation variation
+		RANDOMANIM 1
+		// Particle start time
+		STARTTIME 1
+		// Particle lifespan
+		LIFESPAN 1
+		// Ground-based particle flag
+		GROUND 1
+		// Material variation controlling the particle
+		PLAYWITHMAT 1
+		// Sporadic particle flag
+		SPORADIC 1
+		// Cold-state emitter definition ID
+		COLDEMITTERID 1

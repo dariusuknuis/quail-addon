@@ -17,33 +17,31 @@ class eqgparticlerenderdef:
 
 	class render:
 		render:int
-		id2:int
 		particlepoint:str
-		particlesuffix:str
-		unknowna1:int
-		unknowna2:int
-		unknowna3:int
-		unknowna4:int
-		unknowna5:int
-		duration:int
-		unknownb:int
-		unknownffffffff:int
-		unknownc:int
+		particletype:int
+		animnumber:int
+		animvariation:int
+		randomanim:int
+		starttime:int
+		lifespan:int
+		ground:int
+		playwithmat:int
+		sporadic:int
+		coldemitterid:int
 
 		def __init__(self):
 			self.render = 0 #3
-			self.id2 = 0 #3
 			self.particlepoint = "" #3
-			self.particlesuffix = "" #3
-			self.unknowna1 = 0 #3
-			self.unknowna2 = 0 #3
-			self.unknowna3 = 0 #3
-			self.unknowna4 = 0 #3
-			self.unknowna5 = 0 #3
-			self.duration = 0 #3
-			self.unknownb = 0 #3
-			self.unknownffffffff = 0 #3
-			self.unknownc = 0 #3
+			self.particletype = 0 #3
+			self.animnumber = 0 #3
+			self.animvariation = 0 #3
+			self.randomanim = 0 #3
+			self.starttime = 0 #3
+			self.lifespan = 0 #3
+			self.ground = 0 #3
+			self.playwithmat = 0 #3
+			self.sporadic = 0 #3
+			self.coldemitterid = 0 #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -60,30 +58,28 @@ class eqgparticlerenderdef:
 			renderi = type(self).render()
 			records = property(r, "RENDER", 1)
 			renderi.render = int(records[1])
-			records = property(r, "ID2", 1)
-			renderi.id2 = int(records[1])
 			records = property(r, "PARTICLEPOINT", 1)
 			renderi.particlepoint = str(records[1])
-			records = property(r, "PARTICLESUFFIX", 1)
-			renderi.particlesuffix = str(records[1])
-			records = property(r, "UNKNOWNA1", 1)
-			renderi.unknowna1 = int(records[1])
-			records = property(r, "UNKNOWNA2", 1)
-			renderi.unknowna2 = int(records[1])
-			records = property(r, "UNKNOWNA3", 1)
-			renderi.unknowna3 = int(records[1])
-			records = property(r, "UNKNOWNA4", 1)
-			renderi.unknowna4 = int(records[1])
-			records = property(r, "UNKNOWNA5", 1)
-			renderi.unknowna5 = int(records[1])
-			records = property(r, "DURATION", 1)
-			renderi.duration = int(records[1])
-			records = property(r, "UNKNOWNB", 1)
-			renderi.unknownb = int(records[1])
-			records = property(r, "UNKNOWNFFFFFFFF", 1)
-			renderi.unknownffffffff = int(records[1])
-			records = property(r, "UNKNOWNC", 1)
-			renderi.unknownc = int(records[1])
+			records = property(r, "PARTICLETYPE", 1)
+			renderi.particletype = int(records[1])
+			records = property(r, "ANIMNUMBER", 1)
+			renderi.animnumber = int(records[1])
+			records = property(r, "ANIMVARIATION", 1)
+			renderi.animvariation = int(records[1])
+			records = property(r, "RANDOMANIM", 1)
+			renderi.randomanim = int(records[1])
+			records = property(r, "STARTTIME", 1)
+			renderi.starttime = int(records[1])
+			records = property(r, "LIFESPAN", 1)
+			renderi.lifespan = int(records[1])
+			records = property(r, "GROUND", 1)
+			renderi.ground = int(records[1])
+			records = property(r, "PLAYWITHMAT", 1)
+			renderi.playwithmat = int(records[1])
+			records = property(r, "SPORADIC", 1)
+			renderi.sporadic = int(records[1])
+			records = property(r, "COLDEMITTERID", 1)
+			renderi.coldemitterid = int(records[1])
 			self.renders.append(renderi)
 		return ""
 
@@ -93,17 +89,16 @@ class eqgparticlerenderdef:
 		w.write(f"\tNUMRENDERS {len(self.renders)}\n")
 		for renderi in self.renders:
 			w.write(f"\t\tRENDER {renderi.render}\n")
-			w.write(f"\t\tID2 {renderi.id2}\n")
 			w.write(f"\t\tPARTICLEPOINT \"{renderi.particlepoint}\"\n")
-			w.write(f"\t\tPARTICLESUFFIX \"{renderi.particlesuffix}\"\n")
-			w.write(f"\t\tUNKNOWNA1 {renderi.unknowna1}\n")
-			w.write(f"\t\tUNKNOWNA2 {renderi.unknowna2}\n")
-			w.write(f"\t\tUNKNOWNA3 {renderi.unknowna3}\n")
-			w.write(f"\t\tUNKNOWNA4 {renderi.unknowna4}\n")
-			w.write(f"\t\tUNKNOWNA5 {renderi.unknowna5}\n")
-			w.write(f"\t\tDURATION {renderi.duration}\n")
-			w.write(f"\t\tUNKNOWNB {renderi.unknownb}\n")
-			w.write(f"\t\tUNKNOWNFFFFFFFF {renderi.unknownffffffff}\n")
-			w.write(f"\t\tUNKNOWNC {renderi.unknownc}\n")
+			w.write(f"\t\tPARTICLETYPE {renderi.particletype}\n")
+			w.write(f"\t\tANIMNUMBER {renderi.animnumber}\n")
+			w.write(f"\t\tANIMVARIATION {renderi.animvariation}\n")
+			w.write(f"\t\tRANDOMANIM {renderi.randomanim}\n")
+			w.write(f"\t\tSTARTTIME {renderi.starttime}\n")
+			w.write(f"\t\tLIFESPAN {renderi.lifespan}\n")
+			w.write(f"\t\tGROUND {renderi.ground}\n")
+			w.write(f"\t\tPLAYWITHMAT {renderi.playwithmat}\n")
+			w.write(f"\t\tSPORADIC {renderi.sporadic}\n")
+			w.write(f"\t\tCOLDEMITTERID {renderi.coldemitterid}\n")
 		return ""
 
