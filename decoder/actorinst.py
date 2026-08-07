@@ -2,10 +2,6 @@ import bpy, math
 from .context import Context
 from ..wce.actorinst import actorinst
 
-import bpy, math
-from .context import Context
-from ..wce.actorinst import actorinst
-
 def decode_actorinst(ctx: Context, inst: actorinst) -> str:
 
     # ------------------------------------------------

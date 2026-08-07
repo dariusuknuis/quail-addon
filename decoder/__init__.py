@@ -24,6 +24,7 @@ from .dmspritedef2 import decode_dmspritedef2
 from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations, reset_track_cache
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .eqgmodeldef import decode_eqgmodeldef
+from .eqgparticlepointdef import decode_eqgparticlepointdef
 from .eqgterdef import decode_eqgterdef
 from .eqganidef import decode_eqganidef
 from .eqgzondef import decode_eqgzondef
@@ -331,6 +332,14 @@ def wce_decode(path: str, parent_collection=None):
         ctx.parent = base_parent
 
         err = decode_eqgmodeldef(ctx, eqgmodel, mathutils.Vector())
+        if err:
+            error(err)
+
+    for _, eqgparticlepoint in parser.eqgparticlepointdefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+
+        err = decode_eqgparticlepointdef(ctx, eqgparticlepoint)
         if err:
             error(err)
 
