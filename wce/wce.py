@@ -17,6 +17,7 @@ from .eqgskinnedmodeldef import eqgskinnedmodeldef
 from .eqgterdef import eqgterdef
 from .eqgparticlepointdef import eqgparticlepointdef
 from .eqgparticlerenderdef import eqgparticlerenderdef
+from .emitterdef import emitterdef
 from .eqgzondef import eqgzondef
 from .eqglit import eqglit
 from .globalambientlightdef import globalambientlightdef
@@ -81,6 +82,7 @@ class wce:
     worlddefs:dict[str, worlddef]
     worldtrees:dict[str, worldtree]
     zones:dict[str, zone]
+    emitterdefs:dict[str, emitterdef]
     variationmaterialtags: set[str]
     _dmrgbtrack_map: dict[str, str]
     bsp_root: object | None
@@ -140,6 +142,7 @@ class wce:
         self.worlddefs = {}
         self.worldtrees = {}
         self.zones = {}
+        self.emitterdefs = {}
         self.variationmaterialtags = set()
         self._dmrgbtrack_map = {}
         self.bsp_root = None
@@ -484,6 +487,14 @@ class wce:
                     raise Exception(f"{path_cursor} zone: {e}")
                 continue
 
+            if line.startswith(emitterdef.definition()):
+                                        try:
+                                            self.emitterdefs[tag] = self._instantiate_definition(emitterdef, tag, r)
+                                            self.folders[tag] = folder_name
+                                        except Exception as e:
+                                            raise Exception(f"{path_cursor} emitterdef: {e}")
+                                        continue
+
             raise Exception(f"{path_cursor} unknown tag: {line}")
 
     def write_definitions(self, w:io.TextIOWrapper):
@@ -523,3 +534,4 @@ class wce:
         for tag, worlddefs in self.worlddefs.items(): worlddefs.write(w)
         for tag, worldtrees in self.worldtrees.items(): worldtrees.write(w)
         for tag, zones in self.zones.items(): zones.write(w)
+        for tag, emitterdefs in self.emitterdefs.items(): emitterdefs.write(w)

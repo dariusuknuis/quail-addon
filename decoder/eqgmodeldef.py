@@ -209,6 +209,7 @@ def _create_armature(
 
     armature = bpy.data.armatures.new(model.tag + "_armature")
     armature_obj = bpy.data.objects.new(model.tag + "_armature", armature)
+    armature_obj["quaildef"] = "eqgmodarmature"
     ctx.collection.objects.link(armature_obj)
     armature_obj.location = location
 

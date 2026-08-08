@@ -35,6 +35,7 @@ class POSE_OT_add_default_quail_track(bpy.types.Operator):
         return (
             obj and
             obj.type == 'ARMATURE' and
+            obj.get("quaildef") == "hierarchicalspritedef" and
             context.active_pose_bone and
             obj.animation_data and
             obj.animation_data.action
@@ -239,6 +240,9 @@ class QUAIL_PT_track_panel(bpy.types.Panel):
         obj = context.object
 
         if not obj or obj.type != 'ARMATURE':
+            return False
+
+        if obj.get("quaildef") != "hierarchicalspritedef":
             return False
 
         anim_data = obj.animation_data

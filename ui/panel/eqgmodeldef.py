@@ -3,7 +3,7 @@
 import bpy
 import bmesh
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty
-from .eqgface import ensure_face_layers, get_face_property, set_face_property, FACE_PROPS, QuailEqgFaceProperties
+from .eqgface import ensure_face_layers, get_face_property, set_face_property, FACE_PROPS
 
 class QuailEqgModelDefProperties(bpy.types.PropertyGroup):
     version: EnumProperty(

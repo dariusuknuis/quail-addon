@@ -1,8 +1,9 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
-import bpy
+import bpy, bmesh
 import os
 from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty
+from .eqgface import ensure_face_layers, get_face_property, FACE_PROPS
 
 class QuailEqgTerDefProperties(bpy.types.PropertyGroup):
     version: EnumProperty(
@@ -46,9 +47,8 @@ class OBJECT_OT_add_quail_eqgterdef(bpy.types.Operator):
 class PROPERTIES_PT_quail_eqgterdef(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
-    bl_context = "object"  # This puts it in the Object Properties panel
+    bl_context = "object"
     bl_label = "EQGTERDEF"
-    # bl_options = {'DEFAULT_CLOSED'}
     bl_order = -100
 
     @classmethod
@@ -60,27 +60,92 @@ class PROPERTIES_PT_quail_eqgterdef(bpy.types.Panel):
 
 def draw_eqgterdef_in_transform(self, context):
     obj = context.object
-    if obj and obj.get('quaildef') == 'eqgterdef':
-        layout = self.layout
+
+    if not obj:
+        return
+
+    if obj.get('quaildef') != 'eqgterdef':
+        return
+
+    if obj.type != 'MESH':
+        return
+
+    layout = self.layout
+
+    box = layout.box()
+    box.label(text="EQGTERDEF")
+
+    row = box.row()
+    row.prop(
+        obj.quail_eqgterdef,
+        "version"
+    )
+
+    if context.mode != 'EDIT_MESH':
+        return
+
+    mesh = obj.data
+
+    try:
+        ensure_face_layers(mesh)
+
+        bm = bmesh.from_edit_mesh(mesh)
+        bm.faces.ensure_lookup_table()
+        bm.faces.index_update()
+
+        selected_faces = [
+            face
+            for face in bm.faces
+            if face.select
+        ]
+
+        if len(selected_faces) != 1:
+            return
+
+        face = selected_faces[0]
+        face_index = face.index
+
         box = layout.box()
-        box.label(text="EQGTERDEF")
-        row = box.row()
-        row.prop(obj.quail_eqgterdef, "version")
+        box.label(
+            text=f"Face Properties ({face_index})"
+        )
+
+        for prop_name in FACE_PROPS:
+            prop_value = get_face_property(
+                mesh,
+                face_index,
+                prop_name
+            )
+
+            row = box.row()
+
+            icon = (
+                'CHECKBOX_HLT'
+                if prop_value
+                else 'CHECKBOX_DEHLT'
+            )
+
+            op = row.operator(
+                "mesh.quail_toggle_face_property",
+                text=prop_name,
+                icon=icon
+            )
+
+            op.face_index = face_index
+            op.prop_name = prop_name
+            op.new_value = not prop_value
+
+    except Exception as e:
+        box = layout.box()
+        box.label(
+            text=f"Error processing face data: {e}"
+        )
 
 # Register classes
 def register():
-    # ignored, auto_load bpy.utils.register_class(QuailActorDefProperties)
-    # ignored, auto_load bpy.utils.register_class(OBJECT_OT_add_custom_empty)
-    # ignored, auto_load bpy.utils.register_class(VIEW3D_MT_quail_add)
-    # ignored, auto_load bpy.utils.register_class(PROPERTIES_PT_quail_actor)
     bpy.types.OBJECT_PT_transform.prepend(draw_eqgterdef_in_transform)
     bpy.types.Object.quail_eqgterdef = PointerProperty(type=QuailEqgTerDefProperties)
-
 
 def unregister():
     del bpy.types.Object.quail_eqgterdef
     bpy.types.OBJECT_PT_transform.remove(draw_eqgterdef_in_transform)
-    # ignored, auto_load bpy.utils.unregister_class(PROPERTIES_PT_quail_actor)
-    # ignored, auto_load bpy.utils.unregister_class(VIEW3D_MT_quail_add)
-    # ignored, auto_load bpy.utils.unregister_class(OBJECT_OT_add_custom_empty)
-    # ignored, auto_load bpy.utils.unregister_class(QuailActorDefProperties)

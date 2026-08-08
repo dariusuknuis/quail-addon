@@ -34,6 +34,9 @@ def decode_eqganidef(ctx: Context, ani: eqganidef) -> str:
         arm_obj.animation_data_create()
 
     action = bpy.data.actions.new(ani.tag)
+    action["quaildef"] = "eqganidef"
+    action.quail_eqganidef.version = ani.version
+    action.quail_eqganidef.strict = bool(ani.strict)
     arm_obj.animation_data.action = action
 
     fps = bpy.context.scene.render.fps
