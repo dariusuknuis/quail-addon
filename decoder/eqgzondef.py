@@ -141,7 +141,7 @@ def _create_eqg_light(
 
     obj.location = (
         float(position[1]),
-        float(position[0]),
+        float(-position[0]),
         float(position[2]),
     )
 

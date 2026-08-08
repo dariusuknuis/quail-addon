@@ -15,6 +15,11 @@ class QuailWorldDefProperties(bpy.types.PropertyGroup):
         default=False
     )
 
+    eqgzoneversion: IntProperty(
+        name="EQG Zone Version",
+        default=0
+    )
+
     use_eqg: BoolProperty(
         name="EQG",
         default=False
@@ -79,9 +84,14 @@ class QUAIL_PT_worlddef_collection(bpy.types.Panel):
         box.label(text="WORLDDEF")
         box.prop(props, "newworld")
         box.prop(props, "zone")
+        if props.zone and props.use_eqg:
+            box.prop(props, "eqgzoneversion")
+
         box.prop(props, "use_eqg")
         if props.use_eqg:
             box.prop(props, "eqgversion")
+
+
 
 
 # =========================================================

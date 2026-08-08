@@ -42,6 +42,13 @@ def decode_worlddef(ctx: Context, wd: worlddef) -> str:
         props.use_eqg = True
         props.eqgversion = wd.eqgversion
 
+    props.eqgzoneversion = 0
+
+    eqgzondefs = getattr(ctx.parser, "eqgzondefs", None)
+    if eqgzondefs:
+        zon = next(iter(eqgzondefs.values()))
+        props.eqgzoneversion = int(zon.version)
+
     # ========================================
     # ZONE LOGIC
     # ========================================
