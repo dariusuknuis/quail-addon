@@ -23,6 +23,7 @@ from .dmspritedefinition import decode_dmspritedefinition
 from .dmspritedef2 import decode_dmspritedef2
 from .track import decode_trackdefinition, decode_trackinstance, build_wld_animations, reset_track_cache
 from .hierarchicalspritedef import decode_hierarchicalspritedef
+from .emitterdef import decode_emitterdef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgparticlepointdef import decode_eqgparticlepointdef
 from .eqgterdef import decode_eqgterdef
@@ -324,6 +325,13 @@ def wce_decode(path: str, parent_collection=None):
         ctx.parent = base_parent
 
         err = decode_actorinst(ctx, actorinst)
+        if err:
+            error(err)
+
+    for _, emitter in parser.emitterdefs.items():
+        ctx.collection = base_collection
+        ctx.parent = base_parent
+        err = decode_emitterdef(ctx, emitter)
         if err:
             error(err)
 
