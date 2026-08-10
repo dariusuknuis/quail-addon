@@ -38,16 +38,22 @@ class emitterdef:
 	particlezbias:float
 	tintstart:tuple[int, int, int]
 	tintend:tuple[int, int, int]
-	speedmin:tuple[float, float, float]
-	speedmax:tuple[float, float, float]
-	acceleration:tuple[float, float, float]
+	upwardspeedmin:float
+	upwardspeedmax:float
+	upwardacceleration:float
+	forwardspeedmin:float
+	forwardspeedmax:float
+	forwardacceleration:float
+	rightwardspeedmin:float
+	rightwardspeedmax:float
+	rightwardacceleration:float
 	outwardspeedmin:float
 	outwardspeedmax:float
-	outwardspeedacceleration:float
+	outwardacceleration:float
 	orbitalspeedmin:float
 	orbitalspeedmax:float
-	orbitalspeedacceleration:float
-	scalargravity:float
+	orbitalacceleration:float
+	gravity:float
 	windspeed:float
 	animationframes:int
 	animationrate:float
@@ -55,7 +61,7 @@ class emitterdef:
 	oldparticletype:int
 	oldflags:int
 	oldsize:int
-	gravity:tuple[float, float, float]
+	oldgravity:tuple[float, float, float]
 	bbmin:tuple[float, float, float]
 	bbmax:tuple[float, float, float]
 	spawnscale:float
@@ -104,16 +110,22 @@ class emitterdef:
 		self.particlezbias = 0.0 #2
 		self.tintstart = (0, 0, 0) #2
 		self.tintend = (0, 0, 0) #2
-		self.speedmin = (0.0, 0.0, 0.0) #2
-		self.speedmax = (0.0, 0.0, 0.0) #2
-		self.acceleration = (0.0, 0.0, 0.0) #2
+		self.upwardspeedmin = 0.0 #2
+		self.upwardspeedmax = 0.0 #2
+		self.upwardacceleration = 0.0 #2
+		self.forwardspeedmin = 0.0 #2
+		self.forwardspeedmax = 0.0 #2
+		self.forwardacceleration = 0.0 #2
+		self.rightwardspeedmin = 0.0 #2
+		self.rightwardspeedmax = 0.0 #2
+		self.rightwardacceleration = 0.0 #2
 		self.outwardspeedmin = 0.0 #2
 		self.outwardspeedmax = 0.0 #2
-		self.outwardspeedacceleration = 0.0 #2
+		self.outwardacceleration = 0.0 #2
 		self.orbitalspeedmin = 0.0 #2
 		self.orbitalspeedmax = 0.0 #2
-		self.orbitalspeedacceleration = 0.0 #2
-		self.scalargravity = 0.0 #2
+		self.orbitalacceleration = 0.0 #2
+		self.gravity = 0.0 #2
 		self.windspeed = 0.0 #2
 		self.animationframes = 0 #2
 		self.animationrate = 0.0 #2
@@ -121,7 +133,7 @@ class emitterdef:
 		self.oldparticletype = 0 #2
 		self.oldflags = 0 #2
 		self.oldsize = 0 #2
-		self.gravity = (0.0, 0.0, 0.0) #2
+		self.oldgravity = (0.0, 0.0, 0.0) #2
 		self.bbmin = (0.0, 0.0, 0.0) #2
 		self.bbmax = (0.0, 0.0, 0.0) #2
 		self.spawnscale = 0.0 #2
@@ -203,26 +215,38 @@ class emitterdef:
 		self.tintstart = (int(records[1]), int(records[2]), int(records[3]))
 		records = property(r, "TINTEND", 3)
 		self.tintend = (int(records[1]), int(records[2]), int(records[3]))
-		records = property(r, "SPEEDMIN", 3)
-		self.speedmin = (float(records[1]), float(records[2]), float(records[3]))
-		records = property(r, "SPEEDMAX", 3)
-		self.speedmax = (float(records[1]), float(records[2]), float(records[3]))
-		records = property(r, "ACCELERATION", 3)
-		self.acceleration = (float(records[1]), float(records[2]), float(records[3]))
+		records = property(r, "UPWARDSPEEDMIN", 1)
+		self.upwardspeedmin = float(records[1])
+		records = property(r, "UPWARDSPEEDMAX", 1)
+		self.upwardspeedmax = float(records[1])
+		records = property(r, "UPWARDACCELERATION", 1)
+		self.upwardacceleration = float(records[1])
+		records = property(r, "FORWARDSPEEDMIN", 1)
+		self.forwardspeedmin = float(records[1])
+		records = property(r, "FORWARDSPEEDMAX", 1)
+		self.forwardspeedmax = float(records[1])
+		records = property(r, "FORWARDACCELERATION", 1)
+		self.forwardacceleration = float(records[1])
+		records = property(r, "RIGHTWARDSPEEDMIN", 1)
+		self.rightwardspeedmin = float(records[1])
+		records = property(r, "RIGHTWARDSPEEDMAX", 1)
+		self.rightwardspeedmax = float(records[1])
+		records = property(r, "RIGHTWARDACCELERATION", 1)
+		self.rightwardacceleration = float(records[1])
 		records = property(r, "OUTWARDSPEEDMIN", 1)
 		self.outwardspeedmin = float(records[1])
 		records = property(r, "OUTWARDSPEEDMAX", 1)
 		self.outwardspeedmax = float(records[1])
-		records = property(r, "OUTWARDSPEEDACCELERATION", 1)
-		self.outwardspeedacceleration = float(records[1])
+		records = property(r, "OUTWARDACCELERATION", 1)
+		self.outwardacceleration = float(records[1])
 		records = property(r, "ORBITALSPEEDMIN", 1)
 		self.orbitalspeedmin = float(records[1])
 		records = property(r, "ORBITALSPEEDMAX", 1)
 		self.orbitalspeedmax = float(records[1])
-		records = property(r, "ORBITALSPEEDACCELERATION", 1)
-		self.orbitalspeedacceleration = float(records[1])
-		records = property(r, "SCALARGRAVITY", 1)
-		self.scalargravity = float(records[1])
+		records = property(r, "ORBITALACCELERATION", 1)
+		self.orbitalacceleration = float(records[1])
+		records = property(r, "GRAVITY", 1)
+		self.gravity = float(records[1])
 		records = property(r, "WINDSPEED", 1)
 		self.windspeed = float(records[1])
 		records = property(r, "ANIMATIONFRAMES", 1)
@@ -237,8 +261,8 @@ class emitterdef:
 		self.oldflags = int(records[1])
 		records = property(r, "OLDSIZE", 1)
 		self.oldsize = int(records[1])
-		records = property(r, "GRAVITY", 3)
-		self.gravity = (float(records[1]), float(records[2]), float(records[3]))
+		records = property(r, "OLDGRAVITY", 3)
+		self.oldgravity = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BBMIN", 3)
 		self.bbmin = (float(records[1]), float(records[2]), float(records[3]))
 		records = property(r, "BBMAX", 3)
@@ -303,16 +327,22 @@ class emitterdef:
 		w.write(f"\tPARTICLEZBIAS {format(self.particlezbias, '.8e')}\n")
 		w.write(f"\tTINTSTART {self.tintstart[0]} {self.tintstart[1]} {self.tintstart[2]}\n")
 		w.write(f"\tTINTEND {self.tintend[0]} {self.tintend[1]} {self.tintend[2]}\n")
-		w.write(f"\tSPEEDMIN {format(self.speedmin[0], '.8e')} {format(self.speedmin[1], '.8e')} {format(self.speedmin[2], '.8e')}\n")
-		w.write(f"\tSPEEDMAX {format(self.speedmax[0], '.8e')} {format(self.speedmax[1], '.8e')} {format(self.speedmax[2], '.8e')}\n")
-		w.write(f"\tACCELERATION {format(self.acceleration[0], '.8e')} {format(self.acceleration[1], '.8e')} {format(self.acceleration[2], '.8e')}\n")
+		w.write(f"\tUPWARDSPEEDMIN {format(self.upwardspeedmin, '.8e')}\n")
+		w.write(f"\tUPWARDSPEEDMAX {format(self.upwardspeedmax, '.8e')}\n")
+		w.write(f"\tUPWARDACCELERATION {format(self.upwardacceleration, '.8e')}\n")
+		w.write(f"\tFORWARDSPEEDMIN {format(self.forwardspeedmin, '.8e')}\n")
+		w.write(f"\tFORWARDSPEEDMAX {format(self.forwardspeedmax, '.8e')}\n")
+		w.write(f"\tFORWARDACCELERATION {format(self.forwardacceleration, '.8e')}\n")
+		w.write(f"\tRIGHTWARDSPEEDMIN {format(self.rightwardspeedmin, '.8e')}\n")
+		w.write(f"\tRIGHTWARDSPEEDMAX {format(self.rightwardspeedmax, '.8e')}\n")
+		w.write(f"\tRIGHTWARDACCELERATION {format(self.rightwardacceleration, '.8e')}\n")
 		w.write(f"\tOUTWARDSPEEDMIN {format(self.outwardspeedmin, '.8e')}\n")
 		w.write(f"\tOUTWARDSPEEDMAX {format(self.outwardspeedmax, '.8e')}\n")
-		w.write(f"\tOUTWARDSPEEDACCELERATION {format(self.outwardspeedacceleration, '.8e')}\n")
+		w.write(f"\tOUTWARDACCELERATION {format(self.outwardacceleration, '.8e')}\n")
 		w.write(f"\tORBITALSPEEDMIN {format(self.orbitalspeedmin, '.8e')}\n")
 		w.write(f"\tORBITALSPEEDMAX {format(self.orbitalspeedmax, '.8e')}\n")
-		w.write(f"\tORBITALSPEEDACCELERATION {format(self.orbitalspeedacceleration, '.8e')}\n")
-		w.write(f"\tSCALARGRAVITY {format(self.scalargravity, '.8e')}\n")
+		w.write(f"\tORBITALACCELERATION {format(self.orbitalacceleration, '.8e')}\n")
+		w.write(f"\tGRAVITY {format(self.gravity, '.8e')}\n")
 		w.write(f"\tWINDSPEED {format(self.windspeed, '.8e')}\n")
 		w.write(f"\tANIMATIONFRAMES {self.animationframes}\n")
 		w.write(f"\tANIMATIONRATE {format(self.animationrate, '.8e')}\n")
@@ -320,7 +350,7 @@ class emitterdef:
 		w.write(f"\tOLDPARTICLETYPE {self.oldparticletype}\n")
 		w.write(f"\tOLDFLAGS {self.oldflags}\n")
 		w.write(f"\tOLDSIZE {self.oldsize}\n")
-		w.write(f"\tGRAVITY {format(self.gravity[0], '.8e')} {format(self.gravity[1], '.8e')} {format(self.gravity[2], '.8e')}\n")
+		w.write(f"\tOLDGRAVITY {format(self.oldgravity[0], '.8e')} {format(self.oldgravity[1], '.8e')} {format(self.oldgravity[2], '.8e')}\n")
 		w.write(f"\tBBMIN {format(self.bbmin[0], '.8e')} {format(self.bbmin[1], '.8e')} {format(self.bbmin[2], '.8e')}\n")
 		w.write(f"\tBBMAX {format(self.bbmax[0], '.8e')} {format(self.bbmax[1], '.8e')} {format(self.bbmax[2], '.8e')}\n")
 		w.write(f"\tSPAWNSCALE {format(self.spawnscale, '.8e')}\n")

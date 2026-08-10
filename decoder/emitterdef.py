@@ -127,7 +127,20 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	velocity_movement = nodes.new("ShaderNodeVectorMath")
 	acceleration_vector = nodes.new("ShaderNodeCombineXYZ")
 	acceleration_movement = nodes.new("ShaderNodeVectorMath")
-	position_and_velocity = nodes.new("ShaderNodeVectorMath")
+	directional_movement = nodes.new("ShaderNodeVectorMath")
+	random_outward_direction = nodes.new("FunctionNodeRandomValue")
+	outward_direction = nodes.new("ShaderNodeVectorMath")
+	random_outward_speed = nodes.new("FunctionNodeRandomValue")
+	outward_velocity_distance = nodes.new("ShaderNodeMath")
+	outward_acceleration_distance = nodes.new("ShaderNodeMath")
+	outward_distance = nodes.new("ShaderNodeMath")
+	outward_movement = nodes.new("ShaderNodeVectorMath")
+	radial_position = nodes.new("ShaderNodeVectorMath")
+	random_orbital_speed = nodes.new("FunctionNodeRandomValue")
+	orbital_velocity_angle = nodes.new("ShaderNodeMath")
+	orbital_acceleration_angle = nodes.new("ShaderNodeMath")
+	orbital_angle = nodes.new("ShaderNodeMath")
+	orbital_rotation = nodes.new("ShaderNodeVectorRotate")
 	particle_movement = nodes.new("ShaderNodeVectorMath")
 	random_start_rotation = nodes.new("FunctionNodeRandomValue")
 	random_spin_rate = nodes.new("FunctionNodeRandomValue")
@@ -170,7 +183,17 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	offset_uv.operation = 'ADD'
 	velocity_movement.operation = 'SCALE'
 	acceleration_movement.operation = 'SCALE'
-	position_and_velocity.operation = 'ADD'
+	directional_movement.operation = 'ADD'
+	outward_direction.operation = 'NORMALIZE'
+	outward_velocity_distance.operation = 'MULTIPLY'
+	outward_acceleration_distance.operation = 'MULTIPLY'
+	outward_distance.operation = 'ADD'
+	outward_movement.operation = 'SCALE'
+	radial_position.operation = 'ADD'
+	orbital_velocity_angle.operation = 'MULTIPLY'
+	orbital_acceleration_angle.operation = 'MULTIPLY'
+	orbital_angle.operation = 'ADD'
+	orbital_rotation.rotation_type = 'AXIS_ANGLE'
 	particle_movement.operation = 'ADD'
 	spin_movement.operation = 'MULTIPLY'
 	particle_rotation.operation = 'ADD'
@@ -203,24 +226,49 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	mesh_line.inputs["Start Location"].default_value = (0.0, 0.0, 0.0)
 	mesh_line.inputs["Offset"].default_value = (0.0, 0.0, 0.0)
 
-	radius_x = max(abs(emitter.shaperadius), 0.01)
-	radius_y = max(abs(emitter.shaperadiusminor), radius_x)
-	radius_z = max(abs(emitter.shapeheight), radius_x)
+	radius_x = abs(emitter.shaperadius)
+	radius_y = abs(emitter.shaperadiusminor) if emitter.shaperadiusminor != 0.0 else radius_x
+	radius_z = abs(emitter.shapeheight) if emitter.shapeheight != 0.0 else radius_x
+	if emitter.spawnshape == 0:
+		radius_x = 0.0
+		radius_y = 0.0
+		radius_z = 0.0
 
 	random_position.data_type = 'FLOAT_VECTOR'
 	random_position.inputs["Min"].default_value = (-radius_x, -radius_y, -radius_z)
 	random_position.inputs["Max"].default_value = (radius_x, radius_y, radius_z)
 
-	speed_min = tuple(min(emitter.speedmin[i], emitter.speedmax[i]) for i in range(3))
-	speed_max = tuple(max(emitter.speedmin[i], emitter.speedmax[i]) for i in range(3))
+	speed_min = (
+		min(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
+		min(emitter.forwardspeedmin, emitter.forwardspeedmax),
+		min(emitter.upwardspeedmin, emitter.upwardspeedmax),
+	)
+	speed_max = (
+		max(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
+		max(emitter.forwardspeedmin, emitter.forwardspeedmax),
+		max(emitter.upwardspeedmin, emitter.upwardspeedmax),
+	)
 	random_velocity.data_type = 'FLOAT_VECTOR'
 	random_velocity.inputs["Min"].default_value = speed_min
 	random_velocity.inputs["Max"].default_value = speed_max
 
-	combined_acceleration = tuple(emitter.acceleration[i] + emitter.gravity[i] * emitter.scalargravity for i in range(3))
-	acceleration_vector.inputs["X"].default_value = combined_acceleration[0]
-	acceleration_vector.inputs["Y"].default_value = combined_acceleration[1]
-	acceleration_vector.inputs["Z"].default_value = combined_acceleration[2]
+	acceleration_vector.inputs["X"].default_value = emitter.rightwardacceleration
+	acceleration_vector.inputs["Y"].default_value = emitter.forwardacceleration
+	acceleration_vector.inputs["Z"].default_value = emitter.upwardacceleration - emitter.gravity
+
+	random_outward_direction.data_type = 'FLOAT_VECTOR'
+	random_outward_direction.inputs["Min"].default_value = (-1.0, -1.0, -1.0)
+	random_outward_direction.inputs["Max"].default_value = (1.0, 1.0, 1.0)
+	random_outward_speed.data_type = 'FLOAT'
+	random_outward_speed.inputs["Min"].default_value = min(emitter.outwardspeedmin, emitter.outwardspeedmax)
+	random_outward_speed.inputs["Max"].default_value = max(emitter.outwardspeedmin, emitter.outwardspeedmax)
+	outward_acceleration_distance.inputs[1].default_value = 0.5 * emitter.outwardacceleration
+
+	random_orbital_speed.data_type = 'FLOAT'
+	random_orbital_speed.inputs["Min"].default_value = math.radians(min(emitter.orbitalspeedmin, emitter.orbitalspeedmax))
+	random_orbital_speed.inputs["Max"].default_value = math.radians(max(emitter.orbitalspeedmin, emitter.orbitalspeedmax))
+	orbital_acceleration_angle.inputs[1].default_value = 0.5 * math.radians(emitter.orbitalacceleration)
+	orbital_rotation.inputs["Axis"].default_value = (0.0, 0.0, 1.0)
 
 	spin_min = min(emitter.particlespinrate, emitter.particlespinratemax)
 	spin_max = max(emitter.particlespinrate, emitter.particlespinratemax)
@@ -282,10 +330,30 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(particle_age.outputs[0], velocity_movement.inputs["Scale"])
 	links.new(acceleration_vector.outputs["Vector"], acceleration_movement.inputs["Vector"])
 	links.new(half_age_squared.outputs[0], acceleration_movement.inputs["Scale"])
-	links.new(random_position.outputs["Value"], position_and_velocity.inputs[0])
-	links.new(velocity_movement.outputs["Vector"], position_and_velocity.inputs[1])
-	links.new(position_and_velocity.outputs["Vector"], particle_movement.inputs[0])
-	links.new(acceleration_movement.outputs["Vector"], particle_movement.inputs[1])
+	links.new(velocity_movement.outputs["Vector"], directional_movement.inputs[0])
+	links.new(acceleration_movement.outputs["Vector"], directional_movement.inputs[1])
+	if emitter.spawnshape == 0:
+		links.new(random_outward_direction.outputs["Value"], outward_direction.inputs[0])
+	else:
+		links.new(random_position.outputs["Value"], outward_direction.inputs[0])
+	links.new(random_outward_speed.outputs["Value"], outward_velocity_distance.inputs[0])
+	links.new(particle_age.outputs[0], outward_velocity_distance.inputs[1])
+	links.new(age_squared.outputs[0], outward_acceleration_distance.inputs[0])
+	links.new(outward_velocity_distance.outputs[0], outward_distance.inputs[0])
+	links.new(outward_acceleration_distance.outputs[0], outward_distance.inputs[1])
+	links.new(outward_direction.outputs["Vector"], outward_movement.inputs["Vector"])
+	links.new(outward_distance.outputs[0], outward_movement.inputs["Scale"])
+	links.new(random_position.outputs["Value"], radial_position.inputs[0])
+	links.new(outward_movement.outputs["Vector"], radial_position.inputs[1])
+	links.new(random_orbital_speed.outputs["Value"], orbital_velocity_angle.inputs[0])
+	links.new(particle_age.outputs[0], orbital_velocity_angle.inputs[1])
+	links.new(age_squared.outputs[0], orbital_acceleration_angle.inputs[0])
+	links.new(orbital_velocity_angle.outputs[0], orbital_angle.inputs[0])
+	links.new(orbital_acceleration_angle.outputs[0], orbital_angle.inputs[1])
+	links.new(radial_position.outputs["Vector"], orbital_rotation.inputs["Vector"])
+	links.new(orbital_angle.outputs[0], orbital_rotation.inputs["Angle"])
+	links.new(orbital_rotation.outputs["Vector"], particle_movement.inputs[0])
+	links.new(directional_movement.outputs["Vector"], particle_movement.inputs[1])
 	links.new(random_spin_rate.outputs["Value"], spin_movement.inputs[0])
 	links.new(particle_age.outputs[0], spin_movement.inputs[1])
 	links.new(random_start_rotation.outputs["Value"], particle_rotation.inputs[0])
@@ -358,16 +426,22 @@ def decode_emitterdef(ctx: Context, emitter: emitterdef) -> str:
 	obj["particlezbias"] = emitter.particlezbias
 	obj["tintstart"] = emitter.tintstart
 	obj["tintend"] = emitter.tintend
-	obj["speedmin"] = emitter.speedmin
-	obj["speedmax"] = emitter.speedmax
-	obj["acceleration"] = emitter.acceleration
+	obj["upwardspeedmin"] = emitter.upwardspeedmin
+	obj["upwardspeedmax"] = emitter.upwardspeedmax
+	obj["upwardacceleration"] = emitter.upwardacceleration
+	obj["forwardspeedmin"] = emitter.forwardspeedmin
+	obj["forwardspeedmax"] = emitter.forwardspeedmax
+	obj["forwardacceleration"] = emitter.forwardacceleration
+	obj["rightwardspeedmin"] = emitter.rightwardspeedmin
+	obj["rightwardspeedmax"] = emitter.rightwardspeedmax
+	obj["rightwardacceleration"] = emitter.rightwardacceleration
 	obj["outwardspeedmin"] = emitter.outwardspeedmin
 	obj["outwardspeedmax"] = emitter.outwardspeedmax
-	obj["outwardspeedacceleration"] = emitter.outwardspeedacceleration
+	obj["outwardacceleration"] = emitter.outwardacceleration
 	obj["orbitalspeedmin"] = emitter.orbitalspeedmin
 	obj["orbitalspeedmax"] = emitter.orbitalspeedmax
-	obj["orbitalspeedacceleration"] = emitter.orbitalspeedacceleration
-	obj["scalargravity"] = emitter.scalargravity
+	obj["orbitalacceleration"] = emitter.orbitalacceleration
+	obj["gravity"] = emitter.gravity
 	obj["windspeed"] = emitter.windspeed
 	obj["animationframes"] = emitter.animationframes
 	obj["animationrate"] = emitter.animationrate
@@ -375,7 +449,7 @@ def decode_emitterdef(ctx: Context, emitter: emitterdef) -> str:
 	obj["oldparticletype"] = emitter.oldparticletype
 	obj["oldflags"] = emitter.oldflags
 	obj["oldsize"] = emitter.oldsize
-	obj["gravity"] = emitter.gravity
+	obj["oldgravity"] = emitter.oldgravity
 	obj["bbmin"] = emitter.bbmin
 	obj["bbmax"] = emitter.bbmax
 	obj["spawnscale"] = emitter.spawnscale
@@ -389,7 +463,7 @@ def decode_emitterdef(ctx: Context, emitter: emitterdef) -> str:
 	obj["allowcenterpassthrough"] = emitter.allowcenterpassthrough
 	obj["scaleemitterwithactor"] = emitter.scaleemitterwithactor
 
-	obj.location = emitter.shapeoffset
+	obj.location = (emitter.shapeoffset[2], emitter.shapeoffset[1], emitter.shapeoffset[0])
 	collection.objects.link(obj)
 
 	material = create_emitter_material(ctx, emitter)
