@@ -6,7 +6,7 @@ import math
 from .context import Context
 from ..wce.emitterdef import emitterdef
 
-EMITTER_NODE_GROUP_NAME = "EmitterDef Geo Mod"
+EMITTER_NODE_GROUP_NAME = "EverQuest Emitter"
 
 def add_emitter_input(node_group, name, socket_type, default=None):
 	socket = node_group.interface.new_socket(name=name, in_out='INPUT', socket_type=socket_type)
@@ -326,9 +326,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	rotation_vector = nodes.new("ShaderNodeCombineXYZ")
 	active_camera = nodes.new("GeometryNodeInputActiveCamera")
 	camera_info = nodes.new("GeometryNodeObjectInfo")
-	position = nodes.new("GeometryNodeInputPosition")
-	camera_direction = nodes.new("ShaderNodeVectorMath")
-	billboard_rotation = nodes.new("FunctionNodeAlignEulerToVector")
+	camera_rotation = nodes.new("FunctionNodeRotateRotation")
 	random_scale = nodes.new("FunctionNodeRandomValue")
 	sprite = nodes.new("GeometryNodeMeshGrid")
 	store_uv = nodes.new("GeometryNodeStoreNamedAttribute")
@@ -411,9 +409,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	spin_movement.operation = 'MULTIPLY'
 	particle_rotation.operation = 'ADD'
 	camera_info.transform_space = 'RELATIVE'
-	camera_direction.operation = 'SUBTRACT'
-	billboard_rotation.axis = 'Y'
-	billboard_rotation.pivot_axis = 'AUTO'
+	camera_rotation.rotation_space = 'LOCAL'
 
 	fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
 	frame_seconds.inputs[1].default_value = 1.0 / fps
@@ -459,7 +455,10 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	store_atlas_offset.domain = 'POINT'
 	store_atlas_offset.inputs["Name"].default_value = "eq_atlas_offset"
 
-	transform_sprite.inputs["Rotation"].default_value = (-1.57079632679, 0.0, 0.0)
+	# A Blender camera looks down its local -Z axis. Flip the grid so its
+	# visible normal also points down local -Z, then use the camera rotation
+	# directly. This preserves a stable camera up/right orientation.
+	transform_sprite.inputs["Rotation"].default_value = (math.pi, 0.0, 0.0)
 
 	random_scale.data_type = 'FLOAT_VECTOR'
 	random_scale.inputs["Min"].default_value = (1.0, 1.0, 1.0)
@@ -626,12 +625,10 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(particle_age.outputs[0], spin_movement.inputs[1])
 	links.new(random_start_rotation.outputs["Value"], particle_rotation.inputs[0])
 	links.new(spin_movement.outputs[0], particle_rotation.inputs[1])
-	links.new(particle_rotation.outputs[0], rotation_vector.inputs["Y"])
+	links.new(particle_rotation.outputs[0], rotation_vector.inputs["Z"])
 	links.new(active_camera.outputs["Active Camera"], camera_info.inputs["Object"])
-	links.new(camera_info.outputs["Location"], camera_direction.inputs[0])
-	links.new(position.outputs["Position"], camera_direction.inputs[1])
-	links.new(rotation_vector.outputs["Vector"], billboard_rotation.inputs["Rotation"])
-	links.new(camera_direction.outputs["Vector"], billboard_rotation.inputs["Vector"])
+	links.new(camera_info.outputs["Rotation"], camera_rotation.inputs["Rotation"])
+	links.new(rotation_vector.outputs["Vector"], camera_rotation.inputs["Rotate By"])
 	links.new(mesh_line.outputs["Mesh"], set_position.inputs["Geometry"])
 	links.new(particle_movement.outputs["Vector"], set_position.inputs["Offset"])
 	links.new(set_position.outputs["Geometry"], store_tint.inputs["Geometry"])
@@ -647,7 +644,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(set_material.outputs["Geometry"], instance.inputs["Instance"])
 	links.new(store_atlas_offset.outputs["Geometry"], instance.inputs["Points"])
 	links.new(particle_visible.outputs["Boolean"], instance.inputs["Selection"])
-	links.new(billboard_rotation.outputs["Rotation"], instance.inputs["Rotation"])
+	links.new(camera_rotation.outputs["Rotation"], instance.inputs["Rotation"])
 	links.new(random_scale.outputs["Value"], instance.inputs["Scale"])
 	links.new(instance.outputs["Instances"], output.inputs["Geometry"])
 
