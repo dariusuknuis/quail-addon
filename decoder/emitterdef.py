@@ -24,11 +24,24 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 
 	output = nodes.new("ShaderNodeOutputMaterial")
 	shader = nodes.new("ShaderNodeBsdfPrincipled")
-	shader.inputs["Base Color"].default_value = material.diffuse_color
-	shader.inputs["Emission Color"].default_value = material.diffuse_color
 	shader.inputs["Emission Strength"].default_value = 1.0 if emitter.additiveblending else 0.0
-	shader.inputs["Alpha"].default_value = emitter.maxalpha
 	shader.inputs["Roughness"].default_value = 1.0
+	tint_attribute = nodes.new("ShaderNodeAttribute")
+	tint_attribute.attribute_name = "eq_particle_tint"
+	alpha_attribute = nodes.new("ShaderNodeAttribute")
+	alpha_attribute.attribute_name = "eq_particle_alpha"
+	tinted_color = nodes.new("ShaderNodeMixRGB")
+	tinted_color.blend_type = 'MULTIPLY'
+	tinted_color.inputs[0].default_value = 1.0
+	tinted_color.inputs[1].default_value = (1.0, 1.0, 1.0, 1.0)
+	final_alpha = nodes.new("ShaderNodeMath")
+	final_alpha.operation = 'MULTIPLY'
+	final_alpha.inputs[0].default_value = 1.0
+	links.new(tint_attribute.outputs["Color"], tinted_color.inputs[2])
+	links.new(alpha_attribute.outputs["Fac"], final_alpha.inputs[1])
+	links.new(tinted_color.outputs["Color"], shader.inputs["Base Color"])
+	links.new(tinted_color.outputs["Color"], shader.inputs["Emission Color"])
+	links.new(final_alpha.outputs[0], shader.inputs["Alpha"])
 
 	texture_path = None
 	if ctx.parser.assets_path:
@@ -42,9 +55,8 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 			uv.attribute_name = "UVMap"
 			texture.image = image
 			links.new(uv.outputs["Vector"], texture.inputs["Vector"])
-			links.new(texture.outputs["Color"], shader.inputs["Base Color"])
-			links.new(texture.outputs["Color"], shader.inputs["Emission Color"])
-			links.new(texture.outputs["Alpha"], shader.inputs["Alpha"])
+			links.new(texture.outputs["Color"], tinted_color.inputs[1])
+			links.new(texture.outputs["Alpha"], final_alpha.inputs[0])
 		except Exception as e:
 			print(f"Unable to load emitter texture {texture_path}: {e}")
 
@@ -103,7 +115,16 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	in_frame_range = nodes.new("FunctionNodeBooleanMath")
 	frame_offset = nodes.new("ShaderNodeMath")
 	frame_seconds = nodes.new("ShaderNodeMath")
+	emission_cycle = nodes.new("ShaderNodeMath")
+	emission_seed = nodes.new("ShaderNodeMath")
 	particle_age = nodes.new("ShaderNodeMath")
+	normalized_age = nodes.new("ShaderNodeMath")
+	tint_mix = nodes.new("ShaderNodeMixRGB")
+	fade_in_factor = nodes.new("ShaderNodeMath")
+	lifetime_remaining = nodes.new("ShaderNodeMath")
+	fade_out_factor = nodes.new("ShaderNodeMath")
+	fade_factor = nodes.new("ShaderNodeMath")
+	particle_alpha = nodes.new("ShaderNodeMath")
 	age_squared = nodes.new("ShaderNodeMath")
 	half_age_squared = nodes.new("ShaderNodeMath")
 	animation_position = nodes.new("ShaderNodeMath")
@@ -121,7 +142,10 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	scale_uv = nodes.new("ShaderNodeVectorMath")
 	offset_uv = nodes.new("ShaderNodeVectorMath")
 	mesh_line = nodes.new("GeometryNodeMeshLine")
+	particle_index = nodes.new("GeometryNodeInputIndex")
 	set_position = nodes.new("GeometryNodeSetPosition")
+	store_tint = nodes.new("GeometryNodeStoreNamedAttribute")
+	store_alpha = nodes.new("GeometryNodeStoreNamedAttribute")
 	random_position = nodes.new("FunctionNodeRandomValue")
 	random_velocity = nodes.new("FunctionNodeRandomValue")
 	velocity_movement = nodes.new("ShaderNodeVectorMath")
@@ -158,6 +182,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	transform_sprite = nodes.new("GeometryNodeTransform")
 	set_material = nodes.new("GeometryNodeSetMaterial")
 	instance = nodes.new("GeometryNodeInstanceOnPoints")
+	realize_instances = nodes.new("GeometryNodeRealizeInstances")
 
 	after_start.data_type = 'FLOAT'
 	after_start.operation = 'GREATER_EQUAL'
@@ -166,7 +191,15 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	in_frame_range.operation = 'AND'
 	frame_offset.operation = 'SUBTRACT'
 	frame_seconds.operation = 'MULTIPLY'
+	emission_cycle.operation = 'DIVIDE'
+	emission_seed.operation = 'FLOOR'
 	particle_age.operation = 'MODULO'
+	normalized_age.operation = 'DIVIDE'
+	normalized_age.use_clamp = True
+	tint_mix.blend_type = 'MIX'
+	lifetime_remaining.operation = 'SUBTRACT'
+	fade_factor.operation = 'MINIMUM'
+	particle_alpha.operation = 'MULTIPLY'
 	age_squared.operation = 'MULTIPLY'
 	half_age_squared.operation = 'MULTIPLY'
 	animation_position.operation = 'MULTIPLY'
@@ -206,8 +239,39 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	atlas_columns = max(1, math.ceil(math.sqrt(animation_frames)))
 	atlas_rows = max(1, math.ceil(animation_frames / atlas_columns))
 	fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
+	particle_lifespan = max(emitter.particlelifespan, 0.0001)
 	frame_seconds.inputs[1].default_value = 1.0 / fps
-	particle_age.inputs[1].default_value = max(emitter.particlelifespan, 0.0001)
+	emission_cycle.inputs[1].default_value = particle_lifespan
+	particle_age.inputs[1].default_value = particle_lifespan
+	normalized_age.inputs[1].default_value = particle_lifespan
+	tint_mix.inputs[1].default_value = (
+		emitter.tintstart[0] / 255.0,
+		emitter.tintstart[1] / 255.0,
+		emitter.tintstart[2] / 255.0,
+		1.0,
+	)
+	tint_mix.inputs[2].default_value = (
+		emitter.tintend[0] / 255.0,
+		emitter.tintend[1] / 255.0,
+		emitter.tintend[2] / 255.0,
+		1.0,
+	)
+	if emitter.fadeintime > 0.0:
+		fade_in_factor.operation = 'DIVIDE'
+		fade_in_factor.use_clamp = True
+		fade_in_factor.inputs[1].default_value = emitter.fadeintime
+	else:
+		fade_in_factor.operation = 'ADD'
+		fade_in_factor.inputs[0].default_value = 1.0
+	if emitter.fadeouttime > 0.0:
+		fade_out_factor.operation = 'DIVIDE'
+		fade_out_factor.use_clamp = True
+		fade_out_factor.inputs[1].default_value = emitter.fadeouttime
+	else:
+		fade_out_factor.operation = 'ADD'
+		fade_out_factor.inputs[0].default_value = 1.0
+	lifetime_remaining.inputs[0].default_value = particle_lifespan
+	particle_alpha.inputs[1].default_value = emitter.maxalpha
 	half_age_squared.inputs[1].default_value = 0.5
 	animation_position.inputs[1].default_value = emitter.animationrate
 	wrapped_frame.inputs[1].default_value = animation_frames
@@ -238,14 +302,15 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	random_position.inputs["Min"].default_value = (-radius_x, -radius_y, -radius_z)
 	random_position.inputs["Max"].default_value = (radius_x, radius_y, radius_z)
 
+	wind_y = -abs(emitter.windspeed)
 	speed_min = (
 		min(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
-		min(emitter.forwardspeedmin, emitter.forwardspeedmax),
+		min(emitter.forwardspeedmin, emitter.forwardspeedmax) + wind_y,
 		min(emitter.upwardspeedmin, emitter.upwardspeedmax),
 	)
 	speed_max = (
 		max(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
-		max(emitter.forwardspeedmin, emitter.forwardspeedmax),
+		max(emitter.forwardspeedmin, emitter.forwardspeedmax) + wind_y,
 		max(emitter.upwardspeedmin, emitter.upwardspeedmax),
 	)
 	random_velocity.data_type = 'FLOAT_VECTOR'
@@ -288,12 +353,38 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	store_uv.data_type = 'FLOAT_VECTOR'
 	store_uv.domain = 'CORNER'
 	store_uv.inputs["Name"].default_value = "UVMap"
+	store_tint.data_type = 'FLOAT_COLOR'
+	store_tint.domain = 'POINT'
+	store_tint.inputs["Name"].default_value = "eq_particle_tint"
+	store_alpha.data_type = 'FLOAT'
+	store_alpha.domain = 'POINT'
+	store_alpha.inputs["Name"].default_value = "eq_particle_alpha"
 
 	transform_sprite.inputs["Rotation"].default_value = (-1.57079632679, 0.0, 0.0)
 
 	random_scale.data_type = 'FLOAT_VECTOR'
 	random_scale.inputs["Min"].default_value = (1.0, 1.0, 1.0)
 	random_scale.inputs["Max"].default_value = (max(emitter.particlewidthmax / width, 1.0), max(emitter.particlewidthmax / width, 1.0), max(emitter.particleheightmax / height, 1.0))
+
+	# Random Value fields are deterministic for a given ID and Seed. The point
+	# index identifies a particle, while the completed lifetime count changes
+	# the seed each time that particle is generated again.
+	random_nodes = (
+		random_position,
+		random_velocity,
+		random_outward_direction,
+		random_outward_speed,
+		random_orbital_speed,
+		random_start_rotation,
+		random_spin_rate,
+		random_scale,
+	)
+	random_seed_nodes = []
+	for seed_offset, random_node in enumerate(random_nodes, start=1):
+		seed_node = nodes.new("ShaderNodeMath")
+		seed_node.operation = 'ADD'
+		seed_node.inputs[1].default_value = seed_offset * 101
+		random_seed_nodes.append((seed_node, random_node))
 
 	set_material.inputs["Material"].default_value = material
 
@@ -306,7 +397,23 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(scene_time.outputs["Frame"], frame_offset.inputs[0])
 	links.new(group_input.outputs["Start Frame"], frame_offset.inputs[1])
 	links.new(frame_offset.outputs[0], frame_seconds.inputs[0])
+	links.new(frame_seconds.outputs[0], emission_cycle.inputs[0])
+	links.new(emission_cycle.outputs[0], emission_seed.inputs[0])
 	links.new(frame_seconds.outputs[0], particle_age.inputs[0])
+	for seed_node, random_node in random_seed_nodes:
+		links.new(emission_seed.outputs[0], seed_node.inputs[0])
+		links.new(seed_node.outputs[0], random_node.inputs["Seed"])
+		links.new(particle_index.outputs["Index"], random_node.inputs["ID"])
+	links.new(particle_age.outputs[0], normalized_age.inputs[0])
+	links.new(normalized_age.outputs[0], tint_mix.inputs[0])
+	if emitter.fadeintime > 0.0:
+		links.new(particle_age.outputs[0], fade_in_factor.inputs[0])
+	links.new(particle_age.outputs[0], lifetime_remaining.inputs[1])
+	if emitter.fadeouttime > 0.0:
+		links.new(lifetime_remaining.outputs[0], fade_out_factor.inputs[0])
+	links.new(fade_in_factor.outputs[0], fade_factor.inputs[0])
+	links.new(fade_out_factor.outputs[0], fade_factor.inputs[1])
+	links.new(fade_factor.outputs[0], particle_alpha.inputs[0])
 	links.new(particle_age.outputs[0], age_squared.inputs[0])
 	links.new(particle_age.outputs[0], age_squared.inputs[1])
 	links.new(age_squared.outputs[0], half_age_squared.inputs[0])
@@ -366,16 +473,21 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(camera_direction.outputs["Vector"], billboard_rotation.inputs["Vector"])
 	links.new(mesh_line.outputs["Mesh"], set_position.inputs["Geometry"])
 	links.new(particle_movement.outputs["Vector"], set_position.inputs["Offset"])
+	links.new(set_position.outputs["Geometry"], store_tint.inputs["Geometry"])
+	links.new(tint_mix.outputs["Color"], store_tint.inputs["Value"])
+	links.new(store_tint.outputs["Geometry"], store_alpha.inputs["Geometry"])
+	links.new(particle_alpha.outputs[0], store_alpha.inputs["Value"])
 	links.new(sprite.outputs["Mesh"], store_uv.inputs["Geometry"])
 	links.new(offset_uv.outputs["Vector"], store_uv.inputs["Value"])
 	links.new(store_uv.outputs["Geometry"], transform_sprite.inputs["Geometry"])
 	links.new(transform_sprite.outputs["Geometry"], set_material.inputs["Geometry"])
 	links.new(set_material.outputs["Geometry"], instance.inputs["Instance"])
-	links.new(set_position.outputs["Geometry"], instance.inputs["Points"])
+	links.new(store_alpha.outputs["Geometry"], instance.inputs["Points"])
 	links.new(in_frame_range.outputs["Boolean"], instance.inputs["Selection"])
 	links.new(billboard_rotation.outputs["Rotation"], instance.inputs["Rotation"])
 	links.new(random_scale.outputs["Value"], instance.inputs["Scale"])
-	links.new(instance.outputs["Instances"], output.inputs["Geometry"])
+	links.new(instance.outputs["Instances"], realize_instances.inputs["Geometry"])
+	links.new(realize_instances.outputs["Geometry"], output.inputs["Geometry"])
 
 	modifier = obj.modifiers.new(name="EverQuest Particles", type='NODES')
 	modifier.node_group = node_group
