@@ -6,6 +6,80 @@ import math
 from .context import Context
 from ..wce.emitterdef import emitterdef
 
+EMITTER_NODE_GROUP_NAME = "EmitterDef Geo Mod"
+
+def add_emitter_input(node_group, name, socket_type, default=None):
+	socket = node_group.interface.new_socket(name=name, in_out='INPUT', socket_type=socket_type)
+	if default is not None:
+		socket.default_value = default
+	return socket
+
+def set_modifier_input(modifier, node_group, name, value):
+	for socket in node_group.interface.items_tree:
+		if socket.item_type == 'SOCKET' and socket.in_out == 'INPUT' and socket.name == name:
+			modifier[socket.identifier] = value
+			return
+	raise KeyError(f"Geometry Nodes input not found: {name}")
+
+def set_emitter_modifier_inputs(obj, modifier, node_group, material):
+	props = obj.quail_emitterdef
+	animation_frames = max(1, props.animationframes)
+	atlas_columns = max(1, math.ceil(math.sqrt(animation_frames)))
+	atlas_rows = max(1, math.ceil(animation_frames / atlas_columns))
+	particle_lifespan = max(props.particlelifespan, 0.0001)
+	creation_count = max(0, props.particlesatcreation)
+	particles_per_interval = max(0, props.particlesatinterval)
+	interval_rate = max(0.0, props.intervalspersecond)
+	radius_x = abs(props.shaperadius)
+	radius_y = abs(props.shaperadiusminor) if props.shaperadiusminor != 0.0 else radius_x
+	radius_z = abs(props.shapeheight) if props.shapeheight != 0.0 else radius_x
+	if props.spawnshape == '0':
+		radius_x = radius_y = radius_z = 0.0
+	wind_y = -abs(props.windspeed)
+	width = max(props.particlewidthmin, 0.01)
+	height = max(props.particleheightmin, 0.01)
+	values = {
+		"Material": material,
+		"Particle Lifespan": particle_lifespan,
+		"Creation Count": creation_count,
+		"Particles Per Interval": particles_per_interval,
+		"Interval Rate": interval_rate,
+		"Safe Particles Per Interval": max(1, particles_per_interval),
+		"Safe Interval Rate": max(0.0001, interval_rate),
+		"Spawn Delay": props.spawndelay,
+		"Tint Start": (*props.tintstart, 1.0),
+		"Tint End": (*props.tintend, 1.0),
+		"Use Fade In": props.fadeintime > 0.0,
+		"Fade In Time": max(props.fadeintime, 0.0001),
+		"Use Fade Out": props.fadeouttime > 0.0,
+		"Fade Out Time": max(props.fadeouttime, 0.0001),
+		"Max Alpha": props.maxalpha,
+		"Animation Rate": props.animationrate,
+		"Animation Frames": animation_frames,
+		"Atlas Columns": atlas_columns,
+		"Atlas Rows": atlas_rows,
+		"Spawn Min": (-radius_x, -radius_y, -radius_z),
+		"Spawn Max": (radius_x, radius_y, radius_z),
+		"Velocity Min": (min(props.rightwardspeedmin, props.rightwardspeedmax), min(props.forwardspeedmin, props.forwardspeedmax) + wind_y, min(props.upwardspeedmin, props.upwardspeedmax)),
+		"Velocity Max": (max(props.rightwardspeedmin, props.rightwardspeedmax), max(props.forwardspeedmin, props.forwardspeedmax) + wind_y, max(props.upwardspeedmin, props.upwardspeedmax)),
+		"Acceleration": (props.rightwardacceleration, props.forwardacceleration, props.upwardacceleration - props.gravity),
+		"Outward Speed Min": min(props.outwardspeedmin, props.outwardspeedmax),
+		"Outward Speed Max": max(props.outwardspeedmin, props.outwardspeedmax),
+		"Half Outward Acceleration": 0.5 * props.outwardacceleration,
+		"Random Outward Direction": props.spawnshape == '0',
+		"Orbital Speed Min": math.radians(min(props.orbitalspeedmin, props.orbitalspeedmax)),
+		"Orbital Speed Max": math.radians(max(props.orbitalspeedmin, props.orbitalspeedmax)),
+		"Half Orbital Acceleration": 0.5 * math.radians(props.orbitalacceleration),
+		"Random Start Rotation Max": 2.0 * math.pi if props.randomrotation else 0.0,
+		"Spin Rate Min": math.radians(min(props.particlespinrate, props.particlespinratemax)),
+		"Spin Rate Max": math.radians(max(props.particlespinrate, props.particlespinratemax)),
+		"Particle Width": width,
+		"Particle Height": height,
+		"Random Scale Max": (max(props.particlewidthmax / width, 1.0), max(props.particlewidthmax / width, 1.0), max(props.particleheightmax / height, 1.0)),
+	}
+	for name, value in values.items():
+		set_modifier_input(modifier, node_group, name, value)
+
 def create_emitter_material(ctx: Context, emitter: emitterdef):
 	name = f"{emitter.name}_material"
 	material = bpy.data.materials.get(name)
@@ -108,11 +182,12 @@ def set_emitter_frame_range(obj, modifier, node_group):
 			driver.expression = "end_frame"
 
 def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
-	name = f"{emitter.name}_geometry"
+	name = EMITTER_NODE_GROUP_NAME
 	node_group = bpy.data.node_groups.get(name)
 	if node_group:
 		modifier = obj.modifiers.new(name="EverQuest Particles", type='NODES')
 		modifier.node_group = node_group
+		set_emitter_modifier_inputs(obj, modifier, node_group, material)
 		set_emitter_frame_range(obj, modifier, node_group)
 		return
 
@@ -122,6 +197,46 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	end_socket = node_group.interface.new_socket(name="End Frame", in_out='INPUT', socket_type='NodeSocketInt')
 	start_socket.default_value = bpy.context.scene.frame_start
 	end_socket.default_value = bpy.context.scene.frame_end
+	for input_name, socket_type, default in (
+		("Material", 'NodeSocketMaterial', None),
+		("Particle Lifespan", 'NodeSocketFloat', 1.0),
+		("Creation Count", 'NodeSocketInt', 0),
+		("Particles Per Interval", 'NodeSocketInt', 0),
+		("Interval Rate", 'NodeSocketFloat', 0.0),
+		("Safe Particles Per Interval", 'NodeSocketFloat', 1.0),
+		("Safe Interval Rate", 'NodeSocketFloat', 0.0001),
+		("Spawn Delay", 'NodeSocketFloat', 0.0),
+		("Tint Start", 'NodeSocketColor', (1.0, 1.0, 1.0, 1.0)),
+		("Tint End", 'NodeSocketColor', (1.0, 1.0, 1.0, 1.0)),
+		("Use Fade In", 'NodeSocketBool', False),
+		("Fade In Time", 'NodeSocketFloat', 0.0001),
+		("Use Fade Out", 'NodeSocketBool', False),
+		("Fade Out Time", 'NodeSocketFloat', 0.0001),
+		("Max Alpha", 'NodeSocketFloat', 1.0),
+		("Animation Rate", 'NodeSocketFloat', 1.0),
+		("Animation Frames", 'NodeSocketFloat', 1.0),
+		("Atlas Columns", 'NodeSocketFloat', 1.0),
+		("Atlas Rows", 'NodeSocketFloat', 1.0),
+		("Spawn Min", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Spawn Max", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Velocity Min", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Velocity Max", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Acceleration", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Outward Speed Min", 'NodeSocketFloat', 0.0),
+		("Outward Speed Max", 'NodeSocketFloat', 0.0),
+		("Half Outward Acceleration", 'NodeSocketFloat', 0.0),
+		("Random Outward Direction", 'NodeSocketBool', False),
+		("Orbital Speed Min", 'NodeSocketFloat', 0.0),
+		("Orbital Speed Max", 'NodeSocketFloat', 0.0),
+		("Half Orbital Acceleration", 'NodeSocketFloat', 0.0),
+		("Random Start Rotation Max", 'NodeSocketFloat', 0.0),
+		("Spin Rate Min", 'NodeSocketFloat', 0.0),
+		("Spin Rate Max", 'NodeSocketFloat', 0.0),
+		("Particle Width", 'NodeSocketFloat', 1.0),
+		("Particle Height", 'NodeSocketFloat', 1.0),
+		("Random Scale Max", 'NodeSocketVector', (1.0, 1.0, 1.0)),
+	):
+		add_emitter_input(node_group, input_name, socket_type, default)
 
 	nodes = node_group.nodes
 	links = node_group.links
@@ -158,8 +273,10 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	normalized_age = nodes.new("ShaderNodeMath")
 	tint_mix = nodes.new("ShaderNodeMixRGB")
 	fade_in_factor = nodes.new("ShaderNodeMath")
+	fade_in_switch = nodes.new("GeometryNodeSwitch")
 	lifetime_remaining = nodes.new("ShaderNodeMath")
 	fade_out_factor = nodes.new("ShaderNodeMath")
+	fade_out_switch = nodes.new("GeometryNodeSwitch")
 	fade_factor = nodes.new("ShaderNodeMath")
 	particle_alpha = nodes.new("ShaderNodeMath")
 	age_squared = nodes.new("ShaderNodeMath")
@@ -189,6 +306,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	directional_movement = nodes.new("ShaderNodeVectorMath")
 	random_outward_direction = nodes.new("FunctionNodeRandomValue")
 	outward_direction = nodes.new("ShaderNodeVectorMath")
+	outward_direction_switch = nodes.new("GeometryNodeSwitch")
 	random_outward_speed = nodes.new("FunctionNodeRandomValue")
 	outward_velocity_distance = nodes.new("ShaderNodeMath")
 	outward_acceleration_distance = nodes.new("ShaderNodeMath")
@@ -254,6 +372,14 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	tint_mix.blend_type = 'MIX'
 	lifetime_remaining.operation = 'SUBTRACT'
 	fade_factor.operation = 'MINIMUM'
+	fade_in_factor.operation = 'DIVIDE'
+	fade_in_factor.use_clamp = True
+	fade_in_switch.input_type = 'FLOAT'
+	fade_in_switch.inputs["False"].default_value = 1.0
+	fade_out_factor.operation = 'DIVIDE'
+	fade_out_factor.use_clamp = True
+	fade_out_switch.input_type = 'FLOAT'
+	fade_out_switch.inputs["False"].default_value = 1.0
 	particle_alpha.operation = 'MULTIPLY'
 	age_squared.operation = 'MULTIPLY'
 	half_age_squared.operation = 'MULTIPLY'
@@ -271,6 +397,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	acceleration_movement.operation = 'SCALE'
 	directional_movement.operation = 'ADD'
 	outward_direction.operation = 'NORMALIZE'
+	outward_direction_switch.input_type = 'VECTOR'
 	outward_velocity_distance.operation = 'MULTIPLY'
 	outward_acceleration_distance.operation = 'MULTIPLY'
 	outward_distance.operation = 'ADD'
@@ -288,133 +415,35 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	billboard_rotation.axis = 'Y'
 	billboard_rotation.pivot_axis = 'AUTO'
 
-	animation_frames = max(1, emitter.animationframes)
-	atlas_columns = max(1, math.ceil(math.sqrt(animation_frames)))
-	atlas_rows = max(1, math.ceil(animation_frames / atlas_columns))
 	fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
-	particle_lifespan = max(emitter.particlelifespan, 0.0001)
-	creation_count = max(0, emitter.particlesatcreation)
-	particles_per_interval = max(0, emitter.particlesatinterval)
-	interval_rate = max(0.0, emitter.intervalspersecond)
-	safe_particles_per_interval = max(1, particles_per_interval)
-	safe_interval_rate = max(0.0001, interval_rate)
 	frame_seconds.inputs[1].default_value = 1.0 / fps
 	range_seconds.inputs[1].default_value = 1.0 / fps
-	interval_time_available.inputs[1].default_value = emitter.spawndelay
 	positive_interval_time.inputs[1].default_value = 0.0
-	interval_event_count.inputs[1].default_value = interval_rate
-	interval_particle_count.inputs[1].default_value = particles_per_interval
-	total_particle_count.inputs[1].default_value = creation_count
-	is_creation_particle.inputs["B"].default_value = creation_count
-	interval_particle_index.inputs[1].default_value = creation_count
-	interval_event_divide.inputs[1].default_value = safe_particles_per_interval
 	interval_event_number.inputs[1].default_value = 1.0
-	interval_birth_offset.inputs[1].default_value = safe_interval_rate
-	interval_birth_time.inputs[1].default_value = emitter.spawndelay
-	birth_time.inputs["True"].default_value = emitter.spawndelay
 	particle_started.inputs["B"].default_value = 0.0
-	particle_alive.inputs["B"].default_value = particle_lifespan
-	normalized_age.inputs[1].default_value = particle_lifespan
-	tint_mix.inputs[1].default_value = (
-		emitter.tintstart[0] / 255.0,
-		emitter.tintstart[1] / 255.0,
-		emitter.tintstart[2] / 255.0,
-		1.0,
-	)
-	tint_mix.inputs[2].default_value = (
-		emitter.tintend[0] / 255.0,
-		emitter.tintend[1] / 255.0,
-		emitter.tintend[2] / 255.0,
-		1.0,
-	)
-	if emitter.fadeintime > 0.0:
-		fade_in_factor.operation = 'DIVIDE'
-		fade_in_factor.use_clamp = True
-		fade_in_factor.inputs[1].default_value = emitter.fadeintime
-	else:
-		fade_in_factor.operation = 'ADD'
-		fade_in_factor.inputs[0].default_value = 1.0
-	if emitter.fadeouttime > 0.0:
-		fade_out_factor.operation = 'DIVIDE'
-		fade_out_factor.use_clamp = True
-		fade_out_factor.inputs[1].default_value = emitter.fadeouttime
-	else:
-		fade_out_factor.operation = 'ADD'
-		fade_out_factor.inputs[0].default_value = 1.0
-	lifetime_remaining.inputs[0].default_value = particle_lifespan
-	particle_alpha.inputs[1].default_value = emitter.maxalpha
 	half_age_squared.inputs[1].default_value = 0.5
-	animation_position.inputs[1].default_value = emitter.animationrate
-	wrapped_frame.inputs[1].default_value = animation_frames
-	atlas_column.inputs[1].default_value = atlas_columns
-	atlas_row_divide.inputs[1].default_value = atlas_columns
-	column_offset.inputs[1].default_value = atlas_columns
 	row_plus_one.inputs[1].default_value = 1.0
-	row_fraction.inputs[1].default_value = atlas_rows
 	row_offset.inputs[0].default_value = 1.0
 
-	mesh_line.inputs["Count"].default_value = max(1, creation_count)
+	mesh_line.inputs["Count"].default_value = 1
 	mesh_line.inputs["Start Location"].default_value = (0.0, 0.0, 0.0)
 	mesh_line.inputs["Offset"].default_value = (0.0, 0.0, 0.0)
 
-	radius_x = abs(emitter.shaperadius)
-	radius_y = abs(emitter.shaperadiusminor) if emitter.shaperadiusminor != 0.0 else radius_x
-	radius_z = abs(emitter.shapeheight) if emitter.shapeheight != 0.0 else radius_x
-	if emitter.spawnshape == 0:
-		radius_x = 0.0
-		radius_y = 0.0
-		radius_z = 0.0
-
 	random_position.data_type = 'FLOAT_VECTOR'
-	random_position.inputs["Min"].default_value = (-radius_x, -radius_y, -radius_z)
-	random_position.inputs["Max"].default_value = (radius_x, radius_y, radius_z)
-
-	wind_y = -abs(emitter.windspeed)
-	speed_min = (
-		min(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
-		min(emitter.forwardspeedmin, emitter.forwardspeedmax) + wind_y,
-		min(emitter.upwardspeedmin, emitter.upwardspeedmax),
-	)
-	speed_max = (
-		max(emitter.rightwardspeedmin, emitter.rightwardspeedmax),
-		max(emitter.forwardspeedmin, emitter.forwardspeedmax) + wind_y,
-		max(emitter.upwardspeedmin, emitter.upwardspeedmax),
-	)
 	random_velocity.data_type = 'FLOAT_VECTOR'
-	random_velocity.inputs["Min"].default_value = speed_min
-	random_velocity.inputs["Max"].default_value = speed_max
-
-	acceleration_vector.inputs["X"].default_value = emitter.rightwardacceleration
-	acceleration_vector.inputs["Y"].default_value = emitter.forwardacceleration
-	acceleration_vector.inputs["Z"].default_value = emitter.upwardacceleration - emitter.gravity
 
 	random_outward_direction.data_type = 'FLOAT_VECTOR'
 	random_outward_direction.inputs["Min"].default_value = (-1.0, -1.0, -1.0)
 	random_outward_direction.inputs["Max"].default_value = (1.0, 1.0, 1.0)
 	random_outward_speed.data_type = 'FLOAT'
-	random_outward_speed.inputs["Min"].default_value = min(emitter.outwardspeedmin, emitter.outwardspeedmax)
-	random_outward_speed.inputs["Max"].default_value = max(emitter.outwardspeedmin, emitter.outwardspeedmax)
-	outward_acceleration_distance.inputs[1].default_value = 0.5 * emitter.outwardacceleration
 
 	random_orbital_speed.data_type = 'FLOAT'
-	random_orbital_speed.inputs["Min"].default_value = math.radians(min(emitter.orbitalspeedmin, emitter.orbitalspeedmax))
-	random_orbital_speed.inputs["Max"].default_value = math.radians(max(emitter.orbitalspeedmin, emitter.orbitalspeedmax))
-	orbital_acceleration_angle.inputs[1].default_value = 0.5 * math.radians(emitter.orbitalacceleration)
 	orbital_rotation.inputs["Axis"].default_value = (0.0, 0.0, 1.0)
 
-	spin_min = min(emitter.particlespinrate, emitter.particlespinratemax)
-	spin_max = max(emitter.particlespinrate, emitter.particlespinratemax)
 	random_start_rotation.data_type = 'FLOAT'
 	random_start_rotation.inputs["Min"].default_value = 0.0
-	random_start_rotation.inputs["Max"].default_value = 2.0 * math.pi if emitter.randomrotation else 0.0
 	random_spin_rate.data_type = 'FLOAT'
-	random_spin_rate.inputs["Min"].default_value = math.radians(spin_min)
-	random_spin_rate.inputs["Max"].default_value = math.radians(spin_max)
 
-	width = max(emitter.particlewidthmin, 0.01)
-	height = max(emitter.particleheightmin, 0.01)
-	sprite.inputs["Size X"].default_value = width
-	sprite.inputs["Size Y"].default_value = height
 	sprite.inputs["Vertices X"].default_value = 2
 	sprite.inputs["Vertices Y"].default_value = 2
 	store_uv.data_type = 'FLOAT_VECTOR'
@@ -434,7 +463,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 
 	random_scale.data_type = 'FLOAT_VECTOR'
 	random_scale.inputs["Min"].default_value = (1.0, 1.0, 1.0)
-	random_scale.inputs["Max"].default_value = (max(emitter.particlewidthmax / width, 1.0), max(emitter.particlewidthmax / width, 1.0), max(emitter.particleheightmax / height, 1.0))
 
 	# Every point now represents one real emission. Its point index is therefore
 	# a stable, unique particle ID. Different fixed seeds keep the independently
@@ -452,8 +480,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	for seed_offset, random_node in enumerate(random_nodes, start=1):
 		random_node.inputs["Seed"].default_value = seed_offset * 101
 
-	set_material.inputs["Material"].default_value = material
-
 	links.new(scene_time.outputs["Frame"], after_start.inputs["A"])
 	links.new(group_input.outputs["Start Frame"], after_start.inputs["B"])
 	links.new(scene_time.outputs["Frame"], before_end.inputs["A"])
@@ -463,6 +489,50 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(scene_time.outputs["Frame"], frame_offset.inputs[0])
 	links.new(group_input.outputs["Start Frame"], frame_offset.inputs[1])
 	links.new(frame_offset.outputs[0], frame_seconds.inputs[0])
+	links.new(group_input.outputs["Spawn Delay"], interval_time_available.inputs[1])
+	links.new(group_input.outputs["Interval Rate"], interval_event_count.inputs[1])
+	links.new(group_input.outputs["Particles Per Interval"], interval_particle_count.inputs[1])
+	links.new(group_input.outputs["Creation Count"], total_particle_count.inputs[1])
+	links.new(group_input.outputs["Creation Count"], is_creation_particle.inputs["B"])
+	links.new(group_input.outputs["Creation Count"], interval_particle_index.inputs[1])
+	links.new(group_input.outputs["Safe Particles Per Interval"], interval_event_divide.inputs[1])
+	links.new(group_input.outputs["Safe Interval Rate"], interval_birth_offset.inputs[1])
+	links.new(group_input.outputs["Spawn Delay"], interval_birth_time.inputs[1])
+	links.new(group_input.outputs["Spawn Delay"], birth_time.inputs["True"])
+	links.new(group_input.outputs["Particle Lifespan"], particle_alive.inputs["B"])
+	links.new(group_input.outputs["Particle Lifespan"], normalized_age.inputs[1])
+	links.new(group_input.outputs["Tint Start"], tint_mix.inputs[1])
+	links.new(group_input.outputs["Tint End"], tint_mix.inputs[2])
+	links.new(group_input.outputs["Fade In Time"], fade_in_factor.inputs[1])
+	links.new(group_input.outputs["Use Fade In"], fade_in_switch.inputs["Switch"])
+	links.new(group_input.outputs["Fade Out Time"], fade_out_factor.inputs[1])
+	links.new(group_input.outputs["Use Fade Out"], fade_out_switch.inputs["Switch"])
+	links.new(group_input.outputs["Particle Lifespan"], lifetime_remaining.inputs[0])
+	links.new(group_input.outputs["Max Alpha"], particle_alpha.inputs[1])
+	links.new(group_input.outputs["Animation Rate"], animation_position.inputs[1])
+	links.new(group_input.outputs["Animation Frames"], wrapped_frame.inputs[1])
+	links.new(group_input.outputs["Atlas Columns"], atlas_column.inputs[1])
+	links.new(group_input.outputs["Atlas Columns"], atlas_row_divide.inputs[1])
+	links.new(group_input.outputs["Atlas Columns"], column_offset.inputs[1])
+	links.new(group_input.outputs["Atlas Rows"], row_fraction.inputs[1])
+	links.new(group_input.outputs["Spawn Min"], random_position.inputs["Min"])
+	links.new(group_input.outputs["Spawn Max"], random_position.inputs["Max"])
+	links.new(group_input.outputs["Velocity Min"], random_velocity.inputs["Min"])
+	links.new(group_input.outputs["Velocity Max"], random_velocity.inputs["Max"])
+	links.new(group_input.outputs["Outward Speed Min"], random_outward_speed.inputs["Min"])
+	links.new(group_input.outputs["Outward Speed Max"], random_outward_speed.inputs["Max"])
+	links.new(group_input.outputs["Half Outward Acceleration"], outward_acceleration_distance.inputs[1])
+	links.new(group_input.outputs["Random Outward Direction"], outward_direction_switch.inputs["Switch"])
+	links.new(group_input.outputs["Orbital Speed Min"], random_orbital_speed.inputs["Min"])
+	links.new(group_input.outputs["Orbital Speed Max"], random_orbital_speed.inputs["Max"])
+	links.new(group_input.outputs["Half Orbital Acceleration"], orbital_acceleration_angle.inputs[1])
+	links.new(group_input.outputs["Random Start Rotation Max"], random_start_rotation.inputs["Max"])
+	links.new(group_input.outputs["Spin Rate Min"], random_spin_rate.inputs["Min"])
+	links.new(group_input.outputs["Spin Rate Max"], random_spin_rate.inputs["Max"])
+	links.new(group_input.outputs["Particle Width"], sprite.inputs["Size X"])
+	links.new(group_input.outputs["Particle Height"], sprite.inputs["Size Y"])
+	links.new(group_input.outputs["Random Scale Max"], random_scale.inputs["Max"])
+	links.new(group_input.outputs["Material"], set_material.inputs["Material"])
 
 	# Build one point for every creation particle and every interval emission
 	# that can occur within the selected Start Frame / End Frame range.
@@ -502,13 +572,13 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(particle_in_lifetime.outputs["Boolean"], particle_visible.inputs[1])
 	links.new(particle_age.outputs[0], normalized_age.inputs[0])
 	links.new(normalized_age.outputs[0], tint_mix.inputs[0])
-	if emitter.fadeintime > 0.0:
-		links.new(particle_age.outputs[0], fade_in_factor.inputs[0])
+	links.new(particle_age.outputs[0], fade_in_factor.inputs[0])
+	links.new(fade_in_factor.outputs[0], fade_in_switch.inputs["True"])
 	links.new(particle_age.outputs[0], lifetime_remaining.inputs[1])
-	if emitter.fadeouttime > 0.0:
-		links.new(lifetime_remaining.outputs[0], fade_out_factor.inputs[0])
-	links.new(fade_in_factor.outputs[0], fade_factor.inputs[0])
-	links.new(fade_out_factor.outputs[0], fade_factor.inputs[1])
+	links.new(lifetime_remaining.outputs[0], fade_out_factor.inputs[0])
+	links.new(fade_out_factor.outputs[0], fade_out_switch.inputs["True"])
+	links.new(fade_in_switch.outputs["Output"], fade_factor.inputs[0])
+	links.new(fade_out_switch.outputs["Output"], fade_factor.inputs[1])
 	links.new(fade_factor.outputs[0], particle_alpha.inputs[0])
 	links.new(particle_age.outputs[0], age_squared.inputs[0])
 	links.new(particle_age.outputs[0], age_squared.inputs[1])
@@ -527,14 +597,13 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(row_offset.outputs[0], uv_offset_vector.inputs["Y"])
 	links.new(random_velocity.outputs["Value"], velocity_movement.inputs["Vector"])
 	links.new(particle_age.outputs[0], velocity_movement.inputs["Scale"])
-	links.new(acceleration_vector.outputs["Vector"], acceleration_movement.inputs["Vector"])
+	links.new(group_input.outputs["Acceleration"], acceleration_movement.inputs["Vector"])
 	links.new(half_age_squared.outputs[0], acceleration_movement.inputs["Scale"])
 	links.new(velocity_movement.outputs["Vector"], directional_movement.inputs[0])
 	links.new(acceleration_movement.outputs["Vector"], directional_movement.inputs[1])
-	if emitter.spawnshape == 0:
-		links.new(random_outward_direction.outputs["Value"], outward_direction.inputs[0])
-	else:
-		links.new(random_position.outputs["Value"], outward_direction.inputs[0])
+	links.new(random_position.outputs["Value"], outward_direction_switch.inputs["False"])
+	links.new(random_outward_direction.outputs["Value"], outward_direction_switch.inputs["True"])
+	links.new(outward_direction_switch.outputs["Output"], outward_direction.inputs[0])
 	links.new(random_outward_speed.outputs["Value"], outward_velocity_distance.inputs[0])
 	links.new(particle_age.outputs[0], outward_velocity_distance.inputs[1])
 	links.new(age_squared.outputs[0], outward_acceleration_distance.inputs[0])
@@ -584,6 +653,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 
 	modifier = obj.modifiers.new(name="EverQuest Particles", type='NODES')
 	modifier.node_group = node_group
+	set_emitter_modifier_inputs(obj, modifier, node_group, material)
 	set_emitter_frame_range(obj, modifier, node_group)
 
 def decode_emitterdef(ctx: Context, emitter: emitterdef) -> str:
