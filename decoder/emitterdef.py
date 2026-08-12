@@ -53,13 +53,26 @@ def set_emitter_modifier_inputs(obj, modifier, node_group, material):
 		"Fade In Time": max(props.fadeintime, 0.0001),
 		"Use Fade Out": props.fadeouttime > 0.0,
 		"Fade Out Time": max(props.fadeouttime, 0.0001),
+		"Use Scale In": props.scaleintime > 0.0,
+		"Scale In Time": max(props.scaleintime, 0.0001),
+		"Use Scale Out": props.scaleouttime > 0.0,
+		"Scale Out Time": max(props.scaleouttime, 0.0001),
+		"Use Width Squash": props.widthsquashtime > 0.0,
+		"Width Squash Time": max(props.widthsquashtime, 0.0001),
+		"Use Height Squash": props.heightsquashtime > 0.0,
+		"Height Squash Time": max(props.heightsquashtime, 0.0001),
 		"Max Alpha": props.maxalpha,
 		"Animation Rate": props.animationrate,
 		"Animation Frames": animation_frames,
 		"Atlas Columns": atlas_columns,
 		"Atlas Rows": atlas_rows,
+		"Spawn Shape": int(props.spawnshape),
+		"Shape Radius": radius_x,
+		"Shape Radius Minor": radius_y,
+		"Shape Height": radius_z,
 		"Spawn Min": (-radius_x, -radius_y, -radius_z),
 		"Spawn Max": (radius_x, radius_y, radius_z),
+		"Allow Center Pass Through": props.allowcenterpassthrough,
 		"Velocity Min": (min(props.rightwardspeedmin, props.rightwardspeedmax), min(props.forwardspeedmin, props.forwardspeedmax) + wind_y, min(props.upwardspeedmin, props.upwardspeedmax)),
 		"Velocity Max": (max(props.rightwardspeedmin, props.rightwardspeedmax), max(props.forwardspeedmin, props.forwardspeedmax) + wind_y, max(props.upwardspeedmin, props.upwardspeedmax)),
 		"Acceleration": (props.rightwardacceleration, props.forwardacceleration, props.upwardacceleration - props.gravity),
@@ -75,7 +88,7 @@ def set_emitter_modifier_inputs(obj, modifier, node_group, material):
 		"Spin Rate Max": math.radians(max(props.particlespinrate, props.particlespinratemax)),
 		"Particle Width": width,
 		"Particle Height": height,
-		"Random Scale Max": (max(props.particlewidthmax / width, 1.0), max(props.particlewidthmax / width, 1.0), max(props.particleheightmax / height, 1.0)),
+		"Random Scale Max": (max(props.particlewidthmax / width, 1.0), max(props.particleheightmax / height, 1.0), 1.0),
 	}
 	for name, value in values.items():
 		set_modifier_input(modifier, node_group, name, value)
@@ -97,9 +110,6 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 	nodes.clear()
 
 	output = nodes.new("ShaderNodeOutputMaterial")
-	shader = nodes.new("ShaderNodeBsdfPrincipled")
-	shader.inputs["Emission Strength"].default_value = 1.0 if emitter.additiveblending else 0.0
-	shader.inputs["Roughness"].default_value = 1.0
 	tint_attribute = nodes.new("ShaderNodeAttribute")
 	tint_attribute.attribute_name = "eq_particle_tint"
 	tint_attribute.attribute_type = 'INSTANCER'
@@ -109,6 +119,11 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 	base_uv_attribute = nodes.new("ShaderNodeAttribute")
 	base_uv_attribute.attribute_name = "eq_base_uv"
 	base_uv_attribute.attribute_type = 'GEOMETRY'
+	separate_uv = nodes.new("ShaderNodeSeparateXYZ")
+	flip_uv_y = nodes.new("ShaderNodeMath")
+	flip_uv_y.operation = 'SUBTRACT'
+	flip_uv_y.inputs[0].default_value = 1.0
+	combine_uv = nodes.new("ShaderNodeCombineXYZ")
 	atlas_offset_attribute = nodes.new("ShaderNodeAttribute")
 	atlas_offset_attribute.attribute_name = "eq_atlas_offset"
 	atlas_offset_attribute.attribute_type = 'INSTANCER'
@@ -133,13 +148,14 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 	final_alpha.inputs[0].default_value = 1.0
 	links.new(tint_attribute.outputs["Color"], tinted_color.inputs[2])
 	links.new(alpha_attribute.outputs["Fac"], final_alpha.inputs[1])
-	links.new(base_uv_attribute.outputs["Vector"], material_scale_uv.inputs[0])
+	links.new(base_uv_attribute.outputs["Vector"], separate_uv.inputs["Vector"])
+	links.new(separate_uv.outputs["X"], combine_uv.inputs["X"])
+	links.new(separate_uv.outputs["Y"], flip_uv_y.inputs[1])
+	links.new(flip_uv_y.outputs[0], combine_uv.inputs["Y"])
+	links.new(separate_uv.outputs["Z"], combine_uv.inputs["Z"])
+	links.new(combine_uv.outputs["Vector"], material_scale_uv.inputs[0])
 	links.new(material_scale_uv.outputs["Vector"], material_offset_uv.inputs[0])
 	links.new(atlas_offset_attribute.outputs["Vector"], material_offset_uv.inputs[1])
-	links.new(tinted_color.outputs["Color"], shader.inputs["Base Color"])
-	links.new(tinted_color.outputs["Color"], shader.inputs["Emission Color"])
-	links.new(final_alpha.outputs[0], shader.inputs["Alpha"])
-
 	texture_path = None
 	if ctx.parser.assets_path:
 		texture_path = os.path.join(ctx.parser.assets_path, emitter.texture)
@@ -155,7 +171,29 @@ def create_emitter_material(ctx: Context, emitter: emitterdef):
 		except Exception as e:
 			print(f"Unable to load emitter texture {texture_path}: {e}")
 
-	links.new(shader.outputs["BSDF"], output.inputs["Surface"])
+	if emitter.additiveblending:
+		# EverQuest additive particles do not alpha-composite their dark texels
+		# over the scene. Keep the surface transparent and add only the tinted,
+		# particle-alpha-scaled texture color. Overlapping bright particles can
+		# therefore accumulate without darkening or obscuring the background.
+		emission_color = nodes.new("ShaderNodeVectorMath")
+		emission_color.operation = 'SCALE'
+		emission = nodes.new("ShaderNodeEmission")
+		transparent = nodes.new("ShaderNodeBsdfTransparent")
+		add_shader = nodes.new("ShaderNodeAddShader")
+		links.new(tinted_color.outputs["Color"], emission_color.inputs["Vector"])
+		links.new(final_alpha.outputs[0], emission_color.inputs["Scale"])
+		links.new(emission_color.outputs["Vector"], emission.inputs["Color"])
+		emission.inputs["Strength"].default_value = 1.0
+		links.new(transparent.outputs["BSDF"], add_shader.inputs[0])
+		links.new(emission.outputs["Emission"], add_shader.inputs[1])
+		links.new(add_shader.outputs["Shader"], output.inputs["Surface"])
+	else:
+		shader = nodes.new("ShaderNodeBsdfPrincipled")
+		shader.inputs["Roughness"].default_value = 1.0
+		links.new(tinted_color.outputs["Color"], shader.inputs["Base Color"])
+		links.new(final_alpha.outputs[0], shader.inputs["Alpha"])
+		links.new(shader.outputs["BSDF"], output.inputs["Surface"])
 	return material
 
 def set_emitter_frame_range(obj, modifier, node_group):
@@ -180,6 +218,144 @@ def set_emitter_frame_range(obj, modifier, node_group):
 			variable.targets[0].id = bpy.context.scene
 			variable.targets[0].data_path = "frame_end"
 			driver.expression = "end_frame"
+
+def build_spawn_shape_field(nodes, links, group_input, particle_index):
+	"""Build the ten EQ emitter spawn shapes and return (position, random_nodes)."""
+	random_nodes = []
+
+	def math_node(operation, a=None, b=None, value_a=None, value_b=None):
+		node = nodes.new("ShaderNodeMath")
+		node.operation = operation
+		if a is not None:
+			links.new(a, node.inputs[0])
+		elif value_a is not None:
+			node.inputs[0].default_value = value_a
+		if b is not None:
+			links.new(b, node.inputs[1])
+		elif value_b is not None:
+			node.inputs[1].default_value = value_b
+		return node.outputs[0]
+
+	def random_float(minimum=0.0, maximum=1.0):
+		node = nodes.new("FunctionNodeRandomValue")
+		node.data_type = 'FLOAT'
+		node.inputs["Min"].default_value = minimum
+		node.inputs["Max"].default_value = maximum
+		random_nodes.append(node)
+		return node.outputs["Value"]
+
+	def combine(x=None, y=None, z=None, x_value=0.0, y_value=0.0, z_value=0.0):
+		node = nodes.new("ShaderNodeCombineXYZ")
+		node.inputs["X"].default_value = x_value
+		node.inputs["Y"].default_value = y_value
+		node.inputs["Z"].default_value = z_value
+		if x is not None:
+			links.new(x, node.inputs["X"])
+		if y is not None:
+			links.new(y, node.inputs["Y"])
+		if z is not None:
+			links.new(z, node.inputs["Z"])
+		return node.outputs["Vector"]
+
+	def ellipse(angle, radial_factor=None, z=None):
+		cos_angle = math_node('COSINE', angle)
+		sin_angle = math_node('SINE', angle)
+		x = math_node('MULTIPLY', cos_angle, group_input.outputs["Shape Radius"])
+		y = math_node('MULTIPLY', sin_angle, group_input.outputs["Shape Radius Minor"])
+		if radial_factor is not None:
+			x = math_node('MULTIPLY', x, radial_factor)
+			y = math_node('MULTIPLY', y, radial_factor)
+		return combine(x, y, z)
+
+	def random_angle():
+		return math_node('MULTIPLY', random_float(), value_b=2.0 * math.pi)
+
+	# Point.
+	shapes = [combine()]
+
+	# Ring (uniform): a low-discrepancy angle derived from the particle ID.
+	uniform_angle = math_node('MULTIPLY', particle_index.outputs["Index"], value_b=math.pi * (3.0 - math.sqrt(5.0)))
+	shapes.append(ellipse(uniform_angle))
+
+	# Cylinder (uniform): fixed radius with an evenly distributed angle and
+	# random height. Cylinder (random): random angle and volume-weighted radius.
+	cylinder_z = math_node('MULTIPLY', random_float(-1.0, 1.0), group_input.outputs["Shape Height"])
+	shapes.append(ellipse(uniform_angle, z=cylinder_z))
+	random_cylinder_radius = math_node('POWER', random_float(), value_b=0.5)
+	random_cylinder_z = math_node('MULTIPLY', random_float(-1.0, 1.0), group_input.outputs["Shape Height"])
+	shapes.append(ellipse(random_angle(), random_cylinder_radius, random_cylinder_z))
+
+	# Random disk.
+	disk_radius = math_node('POWER', random_float(), value_b=0.5)
+	shapes.append(ellipse(random_angle(), disk_radius))
+
+	# Random ellipsoid volume. cos(theta) is uniform in [-1, 1] and the cube
+	# root radius makes particle density uniform through the volume.
+	sphere_u = random_float(-1.0, 1.0)
+	sphere_phi = random_angle()
+	sphere_radius = math_node('POWER', random_float(), value_b=1.0 / 3.0)
+	u_squared = math_node('MULTIPLY', sphere_u, sphere_u)
+	one_minus_u_squared = math_node('SUBTRACT', value_a=1.0, b=u_squared)
+	sphere_xy = math_node('SQRT', one_minus_u_squared)
+	sphere_xy = math_node('MULTIPLY', sphere_xy, sphere_radius)
+	sphere_x = math_node('MULTIPLY', math_node('COSINE', sphere_phi), sphere_xy)
+	sphere_x = math_node('MULTIPLY', sphere_x, group_input.outputs["Shape Radius"])
+	sphere_y = math_node('MULTIPLY', math_node('SINE', sphere_phi), sphere_xy)
+	sphere_y = math_node('MULTIPLY', sphere_y, group_input.outputs["Shape Radius Minor"])
+	sphere_z = math_node('MULTIPLY', sphere_u, sphere_radius)
+	sphere_z = math_node('MULTIPLY', sphere_z, group_input.outputs["Shape Height"])
+	shapes.append(combine(sphere_x, sphere_y, sphere_z))
+
+	# Random cube/box.
+	cube = nodes.new("FunctionNodeRandomValue")
+	cube.data_type = 'FLOAT_VECTOR'
+	random_nodes.append(cube)
+	links.new(group_input.outputs["Spawn Min"], cube.inputs["Min"])
+	links.new(group_input.outputs["Spawn Max"], cube.inputs["Max"])
+	shapes.append(cube.outputs["Value"])
+
+	# Random cone volume, centered vertically. Radius tapers to zero at +height.
+	cone_t = random_float()
+	cone_z_normalized = math_node('MULTIPLY', cone_t, value_b=2.0)
+	cone_z_normalized = math_node('SUBTRACT', cone_z_normalized, value_b=1.0)
+	cone_z = math_node('MULTIPLY', cone_z_normalized, group_input.outputs["Shape Height"])
+	cone_radius = math_node('SUBTRACT', value_a=1.0, b=cone_t)
+	cone_radius = math_node('MULTIPLY', cone_radius, math_node('POWER', random_float(), value_b=0.5))
+	shapes.append(ellipse(random_angle(), cone_radius, cone_z))
+
+	# Random torus volume. Shape Radius is the major radius and Shape Radius
+	# Minor is the tube radius; Shape Height scales the tube vertically.
+	torus_major_angle = random_angle()
+	torus_minor_angle = random_angle()
+	torus_tube_factor = math_node('POWER', random_float(), value_b=0.5)
+	torus_tube_radius = math_node('MULTIPLY', group_input.outputs["Shape Radius Minor"], torus_tube_factor)
+	torus_minor_cos = math_node('MULTIPLY', math_node('COSINE', torus_minor_angle), torus_tube_radius)
+	torus_ring_radius = math_node('ADD', group_input.outputs["Shape Radius"], torus_minor_cos)
+	torus_x = math_node('MULTIPLY', math_node('COSINE', torus_major_angle), torus_ring_radius)
+	torus_y = math_node('MULTIPLY', math_node('SINE', torus_major_angle), torus_ring_radius)
+	torus_z = math_node('MULTIPLY', math_node('SINE', torus_minor_angle), torus_tube_factor)
+	torus_z = math_node('MULTIPLY', torus_z, group_input.outputs["Shape Height"])
+	shapes.append(combine(torus_x, torus_y, torus_z))
+
+	# Ring (random): fixed radius and random angle.
+	shapes.append(ellipse(random_angle()))
+
+	# Select the requested shape without duplicating the node group per emitter.
+	selected = shapes[0]
+	for shape_index in range(1, 10):
+		compare = nodes.new("FunctionNodeCompare")
+		compare.data_type = 'INT'
+		compare.operation = 'EQUAL'
+		compare.inputs["B"].default_value = shape_index
+		links.new(group_input.outputs["Spawn Shape"], compare.inputs["A"])
+		switch = nodes.new("GeometryNodeSwitch")
+		switch.input_type = 'VECTOR'
+		links.new(compare.outputs["Result"], switch.inputs["Switch"])
+		links.new(selected, switch.inputs["False"])
+		links.new(shapes[shape_index], switch.inputs["True"])
+		selected = switch.outputs["Output"]
+
+	return selected, random_nodes
 
 def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	name = EMITTER_NODE_GROUP_NAME
@@ -212,13 +388,26 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 		("Fade In Time", 'NodeSocketFloat', 0.0001),
 		("Use Fade Out", 'NodeSocketBool', False),
 		("Fade Out Time", 'NodeSocketFloat', 0.0001),
+		("Use Scale In", 'NodeSocketBool', False),
+		("Scale In Time", 'NodeSocketFloat', 0.0001),
+		("Use Scale Out", 'NodeSocketBool', False),
+		("Scale Out Time", 'NodeSocketFloat', 0.0001),
+		("Use Width Squash", 'NodeSocketBool', False),
+		("Width Squash Time", 'NodeSocketFloat', 0.0001),
+		("Use Height Squash", 'NodeSocketBool', False),
+		("Height Squash Time", 'NodeSocketFloat', 0.0001),
 		("Max Alpha", 'NodeSocketFloat', 1.0),
 		("Animation Rate", 'NodeSocketFloat', 1.0),
 		("Animation Frames", 'NodeSocketFloat', 1.0),
 		("Atlas Columns", 'NodeSocketFloat', 1.0),
 		("Atlas Rows", 'NodeSocketFloat', 1.0),
+		("Spawn Shape", 'NodeSocketInt', 0),
+		("Shape Radius", 'NodeSocketFloat', 0.0),
+		("Shape Radius Minor", 'NodeSocketFloat', 0.0),
+		("Shape Height", 'NodeSocketFloat', 0.0),
 		("Spawn Min", 'NodeSocketVector', (0.0, 0.0, 0.0)),
 		("Spawn Max", 'NodeSocketVector', (0.0, 0.0, 0.0)),
+		("Allow Center Pass Through", 'NodeSocketBool', False),
 		("Velocity Min", 'NodeSocketVector', (0.0, 0.0, 0.0)),
 		("Velocity Max", 'NodeSocketVector', (0.0, 0.0, 0.0)),
 		("Acceleration", 'NodeSocketVector', (0.0, 0.0, 0.0)),
@@ -298,7 +487,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	store_tint = nodes.new("GeometryNodeStoreNamedAttribute")
 	store_alpha = nodes.new("GeometryNodeStoreNamedAttribute")
 	store_atlas_offset = nodes.new("GeometryNodeStoreNamedAttribute")
-	random_position = nodes.new("FunctionNodeRandomValue")
 	random_velocity = nodes.new("FunctionNodeRandomValue")
 	velocity_movement = nodes.new("ShaderNodeVectorMath")
 	acceleration_vector = nodes.new("ShaderNodeCombineXYZ")
@@ -313,6 +501,11 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	outward_distance = nodes.new("ShaderNodeMath")
 	outward_movement = nodes.new("ShaderNodeVectorMath")
 	radial_position = nodes.new("ShaderNodeVectorMath")
+	spawn_radius = nodes.new("ShaderNodeVectorMath")
+	signed_radial_distance = nodes.new("ShaderNodeMath")
+	has_not_crossed_center = nodes.new("FunctionNodeCompare")
+	center_pass_allowed = nodes.new("FunctionNodeBooleanMath")
+	particle_center_visible = nodes.new("FunctionNodeBooleanMath")
 	random_orbital_speed = nodes.new("FunctionNodeRandomValue")
 	orbital_velocity_angle = nodes.new("ShaderNodeMath")
 	orbital_acceleration_angle = nodes.new("ShaderNodeMath")
@@ -328,11 +521,33 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	camera_info = nodes.new("GeometryNodeObjectInfo")
 	camera_rotation = nodes.new("FunctionNodeRotateRotation")
 	random_scale = nodes.new("FunctionNodeRandomValue")
+	scale_in_factor = nodes.new("ShaderNodeMath")
+	scale_in_switch = nodes.new("GeometryNodeSwitch")
+	scale_out_factor = nodes.new("ShaderNodeMath")
+	scale_out_switch = nodes.new("GeometryNodeSwitch")
+	uniform_scale = nodes.new("ShaderNodeMath")
+	width_squash_factor = nodes.new("ShaderNodeMath")
+	width_squash_switch = nodes.new("GeometryNodeSwitch")
+	height_squash_factor = nodes.new("ShaderNodeMath")
+	height_squash_switch = nodes.new("GeometryNodeSwitch")
+	separate_random_scale = nodes.new("ShaderNodeSeparateXYZ")
+	final_width_scale = nodes.new("ShaderNodeMath")
+	final_width_squash = nodes.new("ShaderNodeMath")
+	final_height_scale = nodes.new("ShaderNodeMath")
+	final_height_squash = nodes.new("ShaderNodeMath")
+	final_instance_scale = nodes.new("ShaderNodeCombineXYZ")
 	sprite = nodes.new("GeometryNodeMeshGrid")
 	store_uv = nodes.new("GeometryNodeStoreNamedAttribute")
 	transform_sprite = nodes.new("GeometryNodeTransform")
 	set_material = nodes.new("GeometryNodeSetMaterial")
 	instance = nodes.new("GeometryNodeInstanceOnPoints")
+
+	spawn_position, spawn_random_nodes = build_spawn_shape_field(
+		nodes,
+		links,
+		group_input,
+		particle_index,
+	)
 
 	after_start.data_type = 'FLOAT'
 	after_start.operation = 'GREATER_EQUAL'
@@ -401,6 +616,13 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	outward_distance.operation = 'ADD'
 	outward_movement.operation = 'SCALE'
 	radial_position.operation = 'ADD'
+	spawn_radius.operation = 'LENGTH'
+	signed_radial_distance.operation = 'ADD'
+	has_not_crossed_center.data_type = 'FLOAT'
+	has_not_crossed_center.operation = 'GREATER_EQUAL'
+	has_not_crossed_center.inputs["B"].default_value = 0.0
+	center_pass_allowed.operation = 'OR'
+	particle_center_visible.operation = 'AND'
 	orbital_velocity_angle.operation = 'MULTIPLY'
 	orbital_acceleration_angle.operation = 'MULTIPLY'
 	orbital_angle.operation = 'ADD'
@@ -410,6 +632,28 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	particle_rotation.operation = 'ADD'
 	camera_info.transform_space = 'RELATIVE'
 	camera_rotation.rotation_space = 'LOCAL'
+	scale_in_factor.operation = 'DIVIDE'
+	scale_in_factor.use_clamp = True
+	scale_in_switch.input_type = 'FLOAT'
+	scale_in_switch.inputs["False"].default_value = 1.0
+	scale_out_factor.operation = 'DIVIDE'
+	scale_out_factor.use_clamp = True
+	scale_out_switch.input_type = 'FLOAT'
+	scale_out_switch.inputs["False"].default_value = 1.0
+	uniform_scale.operation = 'MINIMUM'
+	width_squash_factor.operation = 'DIVIDE'
+	width_squash_factor.use_clamp = True
+	width_squash_switch.input_type = 'FLOAT'
+	width_squash_switch.inputs["False"].default_value = 1.0
+	height_squash_factor.operation = 'DIVIDE'
+	height_squash_factor.use_clamp = True
+	height_squash_switch.input_type = 'FLOAT'
+	height_squash_switch.inputs["False"].default_value = 1.0
+	final_width_scale.operation = 'MULTIPLY'
+	final_width_squash.operation = 'MULTIPLY'
+	final_height_scale.operation = 'MULTIPLY'
+	final_height_squash.operation = 'MULTIPLY'
+	final_instance_scale.inputs["Z"].default_value = 1.0
 
 	fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
 	frame_seconds.inputs[1].default_value = 1.0 / fps
@@ -425,7 +669,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	mesh_line.inputs["Start Location"].default_value = (0.0, 0.0, 0.0)
 	mesh_line.inputs["Offset"].default_value = (0.0, 0.0, 0.0)
 
-	random_position.data_type = 'FLOAT_VECTOR'
 	random_velocity.data_type = 'FLOAT_VECTOR'
 
 	random_outward_direction.data_type = 'FLOAT_VECTOR'
@@ -467,7 +710,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	# a stable, unique particle ID. Different fixed seeds keep the independently
 	# randomized properties from being correlated.
 	random_nodes = (
-		random_position,
 		random_velocity,
 		random_outward_direction,
 		random_outward_speed,
@@ -475,6 +717,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 		random_start_rotation,
 		random_spin_rate,
 		random_scale,
+		*spawn_random_nodes,
 	)
 	for seed_offset, random_node in enumerate(random_nodes, start=1):
 		random_node.inputs["Seed"].default_value = seed_offset * 101
@@ -506,6 +749,14 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(group_input.outputs["Use Fade In"], fade_in_switch.inputs["Switch"])
 	links.new(group_input.outputs["Fade Out Time"], fade_out_factor.inputs[1])
 	links.new(group_input.outputs["Use Fade Out"], fade_out_switch.inputs["Switch"])
+	links.new(group_input.outputs["Use Scale In"], scale_in_switch.inputs["Switch"])
+	links.new(group_input.outputs["Scale In Time"], scale_in_factor.inputs[1])
+	links.new(group_input.outputs["Use Scale Out"], scale_out_switch.inputs["Switch"])
+	links.new(group_input.outputs["Scale Out Time"], scale_out_factor.inputs[1])
+	links.new(group_input.outputs["Use Width Squash"], width_squash_switch.inputs["Switch"])
+	links.new(group_input.outputs["Width Squash Time"], width_squash_factor.inputs[1])
+	links.new(group_input.outputs["Use Height Squash"], height_squash_switch.inputs["Switch"])
+	links.new(group_input.outputs["Height Squash Time"], height_squash_factor.inputs[1])
 	links.new(group_input.outputs["Particle Lifespan"], lifetime_remaining.inputs[0])
 	links.new(group_input.outputs["Max Alpha"], particle_alpha.inputs[1])
 	links.new(group_input.outputs["Animation Rate"], animation_position.inputs[1])
@@ -514,8 +765,6 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(group_input.outputs["Atlas Columns"], atlas_row_divide.inputs[1])
 	links.new(group_input.outputs["Atlas Columns"], column_offset.inputs[1])
 	links.new(group_input.outputs["Atlas Rows"], row_fraction.inputs[1])
-	links.new(group_input.outputs["Spawn Min"], random_position.inputs["Min"])
-	links.new(group_input.outputs["Spawn Max"], random_position.inputs["Max"])
 	links.new(group_input.outputs["Velocity Min"], random_velocity.inputs["Min"])
 	links.new(group_input.outputs["Velocity Max"], random_velocity.inputs["Max"])
 	links.new(group_input.outputs["Outward Speed Min"], random_outward_speed.inputs["Min"])
@@ -579,6 +828,37 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(fade_in_switch.outputs["Output"], fade_factor.inputs[0])
 	links.new(fade_out_switch.outputs["Output"], fade_factor.inputs[1])
 	links.new(fade_factor.outputs[0], particle_alpha.inputs[0])
+
+	# SCALEINTIME grows uniformly from zero to full size. SCALEOUTTIME
+	# shrinks uniformly from full size to zero over the remaining lifetime.
+	links.new(particle_age.outputs[0], scale_in_factor.inputs[0])
+	links.new(scale_in_factor.outputs[0], scale_in_switch.inputs["True"])
+	links.new(lifetime_remaining.outputs[0], scale_out_factor.inputs[0])
+	links.new(scale_out_factor.outputs[0], scale_out_switch.inputs["True"])
+	links.new(scale_in_switch.outputs["Output"], uniform_scale.inputs[0])
+	links.new(scale_out_switch.outputs["Output"], uniform_scale.inputs[1])
+
+	# Squash timing is measured backward from death. A squash duration longer
+	# than the particle lifespan therefore begins partially reduced at birth.
+	links.new(lifetime_remaining.outputs[0], width_squash_factor.inputs[0])
+	links.new(width_squash_factor.outputs[0], width_squash_switch.inputs["True"])
+	links.new(lifetime_remaining.outputs[0], height_squash_factor.inputs[0])
+	links.new(height_squash_factor.outputs[0], height_squash_switch.inputs["True"])
+
+	# The billboard grid lies in local XY: X is width, Y is height, and Z is
+	# its normal. Apply the uniform envelope and independent squash envelopes
+	# without realizing the particle instances.
+	links.new(random_scale.outputs["Value"], separate_random_scale.inputs["Vector"])
+	links.new(separate_random_scale.outputs["X"], final_width_scale.inputs[0])
+	links.new(uniform_scale.outputs[0], final_width_scale.inputs[1])
+	links.new(final_width_scale.outputs[0], final_width_squash.inputs[0])
+	links.new(width_squash_switch.outputs["Output"], final_width_squash.inputs[1])
+	links.new(separate_random_scale.outputs["Y"], final_height_scale.inputs[0])
+	links.new(uniform_scale.outputs[0], final_height_scale.inputs[1])
+	links.new(final_height_scale.outputs[0], final_height_squash.inputs[0])
+	links.new(height_squash_switch.outputs["Output"], final_height_squash.inputs[1])
+	links.new(final_width_squash.outputs[0], final_instance_scale.inputs["X"])
+	links.new(final_height_squash.outputs[0], final_instance_scale.inputs["Y"])
 	links.new(particle_age.outputs[0], age_squared.inputs[0])
 	links.new(particle_age.outputs[0], age_squared.inputs[1])
 	links.new(age_squared.outputs[0], half_age_squared.inputs[0])
@@ -600,7 +880,7 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(half_age_squared.outputs[0], acceleration_movement.inputs["Scale"])
 	links.new(velocity_movement.outputs["Vector"], directional_movement.inputs[0])
 	links.new(acceleration_movement.outputs["Vector"], directional_movement.inputs[1])
-	links.new(random_position.outputs["Value"], outward_direction_switch.inputs["False"])
+	links.new(spawn_position, outward_direction_switch.inputs["False"])
 	links.new(random_outward_direction.outputs["Value"], outward_direction_switch.inputs["True"])
 	links.new(outward_direction_switch.outputs["Output"], outward_direction.inputs[0])
 	links.new(random_outward_speed.outputs["Value"], outward_velocity_distance.inputs[0])
@@ -610,8 +890,20 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(outward_acceleration_distance.outputs[0], outward_distance.inputs[1])
 	links.new(outward_direction.outputs["Vector"], outward_movement.inputs["Vector"])
 	links.new(outward_distance.outputs[0], outward_movement.inputs["Scale"])
-	links.new(random_position.outputs["Value"], radial_position.inputs[0])
+	links.new(spawn_position, radial_position.inputs[0])
 	links.new(outward_movement.outputs["Vector"], radial_position.inputs[1])
+
+	# A negative outward acceleration can reverse a particle and pull it back
+	# through the emitter origin. EQ removes it at that crossing unless
+	# ALLOWCENTERPASSTHROUGH is enabled.
+	links.new(spawn_position, spawn_radius.inputs[0])
+	links.new(spawn_radius.outputs["Value"], signed_radial_distance.inputs[0])
+	links.new(outward_distance.outputs[0], signed_radial_distance.inputs[1])
+	links.new(signed_radial_distance.outputs[0], has_not_crossed_center.inputs["A"])
+	links.new(group_input.outputs["Allow Center Pass Through"], center_pass_allowed.inputs[0])
+	links.new(has_not_crossed_center.outputs["Result"], center_pass_allowed.inputs[1])
+	links.new(particle_visible.outputs["Boolean"], particle_center_visible.inputs[0])
+	links.new(center_pass_allowed.outputs["Boolean"], particle_center_visible.inputs[1])
 	links.new(random_orbital_speed.outputs["Value"], orbital_velocity_angle.inputs[0])
 	links.new(particle_age.outputs[0], orbital_velocity_angle.inputs[1])
 	links.new(age_squared.outputs[0], orbital_acceleration_angle.inputs[0])
@@ -643,9 +935,9 @@ def create_emitter_geometry_nodes(obj, emitter: emitterdef, material):
 	links.new(transform_sprite.outputs["Geometry"], set_material.inputs["Geometry"])
 	links.new(set_material.outputs["Geometry"], instance.inputs["Instance"])
 	links.new(store_atlas_offset.outputs["Geometry"], instance.inputs["Points"])
-	links.new(particle_visible.outputs["Boolean"], instance.inputs["Selection"])
+	links.new(particle_center_visible.outputs["Boolean"], instance.inputs["Selection"])
 	links.new(camera_rotation.outputs["Rotation"], instance.inputs["Rotation"])
-	links.new(random_scale.outputs["Value"], instance.inputs["Scale"])
+	links.new(final_instance_scale.outputs["Vector"], instance.inputs["Scale"])
 	links.new(instance.outputs["Instances"], output.inputs["Geometry"])
 
 	modifier = obj.modifiers.new(name="EverQuest Particles", type='NODES')
