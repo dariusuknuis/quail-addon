@@ -2,15 +2,52 @@
 
 import bpy
 from bpy.props import BoolProperty, EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, PointerProperty, StringProperty
+from ...common import state
+from ...common.emitter import apply_emitter_settings, apply_emitter_material, apply_emitter_transform
+
+def emitter_object(self):
+	obj = self.id_data
+	if not obj or obj.get("quaildef") != "emitterdef":
+		return None
+	return obj
+
+def update_emitter_settings(self, context):
+	if state.QUAIL_UPDATING:
+		return
+	obj = emitter_object(self)
+	if obj:
+		apply_emitter_settings(obj)
+
+def update_emitter_material(self, context):
+	if state.QUAIL_UPDATING:
+		return
+	obj = emitter_object(self)
+	if obj:
+		apply_emitter_material(obj)
+
+def update_emitter_material_and_settings(self, context):
+	if state.QUAIL_UPDATING:
+		return
+	obj = emitter_object(self)
+	if obj:
+		apply_emitter_material(obj)
+		apply_emitter_settings(obj)
+
+def update_emitter_transform(self, context):
+	if state.QUAIL_UPDATING:
+		return
+	obj = emitter_object(self)
+	if obj:
+		apply_emitter_transform(obj)
 
 
 class QuailEmitterDefProperties(bpy.types.PropertyGroup):
 	tag: StringProperty(name="Tag")
-	texture: StringProperty(name="Texture")
+	texture: StringProperty(name="Texture", update=update_emitter_material)
 
 	relativetobone: BoolProperty(name="Relative to Bone")
 	noocclusion: BoolProperty(name="No Occlusion")
-	additiveblending: BoolProperty(name="Additive Blending")
+	additiveblending: BoolProperty(name="Additive Blending", update=update_emitter_material)
 	scalewithactor: BoolProperty(name="Scale Particles with Actor")
 	sticktoactor: BoolProperty(name="Stick to Actor")
 
@@ -21,17 +58,17 @@ class QuailEmitterDefProperties(bpy.types.PropertyGroup):
 	], default='0')
 
 	defaultlifespan: FloatProperty(name="Default Lifespan", description="Emitter lifespan in seconds; negative overrides the spell duration")
-	particlelifespan: FloatProperty(name="Particle Lifespan", min=0.0, unit='TIME')
-	particlesatcreation: IntProperty(name="Particles at Creation", min=0)
-	particlesatinterval: IntProperty(name="Particles at Interval", min=0)
-	intervalspersecond: FloatProperty(name="Intervals per Second", min=0.0)
-	spawndelay: FloatProperty(name="Spawn Delay", min=0.0, unit='TIME')
-	fadeintime: FloatProperty(name="Fade In Time", min=0.0, unit='TIME')
-	fadeouttime: FloatProperty(name="Fade Out Time", min=0.0, unit='TIME')
-	scaleintime: FloatProperty(name="Scale In Time", min=0.0, unit='TIME')
-	scaleouttime: FloatProperty(name="Scale Out Time", min=0.0, unit='TIME')
+	particlelifespan: FloatProperty(name="Particle Lifespan", min=0.0, unit='TIME', update=update_emitter_settings)
+	particlesatcreation: IntProperty(name="Particles at Creation", min=0, update=update_emitter_settings)
+	particlesatinterval: IntProperty(name="Particles at Interval", min=0, update=update_emitter_settings)
+	intervalspersecond: FloatProperty(name="Intervals per Second", min=0.0, update=update_emitter_settings)
+	spawndelay: FloatProperty(name="Spawn Delay", min=0.0, unit='TIME', update=update_emitter_settings)
+	fadeintime: FloatProperty(name="Fade In Time", min=0.0, unit='TIME', update=update_emitter_settings)
+	fadeouttime: FloatProperty(name="Fade Out Time", min=0.0, unit='TIME', update=update_emitter_settings)
+	scaleintime: FloatProperty(name="Scale In Time", min=0.0, unit='TIME', update=update_emitter_settings)
+	scaleouttime: FloatProperty(name="Scale Out Time", min=0.0, unit='TIME', update=update_emitter_settings)
 	reductiondistance: FloatProperty(name="Reduction Distance", min=0.0, subtype='DISTANCE')
-	maxalpha: FloatProperty(name="Maximum Alpha", min=0.0, max=1.0, default=1.0)
+	maxalpha: FloatProperty(name="Maximum Alpha", min=0.0, max=1.0, default=1.0, update=update_emitter_settings)
 
 	spawnshape: EnumProperty(name="Spawn Shape", items=[
 		('0', "Point", "Point"),
@@ -44,46 +81,46 @@ class QuailEmitterDefProperties(bpy.types.PropertyGroup):
 		('7', "Cone (Random)", "Random cone"),
 		('8', "Torus (Random)", "Random torus"),
 		('9', "Ring (Random)", "Random ring"),
-	], default='0')
+	], default='0', update=update_emitter_settings)
 
-	shaperadius: FloatProperty(name="Shape Radius", min=0.0, subtype='DISTANCE')
-	shaperadiusminor: FloatProperty(name="Shape Minor Radius", min=0.0, subtype='DISTANCE')
-	shapeheight: FloatProperty(name="Shape Height", min=0.0, subtype='DISTANCE')
-	shapeoffset: FloatVectorProperty(name="Shape Offset", description="Upward, forward and rightward offset", size=3, subtype='XYZ')
+	shaperadius: FloatProperty(name="Shape Radius", min=0.0, subtype='DISTANCE', update=update_emitter_settings)
+	shaperadiusminor: FloatProperty(name="Shape Minor Radius", min=0.0, subtype='DISTANCE', update=update_emitter_settings)
+	shapeheight: FloatProperty(name="Shape Height", min=0.0, subtype='DISTANCE', update=update_emitter_settings)
+	shapeoffset: FloatVectorProperty(name="Shape Offset", description="Upward, forward and rightward offset", size=3, subtype='XYZ', update=update_emitter_transform)
 	shapetilt: FloatVectorProperty(name="Shape Tilt", description="Forward and rightward tilt", size=2)
 
-	particlewidthmin: FloatProperty(name="Particle Width Min", min=0.0)
-	particlewidthmax: FloatProperty(name="Particle Width Max", min=0.0)
-	particleheightmin: FloatProperty(name="Particle Height Min", min=0.0)
-	particleheightmax: FloatProperty(name="Particle Height Max", min=0.0)
+	particlewidthmin: FloatProperty(name="Particle Width Min", min=0.0, update=update_emitter_settings)
+	particlewidthmax: FloatProperty(name="Particle Width Max", min=0.0, update=update_emitter_settings)
+	particleheightmin: FloatProperty(name="Particle Height Min", min=0.0, update=update_emitter_settings)
+	particleheightmax: FloatProperty(name="Particle Height Max", min=0.0, update=update_emitter_settings)
 	particlezbias: FloatProperty(name="Particle Z Bias")
 
-	tintstart: FloatVectorProperty(name="Tint Start", subtype='COLOR', size=3, min=0.0, max=1.0, default=(1.0, 1.0, 1.0))
-	tintend: FloatVectorProperty(name="Tint End", subtype='COLOR', size=3, min=0.0, max=1.0, default=(1.0, 1.0, 1.0))
+	tintstart: FloatVectorProperty(name="Tint Start", subtype='COLOR', size=3, min=0.0, max=1.0, default=(1.0, 1.0, 1.0), update=update_emitter_settings)
+	tintend: FloatVectorProperty(name="Tint End", subtype='COLOR', size=3, min=0.0, max=1.0, default=(1.0, 1.0, 1.0), update=update_emitter_settings)
 
-	upwardspeedmin: FloatProperty(name="Upward Speed Min")
-	upwardspeedmax: FloatProperty(name="Upward Speed Max")
-	upwardacceleration: FloatProperty(name="Upward Acceleration")
-	forwardspeedmin: FloatProperty(name="Forward Speed Min")
-	forwardspeedmax: FloatProperty(name="Forward Speed Max")
-	forwardacceleration: FloatProperty(name="Forward Acceleration")
-	rightwardspeedmin: FloatProperty(name="Rightward Speed Min")
-	rightwardspeedmax: FloatProperty(name="Rightward Speed Max")
-	rightwardacceleration: FloatProperty(name="Rightward Acceleration")
-	outwardspeedmin: FloatProperty(name="Outward Speed Min")
-	outwardspeedmax: FloatProperty(name="Outward Speed Max")
-	outwardacceleration: FloatProperty(name="Outward Acceleration")
-	orbitalspeedmin: FloatProperty(name="Orbital Speed Min")
-	orbitalspeedmax: FloatProperty(name="Orbital Speed Max")
-	orbitalacceleration: FloatProperty(name="Orbital Acceleration")
-	gravity: FloatProperty(name="Gravity")
-	windspeed: FloatProperty(name="Wind Speed", description="Applied in the negative Y direction by the current preview")
+	upwardspeedmin: FloatProperty(name="Upward Speed Min", update=update_emitter_settings)
+	upwardspeedmax: FloatProperty(name="Upward Speed Max", update=update_emitter_settings)
+	upwardacceleration: FloatProperty(name="Upward Acceleration", update=update_emitter_settings)
+	forwardspeedmin: FloatProperty(name="Forward Speed Min", update=update_emitter_settings)
+	forwardspeedmax: FloatProperty(name="Forward Speed Max", update=update_emitter_settings)
+	forwardacceleration: FloatProperty(name="Forward Acceleration", update=update_emitter_settings)
+	rightwardspeedmin: FloatProperty(name="Rightward Speed Min", update=update_emitter_settings)
+	rightwardspeedmax: FloatProperty(name="Rightward Speed Max", update=update_emitter_settings)
+	rightwardacceleration: FloatProperty(name="Rightward Acceleration", update=update_emitter_settings)
+	outwardspeedmin: FloatProperty(name="Outward Speed Min", update=update_emitter_settings)
+	outwardspeedmax: FloatProperty(name="Outward Speed Max", update=update_emitter_settings)
+	outwardacceleration: FloatProperty(name="Outward Acceleration", update=update_emitter_settings)
+	orbitalspeedmin: FloatProperty(name="Orbital Speed Min", update=update_emitter_settings)
+	orbitalspeedmax: FloatProperty(name="Orbital Speed Max", update=update_emitter_settings)
+	orbitalacceleration: FloatProperty(name="Orbital Acceleration", update=update_emitter_settings)
+	gravity: FloatProperty(name="Gravity", update=update_emitter_settings)
+	windspeed: FloatProperty(name="Wind Speed", description="Applied in the negative Y direction by the current preview", update=update_emitter_settings)
 
-	animationframes: IntProperty(name="Animation Frames", description="Expected values are 1, 4 or 16", min=1, default=1)
-	animationrate: FloatProperty(name="Animation Rate", description="Texture animation frames per second", min=0.0)
-	particlespinrate: FloatProperty(name="Particle Spin Rate Min")
-	particlespinratemax: FloatProperty(name="Particle Spin Rate Max")
-	randomrotation: BoolProperty(name="Random Starting Rotation")
+	animationframes: IntProperty(name="Animation Frames", description="Expected values are 1, 4 or 16", min=1, default=1, update=update_emitter_material_and_settings)
+	animationrate: FloatProperty(name="Animation Rate", description="Texture animation frames per second", min=0.0, update=update_emitter_settings)
+	particlespinrate: FloatProperty(name="Particle Spin Rate Min", update=update_emitter_settings)
+	particlespinratemax: FloatProperty(name="Particle Spin Rate Max", update=update_emitter_settings)
+	randomrotation: BoolProperty(name="Random Starting Rotation", update=update_emitter_settings)
 
 	particleorientation: EnumProperty(name="Particle Orientation", items=[
 		('0', "Normal", "Normal orientation"),
@@ -96,9 +133,9 @@ class QuailEmitterDefProperties(bpy.types.PropertyGroup):
 	], default='0')
 
 	proportionalsizescaling: BoolProperty(name="Proportional Size Scaling")
-	heightsquashtime: FloatProperty(name="Height Squash Time", min=0.0, unit='TIME')
-	widthsquashtime: FloatProperty(name="Width Squash Time", min=0.0, unit='TIME')
-	allowcenterpassthrough: BoolProperty(name="Allow Center Pass Through")
+	heightsquashtime: FloatProperty(name="Height Squash Time", min=0.0, unit='TIME', update=update_emitter_settings)
+	widthsquashtime: FloatProperty(name="Width Squash Time", min=0.0, unit='TIME', update=update_emitter_settings)
+	allowcenterpassthrough: BoolProperty(name="Allow Center Pass Through", update=update_emitter_settings)
 	scaleemitterwithactor: BoolProperty(name="Scale Emitter with Actor")
 
 	oldparticletype: IntProperty(name="Old Particle Type")
