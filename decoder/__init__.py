@@ -26,6 +26,7 @@ from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .emitterdef import decode_emitterdef
 from .eqgmodeldef import decode_eqgmodeldef
 from .eqgparticlepointdef import decode_eqgparticlepointdef
+from .eqgparticlerenderdef import decode_eqgparticlerenderdef
 from .eqgterdef import decode_eqgterdef
 from .eqganidef import decode_eqganidef
 from .eqgzondef import decode_eqgzondef
@@ -350,6 +351,14 @@ def wce_decode(path: str, parent_collection=None):
         err = decode_eqgparticlepointdef(ctx, eqgparticlepoint)
         if err:
             error(err)
+
+    for _, eqgparticlerender in parser.eqgparticlerenderdefs.items():
+            ctx.collection = base_collection
+            ctx.parent = base_parent
+
+            err = decode_eqgparticlerenderdef(ctx, eqgparticlerender)
+            if err:
+                error(err)
 
     for _, eqgter in parser.eqgterdefs.items():
         ctx.collection = base_collection
