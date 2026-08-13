@@ -6,6 +6,7 @@ import bpy
 import mathutils
 
 from .context import Context
+from ..common import state
 from ..wce.eqgparticlepointdef import eqgparticlepointdef
 
 
@@ -64,6 +65,13 @@ def decode_eqgparticlepointdef(
 	particlepoint_collection["quaildef"] = "eqgparticlepointdef"
 	particlepoint_collection["tag"] = particlepointdef.tag
 
+	was_updating = state.QUAIL_UPDATING
+	state.QUAIL_UPDATING = True
+	try:
+		particlepoint_collection.quail_eqgparticlepointdef.version = particlepointdef.version
+	finally:
+		state.QUAIL_UPDATING = was_updating
+
 	# ------------------------------------------------
 	# Create particle-point empties
 	# ------------------------------------------------
@@ -73,6 +81,13 @@ def decode_eqgparticlepointdef(
 		obj.empty_display_type = 'PLAIN_AXES'
 		obj.empty_display_size = 0.25
 		obj['quaildef'] = 'eqgparticlepointdef'
+
+		was_updating = state.QUAIL_UPDATING
+		state.QUAIL_UPDATING = True
+		try:
+			obj.quail_eqgparticlepoint.bonename = point.bonename
+		finally:
+			state.QUAIL_UPDATING = was_updating
 
 		# Parent the object beneath the armature while retaining membership in
 		# the dedicated PARTICLEPOINTDEF collection.
