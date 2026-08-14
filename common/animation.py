@@ -97,3 +97,41 @@ def update_sleep(self, context):
             kp.handle_right.x = new_frame
 
         fcurve.update()
+
+
+EQG_ANIMATION_PREFIXES = (
+	None,
+	"slpr", "blpr", "stpr", "slsc", "blsc", "stsc", "sl2h", "bl2h", "st2h",
+	"bstb", "toss", "bash", "patk", "batk", "watk", "kick", "rkck", "shth",
+	"unsh", "shtf", "unsf", "mkck", "mha1", "mha2", "walk", "bwlk", "nrun",
+	"turn", "ltrn", "knel", "stnd", "idle", "stda", "idla", "stdb", "idlb",
+	"stdc", "idlc", "nsit", "sidl", "stdg", "stng", "crch", "jmpa", "jmpu",
+	"cwlk", "clmb", "twtr", "swim", "stun", "drum", "lute", "horn", "gcst",
+	"dcst", "mcst", "gapo", "ofsm", "oflg", "hesm", "helg", "ofae", "ofpb",
+	"flch", "msht", "spas", "crmp", "dodg", "prry", "rpst", "fldm", "fall",
+	"nbow", "slte", "wave", "hnod", "clap", "dovr", "npnt", "lagh", "shrg",
+	"triu", "agny", "ngtv", "bord", "pray", "blsh", "cogh", "crng", "dnce",
+	"hshk", "stre", "shvr", "hlgh", "impt", "sknl", "catk", "hips", "rais",
+	"smle", "tilt", "kbeg", "satk",
+)
+
+
+def eqg_animation_prefix(index: int):
+	if 0 < index < len(EQG_ANIMATION_PREFIXES):
+		return EQG_ANIMATION_PREFIXES[index]
+	return None
+
+
+def action_matches_eqg_animation(action, animation_number: int, model_tag: str):
+	if not action:
+		return False
+
+	prefix = eqg_animation_prefix(animation_number)
+	if not prefix:
+		return False
+
+	name = action.name.lower()
+	if not name.startswith(prefix):
+		return False
+
+	return not model_tag or name.endswith(model_tag.lower())

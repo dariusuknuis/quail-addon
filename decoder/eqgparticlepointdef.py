@@ -72,9 +72,6 @@ def decode_eqgparticlepointdef(
 	finally:
 		state.QUAIL_UPDATING = was_updating
 
-	# ------------------------------------------------
-	# Create particle-point empties
-	# ------------------------------------------------
 	for point in particlepointdef.points:
 		obj = bpy.data.objects.new(point.point, None)
 
@@ -89,14 +86,9 @@ def decode_eqgparticlepointdef(
 		finally:
 			state.QUAIL_UPDATING = was_updating
 
-		# Parent the object beneath the armature while retaining membership in
-		# the dedicated PARTICLEPOINTDEF collection.
 		obj.parent = armature_obj
 		obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
 
-		# ------------------------------------------------
-		# Apply point-local transform
-		# ------------------------------------------------
 		obj.location = (
 			float(point.translation[0]),
 			float(point.translation[1]),
@@ -116,9 +108,7 @@ def decode_eqgparticlepointdef(
 			float(point.scale[2]),
 		)
 
-		# ------------------------------------------------
-		# Follow the specified armature bone
-		# ------------------------------------------------
+
 		constraint = obj.constraints.new(type='CHILD_OF')
 		constraint.name = point.bonename
 		constraint.target = armature_obj

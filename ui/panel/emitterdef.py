@@ -52,7 +52,7 @@ class QuailEmitterDefProperties(bpy.types.PropertyGroup):
 	sticktoactor: BoolProperty(name="Stick to Actor")
 
 	spriteorientation: EnumProperty(name="Sprite Orientation", items=[
-		('0', "Camera Facing", "Sprite always faces the camera"),
+		('0', "Normal(Camera Facing)", "Sprite always faces the camera"),
 		('1', "Upward", "Sprite is oriented upward in the world"),
 		('2', "Flat", "Sprite is oriented flat in the world"),
 	], default='0')

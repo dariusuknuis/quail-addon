@@ -1,7 +1,7 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
 import bpy
-from bpy.props import BoolProperty, IntProperty, PointerProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, IntProperty, PointerProperty, StringProperty
 
 
 class QuailEqgParticleRenderDefProperties(bpy.types.PropertyGroup):
@@ -18,10 +18,14 @@ class QuailEqgParticleRenderProperties(bpy.types.PropertyGroup):
 		name="Particle Point",
 		description="EQGPARTICLEPOINTDEF point from which this emitter plays",
 	)
-	particletype: IntProperty(
+	particletype: EnumProperty(
 		name="Particle Type",
-		description="0 is persistent; 1 is triggered by an animation",
-		min=0,
+		items=[
+			('0', "Persistent", "Plays continuously"),
+			('1', "Animation Based", "Triggered by an animation"),
+		],
+		description="Controls how the particles are triggered",
+		default='1',
 	)
 	animnumber: IntProperty(
 		name="Animation Number",
@@ -88,7 +92,7 @@ def draw_eqgparticlerender_in_transform(self, context):
 
 	props = obj.quail_eqgparticlerender
 	box = self.layout.box()
-	box.label(text=f"RENDER {props.render}")
+	box.label(text=f"RENDER")
 
 	box.prop(props, "render")
 	box.prop(props, "particlepoint")

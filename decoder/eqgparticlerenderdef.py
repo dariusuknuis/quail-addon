@@ -58,6 +58,16 @@ def copy_emitter_instance(source, name: str):
 	return obj
 
 
+def create_emitter_placeholder(name: str):
+	# Use the same one-point mesh representation as an EMITTERDEF so the
+	# placeholder can later receive the emitter material and Geometry Nodes
+	# modifier without replacing the renderer object or losing panel values.
+	mesh = bpy.data.meshes.new(f"{name}_mesh")
+	mesh.from_pydata([(0.0, 0.0, 0.0)], [], [])
+	mesh.update()
+	return bpy.data.objects.new(name, mesh)
+
+
 def constrain_to_particlepoint(obj, particlepoint, ground: bool):
 	if ground:
 		constraint = obj.constraints.new(type='COPY_LOCATION')
@@ -87,7 +97,7 @@ def populate_render_properties(obj, render):
 	try:
 		props.render = render.render
 		props.particlepoint = render.particlepoint
-		props.particletype = render.particletype
+		props.particletype = str(render.particletype)
 		props.animnumber = render.animnumber
 		props.animvariation = render.animvariation
 		props.randomanim = bool(render.randomanim)
@@ -105,6 +115,10 @@ def decode_eqgparticlerenderdef(
 	ctx: Context,
 	particlerenderdef: eqgparticlerenderdef,
 ) -> str:
+	# Imported here to avoid coupling decoder module initialization to handler
+	# registration during add-on startup.
+	from ..handlers import initialize_particle_renderer
+
 	# ------------------------------------------------
 	# Find the corresponding armature and its owning collection
 	# ------------------------------------------------
@@ -122,12 +136,16 @@ def decode_eqgparticlerenderdef(
 
 	parent_collection = armature_obj.users_collection[0]
 
-	# Validate all references before creating anything.
+	# Particle points are required for placement. Missing emitter definitions
+	# are allowed and produce renderer placeholders instead.
 	resolved = []
 	for index, render in enumerate(particlerenderdef.renders):
 		emitter = find_emitterdef(render.render)
 		if emitter is None:
-			return f"Render {index}: EMITTERDEF {render.render} not found"
+			print(
+				f"Render {index}: EMITTERDEF {render.render} not found; "
+				"creating placeholder"
+			)
 
 		particlepoint = find_particlepoint(
 			parent_collection,
@@ -163,12 +181,16 @@ def decode_eqgparticlerenderdef(
 	# Create one independently schedulable emitter instance per RENDER
 	# ------------------------------------------------
 	for index, (render, emitter, particlepoint) in enumerate(resolved):
-		name = f"RENDER_{index:03d}_{render.render}"
-		obj = copy_emitter_instance(emitter, name)
+		name = f"RENDER_{index:03d}"
+		if emitter is None:
+			obj = create_emitter_placeholder(name)
+		else:
+			obj = copy_emitter_instance(emitter, name)
 		obj["quaildef"] = "eqgparticlerender"
 		collection.objects.link(obj)
 		obj.hide_set(False)
 		populate_render_properties(obj, render)
 		constrain_to_particlepoint(obj, particlepoint, bool(render.ground))
+		initialize_particle_renderer(obj)
 
 	return ""
