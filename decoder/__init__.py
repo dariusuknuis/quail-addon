@@ -31,6 +31,7 @@ from .eqgparticlerenderdef import decode_eqgparticlerenderdef
 from .eqgterdef import decode_eqgterdef
 from .eqganidef import decode_eqganidef
 from .eqgzondef import decode_eqgzondef
+from .eqglayerdef import decode_eqglayerdef
 from ..logger.error import error
 from .context import Context
 from ..common import state
@@ -390,6 +391,14 @@ def wce_decode(path: str, parent_collection=None):
             ctx.parent = base_parent
 
             err = decode_eqgzondef(ctx, eqgzon)
+            if err:
+                error(err)
+
+    for _, eqglayer in parser.eqglayerdefs.items():
+            ctx.collection = base_collection
+            ctx.parent = base_parent
+
+            err = decode_eqglayerdef(ctx, eqglayer)
             if err:
                 error(err)
 

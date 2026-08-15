@@ -8,7 +8,7 @@ from .eqgface import ensure_face_layers, get_face_property, FACE_PROPS
 class QuailEqgTerDefProperties(bpy.types.PropertyGroup):
     version: EnumProperty(
         name="Version",
-        description="Version of the ActorDef",
+        description="Version of the Terrain Model",
         items=[
             ('1', "1", "First version"),
             ('2', "2", "Second version"),
