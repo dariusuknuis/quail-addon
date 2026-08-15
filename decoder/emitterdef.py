@@ -100,4 +100,5 @@ def decode_emitterdef(ctx: Context, emitter: emitterdef) -> str:
 
 	obj.hide_set(True)
 	obj.hide_render = True
+	obj.hide_viewport = True
 	return ""

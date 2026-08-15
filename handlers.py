@@ -114,6 +114,13 @@ def initialize_particle_renderer(obj, scene=None):
 		disable_particle_renderer(obj)
 
 
+def refresh_particle_renderer(obj, scene=None):
+	if not obj or obj.get("quaildef") != "eqgparticlerender":
+		return
+	EqgParticleRenderRuntime.active_ranges.pop(obj.as_pointer(), None)
+	initialize_particle_renderer(obj, scene)
+
+
 class EqgParticleRenderRuntime:
 	last_frame = None
 	last_actions = {}

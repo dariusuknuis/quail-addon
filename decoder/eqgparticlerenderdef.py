@@ -42,17 +42,30 @@ def find_particlepoint(parent_collection, tag: str, point_name: str):
 
 
 def copy_emitter_instance(source, name: str):
-	# Object.copy() keeps linked mesh/material data and copies the modifier. The
-	# shared EverQuest Emitter node group therefore remains shared, while this
-	# renderer receives independent modifier input values for later scheduling.
-	obj = source.copy()
-	obj.name = name
-	obj.data = source.data
-	obj.animation_data_clear()
-	obj.parent = None
-	obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
-	while obj.constraints:
-		obj.constraints.remove(obj.constraints[0])
+	# Construct a fresh object instead of copying the hidden EMITTERDEF object.
+	# This keeps the renderer independent of the template collection's viewport
+	# visibility while still sharing the lightweight mesh/material datablock and
+	# the common EverQuest Emitter node group.
+	obj = bpy.data.objects.new(name, source.data)
+
+	source_modifier = source.modifiers.get("EverQuest Particles")
+	if source_modifier and source_modifier.type == 'NODES':
+		modifier = obj.modifiers.new(
+			name="EverQuest Particles",
+			type='NODES',
+		)
+		modifier.node_group = source_modifier.node_group
+		modifier.show_viewport = source_modifier.show_viewport
+		modifier.show_render = source_modifier.show_render
+
+		# Geometry Nodes modifier inputs are stored as ID properties. Copy those
+		# values so this renderer starts with the selected EMITTERDEF settings.
+		for key in source_modifier.keys():
+			try:
+				modifier[key] = source_modifier[key]
+			except (TypeError, ValueError):
+				pass
+
 	obj.hide_viewport = False
 	obj.hide_render = False
 	return obj

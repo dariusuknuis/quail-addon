@@ -25,6 +25,7 @@ from .track import decode_trackdefinition, decode_trackinstance, build_wld_anima
 from .hierarchicalspritedef import decode_hierarchicalspritedef
 from .emitterdef import decode_emitterdef
 from .eqgmodeldef import decode_eqgmodeldef
+from .eqgskinnedmodeldef import decode_eqgskinnedmodeldef
 from .eqgparticlepointdef import decode_eqgparticlepointdef
 from .eqgparticlerenderdef import decode_eqgparticlerenderdef
 from .eqgterdef import decode_eqgterdef
@@ -343,6 +344,14 @@ def wce_decode(path: str, parent_collection=None):
         err = decode_eqgmodeldef(ctx, eqgmodel, mathutils.Vector())
         if err:
             error(err)
+
+    for _, eqgskinnedmodel in parser.eqgskinnedmodeldefs.items():
+            ctx.collection = base_collection
+            ctx.parent = base_parent
+
+            err = decode_eqgskinnedmodeldef(ctx, eqgskinnedmodel, mathutils.Vector())
+            if err:
+                error(err)
 
     for _, eqgparticlepoint in parser.eqgparticlepointdefs.items():
         ctx.collection = base_collection
