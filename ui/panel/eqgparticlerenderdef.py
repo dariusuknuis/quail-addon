@@ -74,6 +74,14 @@ def renderer_model_tag(obj):
 	return ""
 
 
+def renderer_definition_version(obj):
+	for collection in obj.users_collection:
+		if collection.get("quaildef") != "eqgparticlerenderdef":
+			continue
+		return int(collection.quail_eqgparticlerenderdef.version)
+	return 5
+
+
 def find_particlepoint(obj, point_name: str):
 	tag = renderer_model_tag(obj)
 	if not tag:
@@ -146,7 +154,17 @@ def update_render_schedule(self, context):
 
 
 class QuailEqgParticleRenderDefProperties(bpy.types.PropertyGroup):
-	version: IntProperty(name="Version", min=0)
+	version: EnumProperty(
+		name="Version",
+		items=[
+			('1', "1", ""),
+			('2', "2", "Adds Ground"),
+			('3', "3", "Adds Play with Mat"),
+			('4', "4", "Adds Sporadic"),
+			('5', "5", "Adds Cold Emitter ID"),
+		],
+		default="5",
+	)
 
 
 class QuailEqgParticleRenderProperties(bpy.types.PropertyGroup):
@@ -216,29 +234,16 @@ class QuailEqgParticleRenderProperties(bpy.types.PropertyGroup):
 	)
 
 
-class QUAIL_PT_eqgparticlerenderdef_collection(bpy.types.Panel):
-	bl_label = "EQGPARTICLERENDERDEF"
-	bl_idname = "QUAIL_PT_eqgparticlerenderdef_collection"
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "collection"
+def draw_eqgparticlerenderdef_in_visibility(self, context):
+	collection = context.collection
+	if not collection or collection.get("quaildef") != "eqgparticlerenderdef":
+		return
 
-	@classmethod
-	def poll(cls, context):
-		collection = context.collection
-		return bool(
-			collection
-			and collection.get("quaildef") == "eqgparticlerenderdef"
-		)
-
-	def draw(self, context):
-		collection = context.collection
-		if not collection:
-			return
-
-		box = self.layout.box()
-		box.label(text="EQGPARTICLERENDERDEF")
-		box.prop(collection.quail_eqgparticlerenderdef, "version")
+	layout = self.layout
+	layout.separator()
+	box = layout.box()
+	box.label(text="EQGPARTICLERENDERDEF")
+	box.prop(collection.quail_eqgparticlerenderdef, "version")
 
 
 def draw_eqgparticlerender_in_transform(self, context):
@@ -262,12 +267,17 @@ def draw_eqgparticlerender_in_transform(self, context):
 	animation_box.prop(props, "starttime")
 	animation_box.prop(props, "lifespan")
 
-	options_box = box.box()
-	options_box.label(text="Options")
-	options_box.prop(props, "ground")
-	options_box.prop(props, "playwithmat")
-	options_box.prop(props, "sporadic")
-	options_box.prop(props, "coldemitterid")
+	version = renderer_definition_version(obj)
+	if version >= 2:
+		options_box = box.box()
+		options_box.label(text="Options")
+		options_box.prop(props, "ground")
+		if version >= 3:
+			options_box.prop(props, "playwithmat")
+		if version >= 4:
+			options_box.prop(props, "sporadic")
+		if version >= 5:
+			options_box.prop(props, "coldemitterid")
 
 
 def register():
@@ -277,12 +287,18 @@ def register():
 	bpy.types.Object.quail_eqgparticlerender = PointerProperty(
 		type=QuailEqgParticleRenderProperties
 	)
+	bpy.types.COLLECTION_PT_collection_flags.prepend(
+		draw_eqgparticlerenderdef_in_visibility
+	)
 	bpy.types.OBJECT_PT_transform.prepend(
 		draw_eqgparticlerender_in_transform
 	)
 
 
 def unregister():
+	bpy.types.COLLECTION_PT_collection_flags.remove(
+		draw_eqgparticlerenderdef_in_visibility
+	)
 	bpy.types.OBJECT_PT_transform.remove(
 		draw_eqgparticlerender_in_transform
 	)

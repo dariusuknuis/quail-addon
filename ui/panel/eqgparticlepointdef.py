@@ -1,7 +1,7 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
 import bpy
-from bpy.props import IntProperty, PointerProperty, StringProperty
+from bpy.props import EnumProperty, PointerProperty, StringProperty
 from ...common import state
 
 
@@ -57,7 +57,7 @@ def update_particlepoint_bone(self, context):
 
 
 class QuailEqgParticlePointDefProperties(bpy.types.PropertyGroup):
-	version: IntProperty(name="Version", min=0)
+	version: EnumProperty(name="Version", items=[('1', "1", "")], default='1')
 
 
 class QuailEqgParticlePointProperties(bpy.types.PropertyGroup):
@@ -68,29 +68,16 @@ class QuailEqgParticlePointProperties(bpy.types.PropertyGroup):
 	)
 
 
-class QUAIL_PT_eqgparticlepointdef_collection(bpy.types.Panel):
-	bl_label = "EQGPARTICLEPOINTDEF"
-	bl_idname = "QUAIL_PT_eqgparticlepointdef_collection"
-	bl_space_type = 'PROPERTIES'
-	bl_region_type = 'WINDOW'
-	bl_context = "collection"
+def draw_eqgparticlepointdef_in_visibility(self, context):
+	collection = context.collection
+	if not collection or collection.get("quaildef") != "eqgparticlepointdef":
+		return
 
-	@classmethod
-	def poll(cls, context):
-		collection = context.collection
-		return bool(
-			collection
-			and collection.get("quaildef") == "eqgparticlepointdef"
-		)
-
-	def draw(self, context):
-		collection = context.collection
-		if not collection:
-			return
-
-		box = self.layout.box()
-		box.label(text="EQGPARTICLEPOINTDEF")
-		box.prop(collection.quail_eqgparticlepointdef, "version")
+	layout = self.layout
+	layout.separator()
+	box = layout.box()
+	box.label(text="EQGPARTICLEPOINTDEF")
+	box.prop(collection.quail_eqgparticlepointdef, "version")
 
 
 def draw_eqgparticlepoint_in_transform(self, context):
@@ -110,12 +97,18 @@ def register():
 	bpy.types.Object.quail_eqgparticlepoint = PointerProperty(
 		type=QuailEqgParticlePointProperties
 	)
+	bpy.types.COLLECTION_PT_collection_flags.prepend(
+		draw_eqgparticlepointdef_in_visibility
+	)
 	bpy.types.OBJECT_PT_transform.prepend(
 		draw_eqgparticlepoint_in_transform
 	)
 
 
 def unregister():
+	bpy.types.COLLECTION_PT_collection_flags.remove(
+		draw_eqgparticlepointdef_in_visibility
+	)
 	bpy.types.OBJECT_PT_transform.remove(
 		draw_eqgparticlepoint_in_transform
 	)

@@ -68,7 +68,7 @@ def decode_eqgparticlepointdef(
 	was_updating = state.QUAIL_UPDATING
 	state.QUAIL_UPDATING = True
 	try:
-		particlepoint_collection.quail_eqgparticlepointdef.version = particlepointdef.version
+		particlepoint_collection.quail_eqgparticlepointdef.version = str(particlepointdef.version)
 	finally:
 		state.QUAIL_UPDATING = was_updating
 

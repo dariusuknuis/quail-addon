@@ -186,7 +186,7 @@ def decode_eqgparticlerenderdef(
 	was_updating = state.QUAIL_UPDATING
 	state.QUAIL_UPDATING = True
 	try:
-		collection_props.version = particlerenderdef.version
+		collection_props.version = str(particlerenderdef.version)
 	finally:
 		state.QUAIL_UPDATING = was_updating
 

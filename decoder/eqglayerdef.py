@@ -74,16 +74,25 @@ def decode_eqglayerdef(ctx: Context, layerdef: eqglayerdef) -> str:
 
 	try:
 		props.tag = layerdef.tag
-		props.version = layerdef.version
+		props.version = str(layerdef.version)
 		props.layers.clear()
 
 		for source_layer in layerdef.layers:
 			layer = props.layers.add()
 			layer.material = source_layer.material
-			layer.diffuse_filename = source_layer.diffuse
-			layer.normal_filename = source_layer.normal
-			layer.diffuse = load_layer_image(ctx, source_layer.diffuse)
-			layer.normal = load_layer_image(ctx, source_layer.normal)
+			layer.shininess = source_layer.shininess
+			layer.rendertype = source_layer.rendertype
+
+			for texture_index in range(5):
+				filename = getattr(source_layer, f"texture{texture_index}")
+
+				if not filename:
+					continue
+
+				texture = layer.textures.add()
+				texture.texture_index = texture_index
+				texture.filename = filename
+				texture.image = load_layer_image(ctx, filename)
 	finally:
 		state.QUAIL_UPDATING = was_updating
 

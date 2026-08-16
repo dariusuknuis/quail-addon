@@ -17,13 +17,23 @@ class eqglayerdef:
 
 	class layer:
 		material:str
-		diffuse:str
-		normal:str
+		texture0:str
+		texture1:str
+		texture2:str
+		texture3:str
+		texture4:str
+		shininess:float
+		rendertype:float
 
 		def __init__(self):
 			self.material = "" #3
-			self.diffuse = "" #3
-			self.normal = "" #3
+			self.texture0 = "" #3
+			self.texture1 = "" #3
+			self.texture2 = "" #3
+			self.texture3 = "" #3
+			self.texture4 = "" #3
+			self.shininess = 0.0 #3
+			self.rendertype = 0.0 #3
 
 	def read(self, tag:str, r:io.TextIOWrapper|None) -> str:
 		self.tag = tag
@@ -42,10 +52,20 @@ class eqglayerdef:
 
 			records = property(r, "MATERIAL", 1)
 			layeri.material = str(records[1])
-			records = property(r, "DIFFUSE", 1)
-			layeri.diffuse = str(records[1])
-			records = property(r, "NORMAL", 1)
-			layeri.normal = str(records[1])
+			records = property(r, "TEXTURE0", 1)
+			layeri.texture0 = str(records[1])
+			records = property(r, "TEXTURE1", 1)
+			layeri.texture1 = str(records[1])
+			records = property(r, "TEXTURE2", 1)
+			layeri.texture2 = str(records[1])
+			records = property(r, "TEXTURE3", 1)
+			layeri.texture3 = str(records[1])
+			records = property(r, "TEXTURE4", 1)
+			layeri.texture4 = str(records[1])
+			records = property(r, "SHININESS", 1)
+			layeri.shininess = float(records[1])
+			records = property(r, "RENDERTYPE", 1)
+			layeri.rendertype = float(records[1])
 			self.layers.append(layeri)
 		return ""
 
@@ -56,7 +76,12 @@ class eqglayerdef:
 		for layeri in self.layers:
 			w.write(f"\t\tLAYER\n")
 			w.write(f"\t\tMATERIAL \"{layeri.material}\"\n")
-			w.write(f"\t\tDIFFUSE \"{layeri.diffuse}\"\n")
-			w.write(f"\t\tNORMAL \"{layeri.normal}\"\n")
+			w.write(f"\t\tTEXTURE0 \"{layeri.texture0}\"\n")
+			w.write(f"\t\tTEXTURE1 \"{layeri.texture1}\"\n")
+			w.write(f"\t\tTEXTURE2 \"{layeri.texture2}\"\n")
+			w.write(f"\t\tTEXTURE3 \"{layeri.texture3}\"\n")
+			w.write(f"\t\tTEXTURE4 \"{layeri.texture4}\"\n")
+			w.write(f"\t\tSHININESS {format(layeri.shininess, '.8e')}\n")
+			w.write(f"\t\tRENDERTYPE {format(layeri.rendertype, '.8e')}\n")
 		return ""
 
