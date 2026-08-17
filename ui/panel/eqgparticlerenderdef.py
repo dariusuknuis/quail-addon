@@ -221,7 +221,7 @@ class QuailEqgParticleRenderProperties(bpy.types.PropertyGroup):
 		description="Follow the particle point in X and Y while remaining at world Z zero",
 		update=update_render_placement,
 	)
-	playwithmat: IntProperty(name="Play With Mat", default=-1)
+	playwithmat: IntProperty(name="Play With Mat", default=-1, update=update_render_schedule)
 	sporadic: BoolProperty(
 		name="Sporadic",
 		description="Play only occasionally when the associated animation is triggered",

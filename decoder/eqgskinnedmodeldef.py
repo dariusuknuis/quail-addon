@@ -5,7 +5,9 @@ import mathutils
 
 from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..common.mesh import get_vertex_normal_nodegroup
+from ..wce.eqganidef import eqganidef
 from ..wce.eqgskinnedmodeldef import eqgskinnedmodeldef
+from .eqganidef import decode_eqganidef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 from ..ui.panel.eqgface import set_face_property
@@ -131,6 +133,44 @@ def _create_armature(
 	return armature_obj
 
 
+def _decode_model_pose(
+	ctx: Context,
+	modeldef: eqgskinnedmodeldef,
+) -> str:
+	"""Create the model's one-frame POS animation through the ANI decoder."""
+
+	action_tag = f"POS_{modeldef.tag}"
+	existing_action = bpy.data.actions.get(action_tag)
+
+	if (
+		existing_action is not None
+		and existing_action.get("quaildef") == "eqganidef"
+	):
+		return ""
+
+	ani = eqganidef()
+	ani.tag = action_tag
+	ani.version = modeldef.version
+	ani.strict = False
+	ani.bones = []
+
+	for source_bone in modeldef.bones:
+		ani_bone = type(ani).bone()
+		ani_bone.bone = source_bone.bone
+		ani_bone.frames = []
+
+		frame = type(ani_bone).frame()
+		frame.milliseconds = 0
+		frame.translation = tuple(source_bone.pivot)
+		frame.rotation = tuple(source_bone.quaternion)
+		frame.scale = tuple(source_bone.scale)
+
+		ani_bone.frames.append(frame)
+		ani.bones.append(ani_bone)
+
+	return decode_eqganidef(ctx, ani)
+
+
 def _add_skinning_data(
 	obj: bpy.types.Object,
 	modeldef: eqgskinnedmodeldef,
@@ -163,6 +203,11 @@ def decode_eqgskinnedmodeldef(
 	"""Decode an EQG skinned model with one skeleton and multiple mesh pieces."""
 
 	armature_obj = _create_armature(ctx, modeldef, location)
+
+	err = _decode_model_pose(ctx, modeldef)
+
+	if err:
+		return f"decode POS_{modeldef.tag}: {err}"
 
 	for model in modeldef.models:
 		object_name = model.model or modeldef.tag

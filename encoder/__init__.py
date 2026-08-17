@@ -26,6 +26,8 @@ from .polyhedrondefinition import encode_polyhedrondefinition
 from .materialpalette import encode_materialpalette
 from .materialdefinition import encode_materialdefinition
 from .simplespritedef import encode_simplespritedef
+from .eqgmodeldef import encode_eqgmodeldef
+from .eqganidef import encode_eqganidef
 from ..logger.error import error
 from .context import Context
 import os, shutil, re
@@ -193,6 +195,60 @@ def write_materials_and_sprites(parser, w, model_dir):
     wrote_material_sets = write_material_sets(parser, material_sets, model_dir)
     return wrote_material_sets
 
+def write_eqg_model_files(parser, model_name, model_dir):
+
+    model_wce_path = os.path.join(
+        model_dir,
+        f"{model_name}.wce",
+    )
+
+    with open(model_wce_path, "w") as w:
+        w.write("// wcemu v0.0.1\n\n")
+
+        for tag in sorted(
+            parser.eqgmodeldefs.keys(),
+            key=str.casefold,
+        ):
+            parser.eqgmodeldefs[tag].write(w)
+            w.write("\n")
+
+    wrote_animations = False
+    animations = getattr(parser, "eqganidefs", {})
+
+    if animations:
+        animation_filename = f"{model_name}_ani.wce"
+        animation_path = os.path.join(
+            model_dir,
+            animation_filename,
+        )
+
+        with open(animation_path, "w") as w:
+            w.write("// wcemu v0.0.1\n\n")
+
+            for tag in sorted(
+                animations.keys(),
+                key=str.casefold,
+            ):
+                animations[tag].write(w)
+                w.write("\n")
+
+        wrote_animations = True
+
+    root_file = os.path.join(
+        model_dir,
+        "_root.wce",
+    )
+
+    with open(root_file, "w") as w:
+        w.write(
+            f'INCLUDE "{model_name.upper()}.WCE"\n'
+        )
+
+        if wrote_animations:
+            w.write(
+                f'INCLUDE "{model_name.upper()}_ANI.WCE"\n'
+            )
+
 def write_model_folder(parser, root_obj, export_objects, root_path):
 
     model_name = get_model_name(root_obj)
@@ -209,16 +265,6 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     # Gather ONLY dependencies for this root
     local_objects = gather_export_objects([root_obj], parser)
     local_actions = gather_export_tracks(local_objects)
-
-    # print(f"\n[MODEL] {model_name}")
-    # print("[LOCAL OBJECTS]")
-    # for obj in local_objects:
-    #     if isinstance(obj, bpy.types.Object):
-    #         print(" ", obj.name, obj.get("quaildef"))
-
-    # print("[LOCAL ACTIONS]")
-    # for act in local_actions:
-    #     print(" ", act.name)
 
     if root_obj.name in parser.actordefs:
         local_parser.actordefs[root_obj.name] = (
@@ -263,6 +309,13 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
                 local_parser.dmspritedefinitions[obj.name] = (
                     parser.dmspritedefinitions[obj.name]
                 )
+
+        elif qdef == "eqgmodeldef":
+            if obj.name in parser.eqgmodeldefs:
+                local_parser.eqgmodeldefs[obj.name] = (
+                    parser.eqgmodeldefs[obj.name]
+                )
+
         elif qdef == "polyhedrondefinition":
             if obj.name in parser.polyhedrondefinitions:
                 local_parser.polyhedrondefinitions[obj.name] = (
@@ -306,6 +359,17 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
                 local_parser.trackdefinitions[track.trackdef] = (
                     parser.trackdefinitions[track.trackdef]
                 )
+
+    # ----------------------------------------
+    # EQG model branch
+    # ----------------------------------------
+    if local_parser.eqgmodeldefs:
+        write_eqg_model_files(
+            local_parser,
+            model_name,
+            model_dir,
+        )
+        return
 
     # ----------------------------------------
     # Write MODEL WCE
@@ -835,15 +899,6 @@ def write_quail_folder(parser, export_objects, root_path, context):
     # ROOT OBJECTS
     # ----------------------------------------
     roots = get_root_objects(export_objects)
-    # print("\n=== ROOT OBJECTS ===")
-    # for r in roots:
-    #     if isinstance(r, bpy.types.Collection):
-    #         print(f"[COLLECTION] {r.name} ({r.get('quaildef')})")
-    #     elif isinstance(r, bpy.types.Object):
-    #         print(f"[OBJECT] {r.name} ({r.get('quaildef')})")
-    #     else:
-    #         print(f"[UNKNOWN] {r}")
-    # print("====================\n")
 
     model_dirs = []
 
@@ -869,11 +924,18 @@ def write_quail_folder(parser, export_objects, root_path, context):
 def get_root_objects(export_objects):
 
     roots = []
+    root_set = set()
+
+    def add_root(obj):
+        if obj in root_set:
+            return
+
+        root_set.add(obj)
+        roots.append(obj)
 
     # ----------------------------------------
     # Build set of objects owned by ACTORDEFs
     # ----------------------------------------
-
     actordef_owned = set()
 
     for obj in export_objects:
@@ -888,9 +950,8 @@ def get_root_objects(export_objects):
             actordef_owned.add(child)
 
     # ----------------------------------------
-    # FIRST: collect DMSPRITEDEFs used by regions
+    # Collect DMSPRITEDEFs used by regions
     # ----------------------------------------
-
     region_sprite_tags = set()
 
     for obj in export_objects:
@@ -907,67 +968,57 @@ def get_root_objects(export_objects):
             region_sprite_tags.add(props.sprite)
 
     # ----------------------------------------
-    # MAIN ROOT LOGIC
+    # Main root logic
     # ----------------------------------------
-
     for obj in export_objects:
-
-        # ----------------------------------------
-        # ACTORDEF collections → ROOT
-        # ----------------------------------------
 
         if isinstance(obj, bpy.types.Collection):
 
             if obj.get("quaildef") == "actordef":
-                roots.append(obj)
+                add_root(obj)
 
             continue
-
-        # ----------------------------------------
-        # Must be object
-        # ----------------------------------------
 
         if not isinstance(obj, bpy.types.Object):
             continue
 
         qdef = obj.get("quaildef")
 
-        # ----------------------------------------
-        # SKIP world structure
-        # ----------------------------------------
-
         if qdef in {"worldnode", "region"}:
             continue
-
-        # ----------------------------------------
-        # Skip palettes
-        # ----------------------------------------
 
         if qdef == "materialpalette":
             continue
 
-        # ----------------------------------------
-        # Skip objects already owned by ACTORDEFs
-        # ----------------------------------------
-
         if obj in actordef_owned:
             continue
 
-        # ----------------------------------------
-        # SKIP DMSPRITEDEFs used by regions
-        # ----------------------------------------
-
-        if qdef in {"dmspritedef2", "dmspritedefinition"}:
-
+        if qdef in {
+            "dmspritedef2",
+            "dmspritedefinition",
+        }:
             if obj.name in region_sprite_tags:
                 continue
 
         # ----------------------------------------
-        # Root condition
+        # EQG mesh → highest owning object
         # ----------------------------------------
+        if qdef == "eqgmodeldef":
+
+            root = obj
+
+            while root.parent is not None:
+                root = root.parent
+
+            add_root(root)
+            continue
 
         if obj.parent is None:
-            roots.append(obj)
+            add_root(obj)
+
+    roots.sort(
+        key=lambda item: item.name.casefold()
+    )
 
     return roots
 
@@ -1618,15 +1669,15 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     #     if err:
     #         errors.append(err)
 
-    # for obj in eqgmodels:
-    #     err = encode_eqgmodeldef(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in eqgmodels:
+        err = encode_eqgmodeldef(parser, obj)
+        if err:
+            errors.append(err)
 
-    # for obj in eqganis:
-    #     err = encode_eqganidef(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    for obj in eqganis:
+        err = encode_eqganidef(parser, obj)
+        if err:
+            errors.append(err)
 
     # ------------------------------------------------
     # Write full quail folder structure

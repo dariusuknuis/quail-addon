@@ -6,6 +6,8 @@ import mathutils
 from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..common.mesh import get_vertex_normal_nodegroup
 from ..wce.eqgmodeldef import eqgmodeldef
+from ..wce.eqganidef import eqganidef
+from .eqganidef import decode_eqganidef
 from .eqgmaterialdef import decode_eqgmaterialdef
 from .context import Context
 from ..ui.panel.eqgface import set_face_property
@@ -291,11 +293,53 @@ def _create_armature(
     return armature_obj
 
 
+def _decode_model_pose(
+    ctx: Context,
+    model: eqgmodeldef,
+) -> str:
+    """Create the model's one-frame POS animation through the ANI decoder."""
+
+    action_tag = f"POS_{model.tag}"
+
+    # A modular archive can encounter a piece before its main model. The
+    # shared-armature path may therefore request the same POS action again
+    # when the main model itself is decoded later.
+    existing_action = bpy.data.actions.get(action_tag)
+
+    if (
+        existing_action is not None
+        and existing_action.get("quaildef") == "eqganidef"
+    ):
+        return ""
+
+    ani = eqganidef()
+    ani.tag = action_tag
+    ani.version = model.version
+    ani.strict = False
+    ani.bones = []
+
+    for source_bone in model.bones:
+        ani_bone = type(ani).bone()
+        ani_bone.bone = source_bone.bone
+        ani_bone.frames = []
+
+        frame = type(ani_bone).frame()
+        frame.milliseconds = 0
+        frame.translation = tuple(source_bone.pivot)
+        frame.rotation = tuple(source_bone.quaternion)
+        frame.scale = tuple(source_bone.scale)
+
+        ani_bone.frames.append(frame)
+        ani.bones.append(ani_bone)
+
+    return decode_eqganidef(ctx, ani)
+
+
 def _get_or_create_shared_armature(
     ctx: Context,
     main_model: eqgmodeldef,
     location: mathutils.Vector,
-) -> bpy.types.Object:
+) -> tuple[bpy.types.Object | None, str]:
     """Create the base-model armature once, regardless of decode order."""
 
     armature_obj = _find_shared_armature(
@@ -304,7 +348,7 @@ def _get_or_create_shared_armature(
     )
 
     if armature_obj is not None:
-        return armature_obj
+        return armature_obj, ""
 
     armature_obj = _create_armature(
         ctx,
@@ -312,7 +356,12 @@ def _get_or_create_shared_armature(
         location,
     )
 
-    return armature_obj
+    err = _decode_model_pose(ctx, main_model)
+
+    if err:
+        return None, f"decode POS_{main_model.tag}: {err}"
+
+    return armature_obj, ""
 
 
 def _add_skinning_data(
@@ -425,7 +474,12 @@ def decode_eqgmodeldef(
             return f"Material {eqgmodeldef.tag}_{face.material} not found"
 
         set_face_property(mesh, index, "passable", face.passable)
-        set_face_property(mesh, index, "collisionrequired", face.collisionrequired)
+        set_face_property(
+            mesh,
+            index,
+            "collisionrequired",
+            face.collisionrequired,
+        )
         set_face_property(mesh, index, "transparent", face.transparent)
         set_face_property(mesh, index, "culled", face.culled)
         set_face_property(mesh, index, "degenerate", face.degenerate)
@@ -439,11 +493,17 @@ def decode_eqgmodeldef(
         if modular_set is not None and current_tag in modular_set[1]:
             main_model = modular_set[0]
             main_tag = str(main_model.tag or "").strip().casefold()
-            main_armature = _get_or_create_shared_armature(
+            main_armature, err = _get_or_create_shared_armature(
                 ctx,
                 main_model,
                 location,
             )
+
+            if err:
+                return err
+
+            if main_armature is None:
+                return f"Could not create armature for {main_model.tag}"
 
             root_replacement = None
 
@@ -464,6 +524,11 @@ def decode_eqgmodeldef(
                 eqgmodeldef,
                 location,
             )
+
+            err = _decode_model_pose(ctx, eqgmodeldef)
+
+            if err:
+                return f"decode POS_{eqgmodeldef.tag}: {err}"
 
             armature_modifier = obj.modifiers.new("Armature", "ARMATURE")
             armature_modifier.object = armature_obj

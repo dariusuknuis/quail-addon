@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Dict
 import math, bpy
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Mapping
 from .material import create_palette_mask_node_group, create_blur_node_group
 from bpy.types import Image, Material, Node, NodeSocket, NodeTree
 
@@ -720,10 +720,11 @@ class MaterialNodeBuilder:
     """Small, Blender-API-oriented helper used by the group recipes."""
 
     def __init__(
-        self,
-        material: Material,
-        shader: str,
-        uv_scale: float = DEFAULT_UV_SCALE,
+            self,
+            material: Material,
+            shader: str,
+            uv_scale: float = DEFAULT_UV_SCALE,
+            overrides: Optional[Mapping[str, Any]] = None
     ) -> None:
         if material.node_tree is None:
             raise ValueError("Material has no node tree")
@@ -735,6 +736,7 @@ class MaterialNodeBuilder:
         self.nodes = self.tree.nodes
         self.links = self.tree.links
         self.properties = material.quail_eqgmaterialdef
+        self.overrides = overrides or {}
 
         self.bsdf = self.nodes.new("ShaderNodeBsdfPrincipled")
         self.bsdf.inputs["Roughness"].default_value = 0.904
@@ -756,7 +758,10 @@ class MaterialNodeBuilder:
     # ------------------------------------------------------------------
 
     def value(self, name: str, default: Any = None) -> Any:
-        value = getattr(self.properties, name, default)
+        if name in self.overrides:
+            value = self.overrides[name]
+        else:
+            value = getattr(self.properties, name, default)
 
         if value is None:
             return default
@@ -779,6 +784,10 @@ class MaterialNodeBuilder:
         default: float = 0.0,
     ) -> float:
         """Use the first explicitly assigned RNA property from a list."""
+
+        for name in names:
+            if name in self.overrides:
+                return self.float_value(name, default)
 
         is_property_set = getattr(self.properties, "is_property_set", None)
         if callable(is_property_set):
@@ -2701,8 +2710,11 @@ def has_explicit_shader_properties(
     return False
 
 
-def eqg_apply(material: Material) -> str:
-    """Build a Blender 5 material from its parsed shader and shader group."""
+def eqg_apply(
+    material: Material,
+    overrides: Optional[Mapping[str, Any]] = None,
+) -> str:
+    """Build a Blender 5 material, optionally overriding node input values."""
 
     if material is None:
         return "Material is None"
@@ -2731,7 +2743,11 @@ def eqg_apply(material: Material) -> str:
         material.node_tree.nodes.clear()
 
         properties = material.quail_eqgmaterialdef
-        if not has_explicit_shader_properties(
+        has_override_property = bool(
+            overrides
+            and any(name in overrides for name in family.properties)
+        )
+        if not has_override_property and not has_explicit_shader_properties(
             properties,
             family.properties,
         ):
@@ -2754,7 +2770,11 @@ def eqg_apply(material: Material) -> str:
             )
             return ""
 
-        builder = MaterialNodeBuilder(material, shader)
+        builder = MaterialNodeBuilder(
+            material,
+            shader,
+            overrides=overrides,
+        )
         result = build_group(builder)
         builder.finish(
             result,

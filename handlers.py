@@ -97,6 +97,41 @@ def particle_renderer_model_tag(obj):
 	return name
 
 
+def particle_renderer_definition_tag(obj):
+	suffix = "_PARTICLERENDERDEF"
+	for collection in obj.users_collection:
+		if collection.name.casefold().endswith(suffix.casefold()):
+			return collection.name[:-len(suffix)]
+	return ""
+
+
+def particle_renderer_main_model(obj):
+	tag = particle_renderer_definition_tag(obj)
+	if not tag:
+		return None
+
+	for candidate in bpy.data.objects:
+		if candidate.name.casefold() != tag.casefold():
+			continue
+		if candidate.type != 'MESH' or candidate.get("quaildef") != "eqgmodeldef":
+			continue
+		return candidate
+
+	return None
+
+
+def particle_renderer_matches_material(obj):
+	playwithmat = obj.quail_eqgparticlerender.playwithmat
+	if playwithmat == -1:
+		return True
+
+	model = particle_renderer_main_model(obj)
+	if model is None or not hasattr(model, "quail_eqg_material_variation"):
+		return False
+
+	return model.quail_eqg_material_variation.material_index == playwithmat
+
+
 def initialize_particle_renderer(obj, scene=None):
 	if not obj or obj.get("quaildef") != "eqgparticlerender":
 		return
@@ -105,6 +140,9 @@ def initialize_particle_renderer(obj, scene=None):
 
 	scene = scene or bpy.context.scene
 	props = obj.quail_eqgparticlerender
+	if not particle_renderer_matches_material(obj):
+		disable_particle_renderer(obj)
+		return
 	if props.particletype == '0':
 		fps = scene.render.fps / scene.render.fps_base
 		start = scene.frame_start + (props.starttime / 1000.0) * fps
@@ -164,6 +202,10 @@ class EqgParticleRenderRuntime:
 				continue
 
 			props = obj.quail_eqgparticlerender
+			if not particle_renderer_matches_material(obj):
+				cls.active_ranges.pop(obj.as_pointer(), None)
+				disable_particle_renderer(obj)
+				continue
 			if props.particletype == '0':
 				start = scene.frame_start + (props.starttime / 1000.0) * fps
 				set_particle_renderer_range(obj, start, scene.frame_end)
