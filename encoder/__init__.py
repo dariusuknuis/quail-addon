@@ -249,179 +249,164 @@ def write_eqg_model_files(parser, model_name, model_dir):
                 f'INCLUDE "{model_name.upper()}_ANI.WCE"\n'
             )
 
-def write_model_folder(parser, root_obj, export_objects, root_path):
+    return ""
 
+def write_model_folder(parser, root_obj, export_objects, root_path, use_eqg):
     model_name = get_model_name(root_obj)
     model_dir = os.path.join(root_path, model_name)
-
     os.makedirs(model_dir, exist_ok=True)
 
-    # ----------------------------------------
-    # Build LOCAL parser (important!)
-    # ----------------------------------------
     local_parser = wce(model_dir)
     local_parser.variationmaterialtags = set(parser.variationmaterialtags)
 
-    # Gather ONLY dependencies for this root
-    local_objects = gather_export_objects([root_obj], parser)
-    local_actions = gather_export_tracks(local_objects)
+    local_objects = _gather_export_objects([root_obj], parser)
+    local_actions = _gather_export_actions(local_objects)
 
+    # ----------------------------------------
+    # Copy an ACTORDEF root
+    # ----------------------------------------
     if root_obj.name in parser.actordefs:
-        local_parser.actordefs[root_obj.name] = (
-            parser.actordefs[root_obj.name]
-        )
+        local_parser.actordefs[root_obj.name] = parser.actordefs[root_obj.name]
+
+    # ----------------------------------------
+    # Definitions copied directly by object name
+    # ----------------------------------------
+    definition_collections = {
+        "hierarchicalspritedef": "hierarchicalspritedefs",
+        "particleclouddef": "particleclouddefs",
+        "blitspritedef": "blitspritedefs",
+        "dmspritedef2": "dmspritedef2s",
+        "dmspritedefinition": "dmspritedefinitions",
+        "eqgmodeldef": "eqgmodeldefs",
+        "eqgskinnedmodeldef": "eqgskinnedmodeldefs",
+        "eqgterdef": "eqgterdefs",
+        "polyhedrondefinition": "polyhedrondefinitions",
+        "materialpalette": "materialpalettes",
+        "materialdefinition": "materialdefinitions",
+        "simplespritedef": "simplespritedefs",
+    }
 
     for obj in local_objects:
+        if not hasattr(obj, "get"):
+            continue
 
         qdef = obj.get("quaildef")
+        collection_name = definition_collections.get(qdef)
 
-        if qdef == "hierarchicalspritedef":
-            if obj.name in parser.hierarchicalspritedefs:
-                local_parser.hierarchicalspritedefs[obj.name] = (
-                    parser.hierarchicalspritedefs[obj.name]
-                )
+        if not collection_name:
+            continue
 
-        if qdef == "particleclouddef":
-            if obj.name in parser.particleclouddefs:
-                local_parser.particleclouddefs[obj.name] = (
-                    parser.particleclouddefs[obj.name]
-                )
+        source_collection = getattr(parser, collection_name, None)
+        destination_collection = getattr(local_parser, collection_name, None)
 
-        if qdef == "blitspritedef":
-            if obj.name in parser.blitspritedefs:
-                local_parser.blitspritedefs[obj.name] = (
-                    parser.blitspritedefs[obj.name]
-                )
+        if source_collection is None or destination_collection is None:
+            continue
 
-        elif qdef == "dmspritedef2":
-            if obj.name in parser.dmspritedef2s:
-                sprite = parser.dmspritedef2s[obj.name]
-                local_parser.dmspritedef2s[obj.name] = sprite
+        if obj.name not in source_collection:
+            continue
 
-                dmtrack_tag = getattr(sprite, "dmtrackinst", "")
-                if dmtrack_tag and dmtrack_tag in parser.dmtrackdef2s:
-                    local_parser.dmtrackdef2s[dmtrack_tag] = (
-                        parser.dmtrackdef2s[dmtrack_tag]
+        definition = source_collection[obj.name]
+        destination_collection[obj.name] = definition
+
+        # DMSPRITEDEF2 can reference a separately encoded DMTRACKDEF2.
+        if qdef == "dmspritedef2":
+            dmtrack_tag = getattr(definition, "dmtrackinst", "")
+
+            if dmtrack_tag and dmtrack_tag in parser.dmtrackdef2s:
+                local_parser.dmtrackdef2s[dmtrack_tag] = parser.dmtrackdef2s[dmtrack_tag]
+
+    # ----------------------------------------
+    # Copy locally owned Actions
+    # ----------------------------------------
+    for action in local_actions:
+        action_type = action.get("quaildef")
+
+        if action_type == "track":
+            for track in parser.tracks.values():
+                animation_name = getattr(track, "animation", "")
+
+                if animation_name.casefold() != action.name.casefold():
+                    continue
+
+                local_parser.tracks[track.tag] = track
+
+                if track.trackdef in parser.trackdefinitions:
+                    local_parser.trackdefinitions[track.trackdef] = (
+                        parser.trackdefinitions[track.trackdef]
                     )
 
-        elif qdef == "dmspritedefinition":
-            if obj.name in parser.dmspritedefinitions:
-                local_parser.dmspritedefinitions[obj.name] = (
-                    parser.dmspritedefinitions[obj.name]
-                )
+        elif action_type == "eqganidef":
+            animation = parser.eqganidefs.get(action.name)
 
-        elif qdef == "eqgmodeldef":
-            if obj.name in parser.eqgmodeldefs:
-                local_parser.eqgmodeldefs[obj.name] = (
-                    parser.eqgmodeldefs[obj.name]
-                )
-
-        elif qdef == "polyhedrondefinition":
-            if obj.name in parser.polyhedrondefinitions:
-                local_parser.polyhedrondefinitions[obj.name] = (
-                    parser.polyhedrondefinitions[obj.name]
-                )
-
-        elif qdef == "materialpalette":
-            if obj.name in parser.materialpalettes:
-                local_parser.materialpalettes[obj.name] = (
-                    parser.materialpalettes[obj.name]
-                )
-
-        elif qdef == "materialdefinition":
-            if obj.name in parser.materialdefinitions:
-                local_parser.materialdefinitions[obj.name] = (
-                    parser.materialdefinitions[obj.name]
-                )
-
-        elif qdef == "simplespritedef":
-            if obj.name in parser.simplespritedefs:
-                local_parser.simplespritedefs[obj.name] = (
-                    parser.simplespritedefs[obj.name]
-            )
-
-    for action in local_actions:
-
-        # print(f"[LOCAL ACTION] {action.name}")
-
-        for track in parser.tracks.values():
-
-            anim_name = getattr(track, "animation", "")
-
-            if anim_name.upper() != action.name.upper():
-                continue
-
-            # print(f"[TRACK MATCH] {track.tag}")
-
-            local_parser.tracks[track.tag] = track
-
-            if track.trackdef in parser.trackdefinitions:
-                local_parser.trackdefinitions[track.trackdef] = (
-                    parser.trackdefinitions[track.trackdef]
-                )
+            if animation:
+                local_parser.eqganidefs[action.name] = animation
 
     # ----------------------------------------
-    # EQG model branch
+    # EQG output layout
     # ----------------------------------------
-    if local_parser.eqgmodeldefs:
-        write_eqg_model_files(
-            local_parser,
-            model_name,
-            model_dir,
-        )
-        return
+    if use_eqg:
+        err = write_eqg_model_files(local_parser, model_name, model_dir)
+
+        if err:
+            return err
+
+        return ""
 
     # ----------------------------------------
-    # Write MODEL WCE
+    # S3D model file
     # ----------------------------------------
     model_wce_path = os.path.join(model_dir, f"{model_name}.wce")
 
     with open(model_wce_path, "w") as w:
         w.write("// wcemu v0.0.1\n\n")
 
-        wrote_material_sets = write_materials_and_sprites(local_parser, w, model_dir)
+        wrote_material_sets = write_materials_and_sprites(
+            local_parser,
+            w,
+            model_dir,
+        )
 
-        for obj in local_parser.materialpalettes.values():
-            obj.write(w)
+        for definition in local_parser.materialpalettes.values():
+            definition.write(w)
             w.write("\n")
 
-        for obj in local_parser.polyhedrondefinitions.values():
-            obj.write(w)
+        for definition in local_parser.polyhedrondefinitions.values():
+            definition.write(w)
             w.write("\n")
 
-        for obj in local_parser.dmtrackdef2s.values():
-            obj.write(w)
+        for definition in local_parser.dmtrackdef2s.values():
+            definition.write(w)
             w.write("\n")
 
-        for obj in local_parser.dmspritedef2s.values():
-            obj.write(w)
+        for definition in local_parser.dmspritedef2s.values():
+            definition.write(w)
             w.write("\n")
 
-        for obj in local_parser.dmspritedefinitions.values():
-            obj.write(w)
+        for definition in local_parser.dmspritedefinitions.values():
+            definition.write(w)
             w.write("\n")
 
         write_blitsprites_and_sprites(local_parser, w)
 
-        for obj in local_parser.particleclouddefs.values():
-            obj.write(w)
+        for definition in local_parser.particleclouddefs.values():
+            definition.write(w)
             w.write("\n")
 
-        for t in local_parser.tracks.values():
-            if t.is_pose:
-                t.write(w)
+        for track in local_parser.tracks.values():
+            if track.is_pose:
+                track.write(w)
                 w.write("\n")
 
-        for obj in local_parser.hierarchicalspritedefs.values():
-            obj.write(w)
+        for definition in local_parser.hierarchicalspritedefs.values():
+            definition.write(w)
             w.write("\n")
 
-        for obj in local_parser.actordefs.values():
-            obj.write(w)
+        for definition in local_parser.actordefs.values():
+            definition.write(w)
             w.write("\n")
 
     # ----------------------------------------
-    # Animations
+    # S3D animation files
     # ----------------------------------------
     wrote_animations = write_animation_folder(local_parser, model_dir)
 
@@ -431,14 +416,15 @@ def write_model_folder(parser, root_obj, export_objects, root_path):
     root_file = os.path.join(model_dir, "_root.wce")
 
     with open(root_file, "w") as w:
-
         if wrote_animations:
-            w.write("INCLUDE \"ANIMATIONS/_ROOT.WCE\"\n")
+            w.write('INCLUDE "ANIMATIONS/_ROOT.WCE"\n')
 
         if wrote_material_sets:
-            w.write("INCLUDE \"MATERIAL_SETS/_ROOT.WCE\"\n")
+            w.write('INCLUDE "MATERIAL_SETS/_ROOT.WCE"\n')
 
-        w.write(f"INCLUDE \"{model_name.upper()}.WCE\"\n")
+        w.write(f'INCLUDE "{model_name.upper()}.WCE"\n')
+
+    return ""
 
 def write_blitsprites_and_sprites(parser, w):
 
@@ -524,59 +510,121 @@ def write_world_wce(parser, root_path):
             w.write("\tZONE 0\n")
             w.write("\tEQGVERSION? NULL\n")
 
-def export_simplesprite_images(export_objects, assets_dir):
-
+def export_asset_images(export_objects, assets_dir):
     written = set()
 
-    for obj in export_objects:
+    def source_material(material):
+        if not material or not material.get("quail_layer_preview", False):
+            return material
 
-        if not hasattr(obj, "get"):
+        source_name = material.get("quail_layer_source", "")
+        return bpy.data.materials.get(source_name) or material
+
+    def eqg_image_filename(image):
+        source_name = image.get("quail_source_name", "")
+
+        if source_name:
+            return os.path.basename(str(source_name)).lower()
+
+        if image.filepath:
+            return os.path.basename(bpy.path.abspath(image.filepath)).lower()
+
+        return os.path.basename(image.name).lower()
+
+    def export_image(image, filename):
+        if not image or not filename:
+            return
+
+        filename = os.path.basename(filename).lower()
+
+        if filename in written:
+            return
+
+        written.add(filename)
+        destination = os.path.join(assets_dir, filename)
+
+        try:
+            if image.packed_file:
+                image.unpack(method='USE_ORIGINAL')
+
+            source = bpy.path.abspath(image.filepath)
+
+            if source and os.path.exists(source):
+                shutil.copy2(source, destination)
+            else:
+                print(f"Fallback saving image (no source): {filename}")
+                image.save_render(destination)
+
+        except Exception as exception:
+            print(f"ERROR exporting image {filename}: {exception}")
+
+    for item in export_objects:
+        if not hasattr(item, "get"):
             continue
 
-        if obj.get("quaildef") != "simplespritedef":
+        qdef = item.get("quaildef")
+
+        # ----------------------------------------
+        # S3D SimpleSprite images
+        # ----------------------------------------
+        if qdef == "simplespritedef":
+            props = item.quail_simplesprite
+
+            for frame in props.frames:
+                for file in frame.files:
+                    if not file.image_name or not file.file_name:
+                        continue
+
+                    image = bpy.data.images.get(file.image_name)
+
+                    if not image:
+                        print(f"WARNING: Missing image {file.image_name}")
+                        continue
+
+                    export_image(image, file.file_name)
+
             continue
 
-        tree = obj
-        props = tree.quail_simplesprite
+        # ----------------------------------------
+        # EQG model materials
+        # ----------------------------------------
+        if qdef not in {
+            "eqgmodeldef",
+            "eqgskinnedmodeldef",
+            "eqgterdef",
+        }:
+            continue
 
-        for frame in props.frames:
-            for file in frame.files:
+        if not isinstance(item, bpy.types.Object) or item.type != 'MESH':
+            continue
 
-                if not file.image_name or not file.file_name:
+        for assigned_material in item.data.materials:
+            material = source_material(assigned_material)
+
+            if not material or material.get("quaildef") != "eqgmaterialdef":
+                continue
+
+            props = material.quail_eqgmaterialdef
+
+            for row in props.property_rows:
+                property_name = row.property_name
+
+                if not property_name or not hasattr(props, property_name):
                     continue
 
-                # ----------------------------------------
-                # Normalize filename to lowercase
-                # ----------------------------------------
-                filename = file.file_name.lower()
+                rna_property = props.bl_rna.properties.get(property_name)
 
-                # Deduplicate
-                if filename in written:
+                if (
+                    not rna_property
+                    or rna_property.type != 'POINTER'
+                    or rna_property.fixed_type.identifier != "Image"
+                ):
                     continue
 
-                written.add(filename)
+                image = getattr(props, property_name)
 
-                img = bpy.data.images.get(file.image_name)
-                if not img:
-                    print(f"WARNING: Missing image {file.image_name}")
-                    continue
-
-                dst_path = os.path.join(assets_dir, filename)
-
-                try:
-                    if img.packed_file:
-                        img.unpack(method='USE_ORIGINAL')
-
-                    src = bpy.path.abspath(img.filepath)
-
-                    if src and os.path.exists(src):
-                        shutil.copy2(src, dst_path)
-                    else:
-                        print(f"Fallback saving image (no source): {filename}")
-                        img.save_render(dst_path)
-
-                except Exception as e:
-                    print(f"ERROR exporting image {filename}: {e}")
+                if image:
+                    export_image(image, eqg_image_filename(image))
 
 def write_zone_folder(parser, export_objects, root_path):
 
@@ -589,7 +637,7 @@ def write_zone_folder(parser, export_objects, root_path):
     # ----------------------------------------
     assets_dir = os.path.join(root_path, "assets")
     os.makedirs(assets_dir, exist_ok=True)
-    export_simplesprite_images(export_objects, assets_dir)
+    export_asset_images(export_objects, assets_dir)
 
     # ----------------------------------------
     # WORLD.WCE
@@ -841,185 +889,158 @@ def find_child_collections(parent_col):
 
     return objects_col, lights_col
 
-def write_quail_folder(parser, export_objects, root_path, context):
-
+def write_quail_folder(parser, export_objects, root_path, context, use_eqg):
     print("Writing quail folder:", root_path)
 
+    # ----------------------------------------
+    # Zone archive
+    # ----------------------------------------
     if parser.worlddef and parser.worlddef.zone:
+        collection = context.collection if context else None
+        objects_col, lights_col = find_child_collections(collection)
 
-        # ----------------------------------------
-        # Find child collections
-        # ----------------------------------------
-        col = context.collection if context else None
-        objects_col, lights_col = find_child_collections(col)
-        # ----------------------------------------
-        # Write main zone
-        # ----------------------------------------
-        write_zone_folder(parser, export_objects, root_path)
+        err = write_zone_folder(parser, export_objects, root_path)
 
-        # ----------------------------------------
-        # Write _objects if present
-        # ----------------------------------------
+        if err:
+            return err
+
         if objects_col:
             objects_path = os.path.join(root_path, "_objects")
+            object_exports = _gather_export_objects([objects_col], parser)
+            err = write_objects_folder(parser, object_exports, objects_path)
 
-            obj_export = gather_export_objects([objects_col], parser)
-            write_objects_folder(parser, obj_export, objects_path)
+            if err:
+                return err
 
-        # ----------------------------------------
-        # Write _lights if present
-        # ----------------------------------------
         if lights_col:
             lights_path = os.path.join(root_path, "_lights")
+            light_exports = _gather_export_objects([lights_col], parser)
+            err = write_lights_folder(parser, light_exports, lights_path)
 
-            light_export = gather_export_objects([lights_col], parser)
-            write_lights_folder(parser, light_export, lights_path)
+            if err:
+                return err
 
         return ""
 
+    # ----------------------------------------
+    # Model archive
+    # ----------------------------------------
     os.makedirs(root_path, exist_ok=True)
 
-    # ----------------------------------------
-    # ASSETS folder (placeholder)
-    # ----------------------------------------
     assets_dir = os.path.join(root_path, "assets")
     os.makedirs(assets_dir, exist_ok=True)
 
-    # ----------------------------------------
-    # EXPORT TEXTURES
-    # ----------------------------------------
-    export_simplesprite_images(export_objects, assets_dir)
+    # This currently exports S3D SimpleSprite images. EQG image copying
+    # will need to be added to this function or unified with it later.
+    export_asset_images(export_objects, assets_dir)
 
-    # ----------------------------------------
-    # WORLD.WCE
-    # ----------------------------------------
     write_world_wce(parser, root_path)
 
-    # ----------------------------------------
-    # ROOT OBJECTS
-    # ----------------------------------------
     roots = get_root_objects(export_objects)
-
     model_dirs = []
 
     for root in roots:
-        name = get_model_name(root)
-        write_model_folder(parser, root, export_objects, root_path)
-        model_dirs.append(name)
+        model_name = get_model_name(root)
 
-    # ----------------------------------------
-    # MAIN _root.wce
-    # ----------------------------------------
+        if model_name in model_dirs:
+            continue
+
+        err = write_model_folder(
+            parser,
+            root,
+            export_objects,
+            root_path,
+            use_eqg,
+        )
+
+        if err:
+            return err
+
+        model_dirs.append(model_name)
+
     root_file = os.path.join(root_path, "_root.wce")
 
     with open(root_file, "w") as w:
+        w.write('INCLUDE "WORLD.WCE"\n')
 
-        w.write("INCLUDE \"WORLD.WCE\"\n")
-
-        for name in model_dirs:
-            w.write(f"INCLUDE \"{name.upper()}/_ROOT.WCE\"\n")
+        for model_name in model_dirs:
+            w.write(f'INCLUDE "{model_name.upper()}/_ROOT.WCE"\n')
 
     return ""
 
 def get_root_objects(export_objects):
-
     roots = []
     root_set = set()
 
     def add_root(obj):
-        if obj in root_set:
-            return
-
-        root_set.add(obj)
-        roots.append(obj)
+        if obj not in root_set:
+            root_set.add(obj)
+            roots.append(obj)
 
     # ----------------------------------------
-    # Build set of objects owned by ACTORDEFs
+    # Objects owned by ACTORDEF collections
     # ----------------------------------------
     actordef_owned = set()
 
-    for obj in export_objects:
-
-        if not isinstance(obj, bpy.types.Collection):
+    for item in export_objects:
+        if not isinstance(item, bpy.types.Collection):
             continue
 
-        if obj.get("quaildef") != "actordef":
+        if item.get("quaildef") != "actordef":
             continue
 
-        for child in obj.all_objects:
+        for child in item.all_objects:
             actordef_owned.add(child)
 
     # ----------------------------------------
-    # Collect DMSPRITEDEFs used by regions
+    # DMSPRITEDEFs used directly by regions
     # ----------------------------------------
     region_sprite_tags = set()
 
-    for obj in export_objects:
-
-        if not isinstance(obj, bpy.types.Object):
+    for item in export_objects:
+        if not isinstance(item, bpy.types.Object):
             continue
 
-        if obj.get("quaildef") != "region":
+        if item.get("quaildef") != "region":
             continue
 
-        props = obj.quail_region
-
-        if props.sprite:
-            region_sprite_tags.add(props.sprite)
+        if item.quail_region.sprite:
+            region_sprite_tags.add(item.quail_region.sprite)
 
     # ----------------------------------------
-    # Main root logic
+    # Root detection
     # ----------------------------------------
-    for obj in export_objects:
-
-        if isinstance(obj, bpy.types.Collection):
-
-            if obj.get("quaildef") == "actordef":
-                add_root(obj)
+    for item in export_objects:
+        if isinstance(item, bpy.types.Collection):
+            if item.get("quaildef") == "actordef":
+                add_root(item)
 
             continue
 
-        if not isinstance(obj, bpy.types.Object):
+        if not isinstance(item, bpy.types.Object):
             continue
 
-        qdef = obj.get("quaildef")
+        qdef = item.get("quaildef")
 
-        if qdef in {"worldnode", "region"}:
+        if not qdef:
             continue
 
-        if qdef == "materialpalette":
+        if qdef in {"worldnode", "region", "materialpalette"}:
             continue
 
-        if obj in actordef_owned:
+        if item in actordef_owned:
             continue
 
-        if qdef in {
-            "dmspritedef2",
-            "dmspritedefinition",
-        }:
-            if obj.name in region_sprite_tags:
-                continue
-
-        # ----------------------------------------
-        # EQG mesh → highest owning object
-        # ----------------------------------------
-        if qdef == "eqgmodeldef":
-
-            root = obj
-
-            while root.parent is not None:
-                root = root.parent
-
-            add_root(root)
+        if (
+            qdef in {"dmspritedef2", "dmspritedefinition"}
+            and item.name in region_sprite_tags
+        ):
             continue
 
-        if obj.parent is None:
-            add_root(obj)
+        if item.parent is None:
+            add_root(item)
 
-    roots.sort(
-        key=lambda item: item.name.casefold()
-    )
-
+    roots.sort(key=lambda item: item.name.casefold())
     return roots
 
 def get_model_name(obj):
@@ -1030,259 +1051,205 @@ def get_model_name(obj):
 
     return name
 
-def gather_export_tracks(export_objects):
+def _gather_export_actions(export_objects):
+    actions = {}
 
-    actions = set()
-
-    # ----------------------------------------
-    # Find HS_DEF armatures
-    # ----------------------------------------
     for obj in export_objects:
-
-        if not isinstance(obj, bpy.types.Object):
+        if not isinstance(obj, bpy.types.Object) or obj.type != 'ARMATURE':
             continue
 
-        if obj.type != 'ARMATURE':
+        armature_type = obj.get("quaildef")
+
+        if armature_type == "hierarchicalspritedef":
+            expected_action_type = "track"
+            model_code = obj.name[:-7] if obj.name.upper().endswith("_HS_DEF") else obj.name
+
+        elif armature_type == "eqgmodarmature":
+            expected_action_type = "eqganidef"
+            model_code = obj.name[:-9] if obj.name.lower().endswith("_armature") else obj.name
+
+        else:
             continue
 
-        if obj.get("quaildef") != "hierarchicalspritedef":
-            continue
-
-        model_code = obj.name.replace("_HS_DEF", "")
-
-        # ----------------------------------------
-        # Direct action on armature (strongest link)
-        # ----------------------------------------
         if obj.animation_data and obj.animation_data.action:
-            actions.add(obj.animation_data.action)
+            action = obj.animation_data.action
 
-        # ----------------------------------------
-        # Also gather matching actions by name
-        # ----------------------------------------
+            if action.get("quaildef") == expected_action_type:
+                actions.setdefault(action, obj)
+
+        model_suffix = "_" + model_code.casefold()
+
         for action in bpy.data.actions:
-            if action.get("quaildef") != "track":
+            if action.get("quaildef") != expected_action_type:
                 continue
 
-            # Match "_AVI", "_HUM", etc
-            if action.name.endswith(f"_{model_code}"):
-                # print(f"[TRACK MATCH] action={action.name} model={model_code}")
-                actions.add(action)
+            if action.name.casefold().endswith(model_suffix):
+                actions.setdefault(action, obj)
 
     return actions
 
-def gather_export_objects(root_objects, parser):
+def _gather_export_objects(root_objects, parser):
     visited = set()
     stack = list(root_objects)
-
-    if any(obj.get("quaildef") == "worldnode" for obj in root_objects if hasattr(obj, "get")):
-        for col in bpy.data.collections:
-            if col.name == "WORLDTREE":
-                for obj in col.objects:
-                    if obj.get("quaildef") == "worldnode":
-                        stack.append(obj)
-
     palette_material_tags = set()
+
     parser.variationmaterialtags.clear()
 
-    def add(obj):
-        if obj and obj not in visited:
-            stack.append(obj)
+    def add(item):
+        if item is not None and item not in visited:
+            stack.append(item)
+
+    def add_simple_sprite(sprite_tag, owner_name):
+        if not sprite_tag or sprite_tag == "NONE":
+            return
+
+        sprite = bpy.data.node_groups.get(sprite_tag)
+        if sprite:
+            add(sprite)
+        else:
+            print(f"WARNING: Missing SimpleSpriteDef '{sprite_tag}' for '{owner_name}'")
+
+    # Selecting one world node means exporting the complete WORLDTREE.
+    if any(
+        item.get("quaildef") == "worldnode"
+        for item in root_objects
+        if hasattr(item, "get")
+    ):
+        for collection in bpy.data.collections:
+            if collection.name != "WORLDTREE":
+                continue
+
+            for obj in collection.objects:
+                if obj.get("quaildef") == "worldnode":
+                    add(obj)
 
     while stack:
-        obj = stack.pop()
-
-        if obj in visited:
+        item = stack.pop()
+        if item in visited:
             continue
 
-        visited.add(obj)
+        visited.add(item)
 
         # ----------------------------------------
-        # COLLECTION → expand into objects + subcollections
+        # Collection contents
         # ----------------------------------------
-        if isinstance(obj, bpy.types.Collection):
-            for child_obj in obj.objects:
+        if isinstance(item, bpy.types.Collection):
+            for child_obj in item.objects:
                 add(child_obj)
 
-            for child_col in obj.children:
-                add(child_col)
+            for child_collection in item.children:
+                add(child_collection)
 
             continue
 
-        # ----------------------------------------
-        # Children (ONLY for Blender Objects)
-        # ----------------------------------------
-        if isinstance(obj, bpy.types.Object):
-            for child in obj.children:
+        # Materials and node groups can be dependencies, but only
+        # Blender Objects have children, modifiers, and parents.
+        if isinstance(item, bpy.types.Object):
+            for child in item.children:
                 add(child)
 
-        # ----------------------------------------
-        # Safe quaildef access
-        # ----------------------------------------
-        qdef = obj.get("quaildef") if hasattr(obj, "get") else None
+        qdef = item.get("quaildef") if hasattr(item, "get") else None
 
-        # ========================================
+        # ----------------------------------------
+        # Mesh → owning armature
+        # ----------------------------------------
+        if (
+            isinstance(item, bpy.types.Object)
+            and qdef in {
+                "dmspritedef2",
+                "dmspritedefinition",
+                "eqgmodeldef",
+                "eqgskinnedmodeldef",
+            }
+        ):
+            if (
+                item.parent
+                and item.parent.type == 'ARMATURE'
+                and item.parent.get("quaildef") in {
+                    "hierarchicalspritedef",
+                    "eqgmodarmature",
+                }
+            ):
+                add(item.parent)
+
+            for modifier in item.modifiers:
+                if modifier.type == 'ARMATURE' and modifier.object:
+                    add(modifier.object)
+
+        # ----------------------------------------
         # WORLDNODE → REGION
-        # ========================================
+        # ----------------------------------------
         if qdef == "worldnode":
-            props = obj.quail_worldnode
+            region_tag = item.quail_worldnode.region_tag
 
-            if props.region_tag:
-                region_obj = bpy.data.objects.get(props.region_tag)
+            if region_tag:
+                add(bpy.data.objects.get(region_tag))
 
-                if region_obj:
-                    add(region_obj)
-
-        # ========================================
+        # ----------------------------------------
         # REGION → DMSPRITE
-        # ========================================
+        # ----------------------------------------
         elif qdef == "region":
-            props = obj.quail_region
+            sprite_tag = item.quail_region.sprite
 
-            if props.sprite:
-                sprite_obj = bpy.data.objects.get(props.sprite)
-
-                if sprite_obj:
-                    add(sprite_obj)
+            if sprite_tag:
+                add(bpy.data.objects.get(sprite_tag))
 
         # ----------------------------------------
         # DMSPRITE → MATERIALPALETTE
         # ----------------------------------------
-        if qdef == "dmspritedef2":
-            props = obj.quail_dmspritedef2
-
-            if props.materialpalette:
-                add(props.materialpalette)
+        elif qdef == "dmspritedef2":
+            add(item.quail_dmspritedef2.materialpalette)
 
         elif qdef == "dmspritedefinition":
-            props = obj.quail_dmspritedefinition
-
-            if props.materialpalette:
-                add(props.materialpalette)
+            add(item.quail_dmspritedefinition.materialpalette)
 
         # ----------------------------------------
         # BLITSPRITEDEF → SIMPLESPRITEDEF
         # ----------------------------------------
         elif qdef == "blitspritedef":
-
-            if not obj.data:
+            if not item.data or not item.data.materials:
                 continue
 
-            if not obj.data.materials:
+            material = item.data.materials[0]
+
+            if not material or material.get("quaildef") != "blitspritematerial":
                 continue
 
-            mat = obj.data.materials[0]
-
-            if not mat:
-                continue
-
-            if mat.get("quaildef") != "blitspritematerial":
-                continue
-
-            props = obj.quail_blitspritedef
-
-            sprite_tag = props.simplespritetag
-
-            if sprite_tag and sprite_tag != "NONE":
-
-                sprite = bpy.data.node_groups.get(
-                    sprite_tag
-                )
-
-                if sprite:
-                    add(sprite)
-
-                else:
-                    print(
-                        f"WARNING: Missing SimpleSpriteDef "
-                        f"'{sprite_tag}' for blitsprite "
-                        f"'{obj.name}'"
-                    )
+            add_simple_sprite(
+                item.quail_blitspritedef.simplespritetag,
+                item.name,
+            )
 
         # ----------------------------------------
-        # MATERIALPALETTE → MATERIALDEFINITION → SIMPLESPRITEDEF
+        # MATERIALPALETTE dependencies
         # ----------------------------------------
         elif qdef == "materialpalette":
-            props = obj.quail_materialpalette
-
-            for item in props.materials:
-
-                mat = item.material
-
-                if not mat:
+            props = item.quail_materialpalette
+            for entry in props.materials:
+                material = entry.material
+                if not material:
                     continue
 
-                # ----------------------------------------
-                # Add Blender Material
-                # ----------------------------------------
-
-                add(mat)
-
-                # ----------------------------------------
-                # MATERIALDEFINITION
-                # ----------------------------------------
-
-                if mat.get("quaildef") == "materialdefinition":
-
-                    palette_material_tags.add(
-                        mat.name
-                    )
-
-                    mprops = (
-                        mat.quail_materialdefinition
-                    )
-
-                    sprite_tag = (
-                        mprops.simplespritetag
-                    )
-
-                    # ----------------------------------------
-                    # SIMPLESPRITEDEF (NodeTree)
-                    # ----------------------------------------
-
-                    if (
-                        sprite_tag and
-                        sprite_tag != "NONE"
-                    ):
-
-                        sprite = (
-                            bpy.data.node_groups.get(
-                                sprite_tag
-                            )
-                        )
-
-                        if sprite:
-
-                            add(sprite)
-
-                        else:
-
-                            print(
-                                f"WARNING: Missing "
-                                f"SimpleSpriteDef "
-                                f"'{sprite_tag}' "
-                                f"for material "
-                                f"'{mat.name}'"
-                            )
-
-            # ----------------------------------------
-            # SECOND: detect AND ADD variation materials
-            # ----------------------------------------
-
-            for mat in bpy.data.materials:
-
-                if (
-                    mat.get("quaildef") !=
-                    "materialdefinition"
-                ):
+                add(material)
+                if material.get("quaildef") != "materialdefinition":
                     continue
 
-                tag = mat.name
+                palette_material_tags.add(material.name)
+                add_simple_sprite(
+                    material.quail_materialdefinition.simplespritetag,
+                    material.name,
+                )
 
-                # skip palette materials
+            # ----------------------------------------
+            # Find external S3D material variations
+            # ----------------------------------------
+            for material in bpy.data.materials:
+                if material.get("quaildef") != "materialdefinition":
+                    continue
+
+                tag = material.name
+
                 if tag in palette_material_tags:
-                    continue
-
-                if tag in parser.variationmaterialtags:
                     continue
 
                 prefix = material_tag_parse(tag)
@@ -1290,174 +1257,134 @@ def gather_export_objects(root_objects, parser):
                 if not prefix:
                     continue
 
-                # ----------------------------------------
-                # match against palette materials
-                # ----------------------------------------
+                if not any(
+                    palette_tag.startswith(prefix)
+                    for palette_tag in palette_material_tags
+                ):
+                    continue
 
-                for palette_tag in palette_material_tags:
-
-                    if palette_tag.startswith(prefix):
-
-                        if mat in visited:
-                            continue
-
-                        parser.variationmaterialtags.add(
-                            tag
+                parser.variationmaterialtags.add(tag)
+                material.quail_materialdefinition.variation = True
+                add(material)
+                sprite_tag = material.quail_materialdefinition.simplespritetag
+                if sprite_tag and sprite_tag != "NONE":
+                    sprite = bpy.data.node_groups.get(sprite_tag)
+                    if sprite:
+                        sprite.quail_simplesprite.variation = True
+                        add(sprite)
+                    else:
+                        print(
+                            f"WARNING: Missing SimpleSpriteDef "
+                            f"'{sprite_tag}' for variation material '{tag}'"
                         )
-
-                        add(mat)
-
-                        # ----------------------------------------
-                        # add its sprite too
-                        # ----------------------------------------
-
-                        mprops = (
-                            mat.quail_materialdefinition
-                        )
-
-                        mprops.variation = True
-
-                        sprite_tag = (
-                            mprops.simplespritetag
-                        )
-
-                        if (
-                            sprite_tag and
-                            sprite_tag != "NONE"
-                        ):
-
-                            sprite = (
-                                bpy.data.node_groups.get(
-                                    sprite_tag
-                                )
-                            )
-
-                            if sprite:
-
-                                add(sprite)
-                                sprops = sprite.quail_simplesprite
-                                sprops.variation = True
-
-                            else:
-
-                                print(
-                                    f"WARNING: Missing "
-                                    f"SimpleSpriteDef "
-                                    f"'{sprite_tag}' "
-                                    f"for variation "
-                                    f"material "
-                                    f"'{mat.name}'"
-                                )
-
-                        break
 
     return visited
 
 def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
-    # ------------------------------------------------
-    # Setup parser (same class as decode)
-    # ------------------------------------------------
     parser = wce(folder_path)
-
     errors = []
 
-    # ------------------------------------------------
-    # Build root set
-    # ------------------------------------------------
-    root_objects = []
+    # Resolve the active/export WORLDDEF
+    active_collection = context.collection
+    world_collection = None
 
-    col = context.collection
+    if (
+        active_collection
+        and active_collection.get("quaildef") == "worlddef"
+    ):
+        world_collection = active_collection
+
+    else:
+        for candidate in bpy.data.collections:
+            if candidate.get("quaildef") != "worlddef":
+                continue
+
+            # Skip structural subfolders.
+            if candidate.name.lower().startswith("_"):
+                continue
+
+            world_collection = candidate
+            break
+
+    use_eqg = bool(
+        world_collection
+        and world_collection.quail_worlddef.use_eqg
+    )
 
     # ------------------------------------------------
-    # SELECTED EXPORT
+    # Build initial root set
     # ------------------------------------------------
+
     if selected_only:
 
-        # ----------------------------------------
-        # Case 1: Active collection is WORLDDEF
-        # ----------------------------------------
-        if col and col.get("quaildef") == "worlddef":
-            root_objects = list(col.objects) + list(col.children)
+        if (
+            active_collection
+            and active_collection.get("quaildef")
+            == "worlddef"
+        ):
+            root_objects = (
+                list(active_collection.objects)
+                + list(active_collection.children)
+            )
 
-        # ----------------------------------------
-        # Case 2: Active collection is ACTORDEF
-        # ----------------------------------------
-        elif col and col.get("quaildef") == "actordef":
-            root_objects = [col]
+        elif (
+            active_collection
+            and active_collection.get("quaildef")
+            == "actordef"
+        ):
+            root_objects = [active_collection]
 
-        # ----------------------------------------
-        # Case 3: Objects selected (normal case)
-        # ----------------------------------------
         elif context.selected_objects:
-            root_objects = list(context.selected_objects)
+            root_objects = list(
+                context.selected_objects
+            )
 
-        # ----------------------------------------
-        # Fallback
-        # ----------------------------------------
-        else:
-            if col:
-                root_objects = list(col.objects) + list(col.children)
-            else:
-                root_objects = []
+        elif active_collection:
+            root_objects = (
+                list(active_collection.objects)
+                + list(active_collection.children)
+            )
 
-    # ------------------------------------------------
-    # FULL EXPORT (no selection)
-    # ------------------------------------------------
-    else:
-        if col:
-            root_objects = list(col.objects) + list(col.children)
         else:
             root_objects = []
 
+    elif active_collection:
+        root_objects = (
+            list(active_collection.objects)
+            + list(active_collection.children)
+        )
+
+    else:
+        root_objects = []
+
     # ------------------------------------------------
-    # Gather dependency graph
-    # ------------------------------------------------
-    export_objects = gather_export_objects(root_objects, parser)
-    export_actions = gather_export_tracks(export_objects)
+    # Gather the shared dependency graph
+    export_objects = _gather_export_objects(root_objects, parser)
+    export_actions = _gather_export_actions(export_objects)
 
     print("Export set:")
+
     for obj in export_objects:
         print("  ", obj.name, obj.get("quaildef"))
 
-    # ------------------------------------------------
-    # Find WORLDDEF collection
-    # ------------------------------------------------
-    world_collection = None
-
-    if context.collection and context.collection.get("quaildef") == "worlddef":
-        world_collection = context.collection
-
-    else:
-        for col in bpy.data.collections:
-            if col.get("quaildef") != "worlddef":
-                continue
-
-            # skip subfolders like _objects/_lights
-            if col.name.lower().startswith("_"):
-                continue
-
-            world_collection = col
-            break
-
+    # Encode WORLDDEF
     if world_collection:
         err = encode_worlddef(parser, world_collection)
         if err:
             errors.append(err)
 
-    # ------------------------------------------------
     # Find WORLDTREE
-    # ------------------------------------------------
-
     worldtree_collection = None
 
-    # check active collection first
-    if context.collection and context.collection.name == "WORLDTREE":
-        worldtree_collection = context.collection
+    if (
+        active_collection
+        and active_collection.name == "WORLDTREE"
+    ):
+        worldtree_collection = active_collection
 
-    # otherwise search children of selected collection
-    elif context.collection:
-        for child in context.collection.children:
+    elif active_collection:
+        for child in active_collection.children:
             if child.name == "WORLDTREE":
                 worldtree_collection = child
                 break
@@ -1465,18 +1392,16 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     worldtrees = []
 
     if worldtree_collection:
-
         worldnodes = [
-            obj for obj in worldtree_collection.objects
+            obj
+            for obj in worldtree_collection.objects
             if obj.get("quaildef") == "worldnode"
         ]
 
         if worldnodes:
             worldtrees.append((worldtree_collection, worldnodes))
 
-    # ------------------------------------------------
-    # Gather Blender objects by type (FILTERED SET)
-    # ------------------------------------------------
+    # Group gathered objects by definition type
     actorinsts = []
     actordefs = []
     simplesprites = []
@@ -1492,17 +1417,16 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     lights = []
     regions = []
     zones = []
-    tracks = []
     hierarchicalsprites = []
     eqgmodels = []
+    eqgskinnedmodels = []
     eqgters = []
-    eqganis = []
 
     for obj in export_objects:
-
         if isinstance(obj, bpy.types.Collection):
             if obj.get("quaildef") == "actordef":
                 actordefs.append(obj)
+
             continue
 
         qdef = obj.get("quaildef")
@@ -1513,7 +1437,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if qdef == "actorinst":
             actorinsts.append(obj)
 
-        if qdef == "actordef":
+        elif qdef == "actordef":
             actordefs.append(obj)
 
         elif qdef == "hierarchicalspritedef":
@@ -1561,14 +1485,14 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         elif qdef == "eqgmodeldef":
             eqgmodels.append(obj)
 
+        elif qdef == "eqgskinnedmodeldef":
+            eqgskinnedmodels.append(obj)
+
         elif qdef == "eqgterdef":
             eqgters.append(obj)
 
-        elif qdef == "eqganidef":
-            eqganis.append(obj)
-
     # ------------------------------------------------
-    # Encode (order matters!)
+    # Encode shared/S3D definitions
     # ------------------------------------------------
 
     err = encode_globalambientlightdef(parser)
@@ -1587,12 +1511,19 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     for obj in hierarchicalsprites:
         err = encode_hierarchicalspritedef(parser, obj)
+
         if err:
             errors.append(err)
 
-    err = encode_track(parser, export_actions, context)
-    if err:
-        errors.append(err)
+    # ------------------------------------------------
+    # Encode S3D Actions
+    # ------------------------------------------------
+
+    s3d_actions = {action for action in export_actions if action.get("quaildef") == "track"}
+    if s3d_actions:
+        err = encode_track(parser, s3d_actions, context)
+        if err:
+            errors.append(err)
 
     for obj in particleclouddefs:
         err = encode_particleclouddef(parser, obj)
@@ -1614,8 +1545,8 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-    for col, nodes in worldtrees:
-        err = encode_worldtree(parser, col, nodes)
+    for collection, nodes in worldtrees:
+        err = encode_worldtree(parser, collection, nodes)
         if err:
             errors.append(err)
 
@@ -1664,40 +1595,69 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-    # for obj in eqgters:
-    #     err = encode_eqgterdef(parser, obj)
-    #     if err:
-    #         errors.append(err)
+    # Encode EQG Actions
+    # This must happen before EQGMODELDEF because the
+    # model encoder reads its encoded POS_* animation.
+    for action, armature_obj in export_actions.items():
+        if action.get("quaildef") != "eqganidef":
+            continue
+
+        err = encode_eqganidef(parser, action, armature_obj)
+        if err:
+            errors.append(err)
+
+    # ------------------------------------------------
+    # Encode EQG models
+    # ------------------------------------------------
 
     for obj in eqgmodels:
         err = encode_eqgmodeldef(parser, obj)
         if err:
             errors.append(err)
 
-    for obj in eqganis:
-        err = encode_eqganidef(parser, obj)
-        if err:
-            errors.append(err)
+    # Add when these encoders are implemented:
+    #
+    # for obj in eqgskinnedmodels:
+    #     err = encode_eqgskinnedmodeldef(parser, obj)
+    #
+    #     if err:
+    #         errors.append(err)
+    #
+    # for obj in eqgters:
+    #     err = encode_eqgterdef(parser, obj)
+    #
+    #     if err:
+    #         errors.append(err)
 
     # ------------------------------------------------
-    # Write full quail folder structure
+    # Stop before writing if encoding failed
     # ------------------------------------------------
 
-    if os.path.basename(folder_path).lower().startswith("_objects"):
-        return write_objects_folder(parser, export_objects, folder_path)
+    if errors:
+        return "\n".join(errors)
 
-    if os.path.basename(folder_path).lower().startswith("_lights"):
-        return write_lights_folder(parser, export_objects, folder_path)
+    # ------------------------------------------------
+    # Write Quail folder structure
+    # ------------------------------------------------
 
-    err = write_quail_folder(parser, export_objects, folder_path, context)
+    folder_name = os.path.basename(folder_path).lower()
+
+    if folder_name.startswith("_objects"):
+        err = write_objects_folder(parser, export_objects, folder_path)
+
+    elif folder_name.startswith("_lights"):
+        err = write_lights_folder(parser, export_objects, folder_path)
+
+    else:
+        err = write_quail_folder(
+            parser,
+            export_objects,
+            folder_path,
+            context,
+            use_eqg,
+        )
 
     if err:
         return err
-
-    # ------------------------------------------------
-    # Return errors if any
-    # ------------------------------------------------
-    if errors:
-        return "\n".join(errors)
 
     return ""

@@ -6,21 +6,60 @@ import mathutils
 from ..wce.eqganidef import eqganidef
 
 
-def _action_group_channels(action, bone_name: str):
+def _action_fcurves(action, armature_obj):
+	"""Return an Action's F-curves across Blender Action APIs."""
+
+	# Legacy Blender Actions expose F-curves directly.
+	if hasattr(action, "fcurves"):
+		return list(action.fcurves)
+
+	curves = []
+	action_slot = None
+
+	if armature_obj.animation_data is not None:
+		action_slot = getattr(
+			armature_obj.animation_data,
+			"action_slot",
+			None,
+		)
+
+	for layer in getattr(action, "layers", []):
+		for strip in getattr(layer, "strips", []):
+			channel_bags = []
+
+			if action_slot is not None and hasattr(strip, "channelbag"):
+				try:
+					channel_bag = strip.channelbag(
+						action_slot,
+						ensure=False,
+					)
+
+					if channel_bag is not None:
+						channel_bags.append(channel_bag)
+
+				except (RuntimeError, TypeError):
+					pass
+
+			if not channel_bags:
+				channel_bags.extend(
+					getattr(strip, "channelbags", [])
+				)
+
+			for channel_bag in channel_bags:
+				curves.extend(channel_bag.fcurves)
+
+	return curves
+
+
+def _action_group_channels(action, armature_obj, bone_name: str):
 	"""Return the F-curves belonging to one pose bone."""
 
-	group = action.groups.get(bone_name)
-
-	if group is not None:
-		return list(group.channels)
-
-	# Fallback for actions whose curves were not assigned to action groups.
 	escaped_name = bpy.utils.escape_identifier(bone_name)
 	prefix = f'pose.bones["{escaped_name}"].'
 
 	return [
 		curve
-		for curve in action.fcurves
+		for curve in _action_fcurves(action, armature_obj)
 		if curve.data_path.startswith(prefix)
 	]
 
@@ -126,7 +165,11 @@ def encode_eqganidef(
 	result.bones = []
 
 	for bone in armature_obj.data.bones:
-		channels = _action_group_channels(action, bone.name)
+		channels = _action_group_channels(
+			action,
+			armature_obj,
+			bone.name,
+		)
 		frames = _channel_frames(channels)
 
 		if not frames:
@@ -150,7 +193,6 @@ def encode_eqganidef(
 			translation, rotation, scale = local_animation.decompose()
 			rotation.normalize()
 
-			# Maintain quaternion continuity across the exported frames.
 			if (
 				previous_rotation is not None
 				and previous_rotation.dot(rotation) < 0.0
