@@ -27,6 +27,7 @@ from .materialpalette import encode_materialpalette
 from .materialdefinition import encode_materialdefinition
 from .simplespritedef import encode_simplespritedef
 from .eqgmodeldef import encode_eqgmodeldef
+from .eqgskinnedmodeldef import encode_eqgskinnedmodeldef
 from .eqganidef import encode_eqganidef
 from ..logger.error import error
 from .context import Context
@@ -212,6 +213,13 @@ def write_eqg_model_files(parser, model_name, model_dir):
             parser.eqgmodeldefs[tag].write(w)
             w.write("\n")
 
+        for tag in sorted(
+            parser.eqgskinnedmodeldefs.keys(),
+            key=str.casefold,
+        ):
+            parser.eqgskinnedmodeldefs[tag].write(w)
+            w.write("\n")
+
     wrote_animations = False
     animations = getattr(parser, "eqganidefs", {})
 
@@ -278,7 +286,6 @@ def write_model_folder(parser, root_obj, export_objects, root_path, use_eqg):
         "dmspritedef2": "dmspritedef2s",
         "dmspritedefinition": "dmspritedefinitions",
         "eqgmodeldef": "eqgmodeldefs",
-        "eqgskinnedmodeldef": "eqgskinnedmodeldefs",
         "eqgterdef": "eqgterdefs",
         "polyhedrondefinition": "polyhedrondefinitions",
         "materialpalette": "materialpalettes",
@@ -291,6 +298,16 @@ def write_model_folder(parser, root_obj, export_objects, root_path, use_eqg):
             continue
 
         qdef = obj.get("quaildef")
+
+        # EQGSKINNEDMODELDEF is keyed by the shared model tag,
+        # while each Blender mesh is named after its MODEL entry.
+        if qdef == "eqgskinnedmodeldef":
+            for tag, definition in parser.eqgskinnedmodeldefs.items():
+                if any(model.model == obj.name for model in definition.models):
+                    local_parser.eqgskinnedmodeldefs[tag] = definition
+
+            continue
+
         collection_name = definition_collections.get(qdef)
 
         if not collection_name:
@@ -1609,13 +1626,11 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
         if err:
             errors.append(err)
 
-    # Add when these encoders are implemented:
-    #
-    # for obj in eqgskinnedmodels:
-    #     err = encode_eqgskinnedmodeldef(parser, obj)
-    #
-    #     if err:
-    #         errors.append(err)
+    for obj in eqgskinnedmodels:
+        err = encode_eqgskinnedmodeldef(parser, obj)
+
+        if err:
+            errors.append(err)
     #
     # for obj in eqgters:
     #     err = encode_eqgterdef(parser, obj)
