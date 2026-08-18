@@ -48,6 +48,7 @@ def _create_armature(
 	armature = bpy.data.armatures.new(armature_name)
 	armature_obj = bpy.data.objects.new(armature_name, armature)
 	armature_obj["quaildef"] = "eqgmodarmature"
+	armature_obj.quail_eqgskinnedmodeldef.version = str(modeldef.version)
 	ctx.collection.objects.link(armature_obj)
 	armature_obj.location = location
 
@@ -219,6 +220,7 @@ def decode_eqgskinnedmodeldef(
 		obj = bpy.data.objects.new(object_name, mesh)
 		ctx.collection.objects.link(obj)
 		obj["quaildef"] = "eqgskinnedmodeldef"
+		obj.quail_eqgskinnedmodeldef.mainpiece = bool(model.mainpiece)
 
 		for material in modeldef.materials:
 			properties = [
