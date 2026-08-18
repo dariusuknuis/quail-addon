@@ -977,26 +977,23 @@ def get_root_objects(export_objects):
             root_set.add(obj)
             roots.append(obj)
 
-    # ----------------------------------------
     # Objects owned by ACTORDEF collections
-    # ----------------------------------------
     actordef_owned = set()
-
+    particle_render_owned = set()
     for item in export_objects:
         if not isinstance(item, bpy.types.Collection):
             continue
 
-        if item.get("quaildef") != "actordef":
-            continue
+        if item.get("quaildef") == "actordef":
+            for child in item.all_objects:
+                actordef_owned.add(child)
 
-        for child in item.all_objects:
-            actordef_owned.add(child)
+        elif item.get("quaildef") == "eqgparticlerenderdef":
+            for child in item.all_objects:
+                particle_render_owned.add(child)
 
-    # ----------------------------------------
     # DMSPRITEDEFs used directly by regions
-    # ----------------------------------------
     region_sprite_tags = set()
-
     for item in export_objects:
         if not isinstance(item, bpy.types.Object):
             continue
@@ -1007,9 +1004,7 @@ def get_root_objects(export_objects):
         if item.quail_region.sprite:
             region_sprite_tags.add(item.quail_region.sprite)
 
-    # ----------------------------------------
     # Root detection
-    # ----------------------------------------
     for item in export_objects:
         if isinstance(item, bpy.types.Collection):
             if item.get("quaildef") == "actordef":
@@ -1021,14 +1016,13 @@ def get_root_objects(export_objects):
             continue
 
         qdef = item.get("quaildef")
-
         if not qdef:
             continue
 
         if qdef in {"worldnode", "region", "materialpalette"}:
             continue
 
-        if item in actordef_owned:
+        if item in actordef_owned or item in particle_render_owned:
             continue
 
         if (
