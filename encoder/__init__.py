@@ -28,6 +28,7 @@ from .materialdefinition import encode_materialdefinition
 from .simplespritedef import encode_simplespritedef
 from .eqgmodeldef import encode_eqgmodeldef
 from .eqgskinnedmodeldef import encode_eqgskinnedmodeldef
+from .eqgparticlepointdef import encode_eqgparticlepointdef
 from .eqglayerdef import encode_eqglayerdef
 from .eqganidef import encode_eqganidef
 from ..logger.error import error
@@ -215,6 +216,10 @@ def write_eqg_model_files(parser, model_name, model_dir):
             parser.eqgskinnedmodeldefs[tag].write(w)
             w.write("\n")
 
+        for tag in sorted(parser.eqgparticlepointdefs.keys(), key=str.casefold):
+                    parser.eqgparticlepointdefs[tag].write(w)
+                    w.write("\n")
+
         for tag in sorted(parser.eqglayerdefs.keys(), key=str.casefold):
             parser.eqglayerdefs[tag].write(w)
             w.write("\n")
@@ -269,6 +274,10 @@ def write_model_folder(parser, root_obj, export_objects, root_path, use_eqg):
     for tag, definition in parser.eqglayerdefs.items():
         if tag.casefold() == model_name.casefold():
             local_parser.eqglayerdefs[tag] = definition
+
+    for tag, definition in parser.eqgparticlepointdefs.items():
+        if tag.casefold() == model_name.casefold():
+            local_parser.eqgparticlepointdefs[tag] = definition
 
     local_objects = _gather_export_objects([root_obj], parser)
     local_actions = _gather_export_actions(local_objects)
@@ -1162,13 +1171,11 @@ def _gather_export_objects(root_objects, parser):
 
         qdef = item.get("quaildef") if hasattr(item, "get") else None
 
-        # ----------------------------------------
-        # EQG armature → LAYERDEF collection
-        # ----------------------------------------
+        # EQG armature → auxiliary definition collections
         if isinstance(item, bpy.types.Object) and item.type == 'ARMATURE' and qdef == "eqgmodarmature":
             for owner_collection in item.users_collection:
                 for child_collection in owner_collection.children:
-                    if child_collection.get("quaildef") == "eqglayerdef":
+                    if child_collection.get("quaildef") in {"eqglayerdef", "eqgparticlepointdef"}:
                         add(child_collection)
 
         # ----------------------------------------
@@ -1436,6 +1443,7 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
     eqgmodels = []
     eqgskinnedmodels = []
     eqgters = []
+    eqgparticlepointdefs = []
     eqglayerdefs = []
 
     for obj in export_objects:
@@ -1444,6 +1452,9 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
             if qdef == "actordef":
                 actordefs.append(obj)
+
+            elif qdef == "eqgparticlepointdef":
+                eqgparticlepointdefs.append(obj)
 
             elif qdef == "eqglayerdef":
                 eqglayerdefs.append(obj)
@@ -1638,6 +1649,12 @@ def wce_encode(folder_path: str, context, selected_only: bool) -> str:
 
     for obj in eqgskinnedmodels:
         err = encode_eqgskinnedmodeldef(parser, obj)
+
+        if err:
+            errors.append(err)
+
+    for collection in eqgparticlepointdefs:
+        err = encode_eqgparticlepointdef(parser, collection)
 
         if err:
             errors.append(err)
