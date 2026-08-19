@@ -10,6 +10,7 @@ from ...common.eqgshaders import eqg_apply
 
 LAYER_MATERIAL_REGEX = re.compile(r"^([CA])_(.+)_S(\d+)_M(\d+)$", re.IGNORECASE)
 BLENDER_NUMBER_SUFFIX_REGEX = re.compile(r"\.\d{3}$")
+EQG_MODEL_QDEFS = {"eqgmodeldef", "eqgskinnedmodeldef"}
 
 
 def clean_model_tag(name: str):
@@ -55,7 +56,7 @@ def attachment_family_candidates(model_tag: str):
 
 
 def matching_layers(obj, variation: int):
-	model_tag = clean_model_tag(obj.name)
+	model_tag = model_tag_for_object(obj)
 	entries = list(iter_layer_entries())
 	a_candidates = attachment_family_candidates(model_tag)
 	a_families = {
@@ -132,6 +133,23 @@ def layer_texture_overrides(layer):
 		overrides[property_name] = image
 
 	return overrides
+
+
+def model_tag_for_object(obj):
+	if obj.get("quaildef") != "eqgskinnedmodeldef":
+		return clean_model_tag(obj.name)
+
+	armature = obj.parent if obj.parent and obj.parent.type == 'ARMATURE' else None
+
+	if armature is None:
+		for modifier in obj.modifiers:
+			if modifier.type == 'ARMATURE' and modifier.object:
+				armature = modifier.object
+				break
+
+	name = armature.name if armature else obj.name
+	name = name[:-9] if name.casefold().endswith("_armature") else name
+	return clean_model_tag(name)
 
 
 class QuailEqgVariationSlot(bpy.types.PropertyGroup):
@@ -222,7 +240,7 @@ def update_eqg_material_variation(self, context):
 		return
 
 	obj = self.id_data
-	if not obj or obj.get("quaildef") != "eqgmodeldef" or obj.type != 'MESH':
+	if not obj or obj.type != 'MESH' or obj.get("quaildef") not in EQG_MODEL_QDEFS:
 		return
 
 	err = apply_eqg_material_variation(obj, self.material_index)
@@ -251,7 +269,7 @@ class VIEW3D_PT_quail_eqg_material_variations(bpy.types.Panel):
 	@classmethod
 	def poll(cls, context):
 		obj = context.object
-		return bool(obj and obj.type == 'MESH' and obj.get("quaildef") == "eqgmodeldef" and context.mode in {'OBJECT', 'EDIT_MESH'})
+		return bool(obj and obj.type == 'MESH' and obj.get("quaildef") in EQG_MODEL_QDEFS and context.mode in {'OBJECT', 'EDIT_MESH'})
 
 	def draw(self, context):
 		row = self.layout.row(align=True)

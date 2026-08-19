@@ -1,8 +1,7 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false
 
 import bpy, bmesh
-import os
-from bpy.props import StringProperty, FloatProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty
+from bpy.props import PointerProperty, EnumProperty
 from .eqgface import ensure_face_layers, get_face_property, FACE_PROPS
 
 class QuailEqgTerDefProperties(bpy.types.PropertyGroup):
