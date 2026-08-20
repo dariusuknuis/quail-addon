@@ -385,7 +385,7 @@ def create_rendermethod_nodegroup():
     passable_attribute = nodes.new('ShaderNodeAttribute')
     passable_attribute.name = 'Passable Attribute'
     passable_attribute.label = 'PassableAttribute'
-    passable_attribute.attribute_name = "PASSABLE"
+    passable_attribute.attribute_name = "quail_passable"
     passable_attribute.location = (444, 732)
 
     passable_effective = nodes.new("ShaderNodeMath")

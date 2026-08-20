@@ -87,7 +87,7 @@ def encode_dmspritedef2(parser, obj) -> str:
     face_materials = []
     face_passable = []
     passable_attr = mesh.attributes.get(
-        "PASSABLE"
+        "quail_passable"
     )
 
     for poly_index, poly in enumerate(mesh.polygons):
@@ -192,12 +192,12 @@ def encode_dmspritedef2(parser, obj) -> str:
         poly.material_index = face_materials[i]
 
     passable_attr = mesh.attributes.get(
-        "PASSABLE"
+        "quail_passable"
     )
 
     if not passable_attr:
         passable_attr = mesh.attributes.new(
-            name="PASSABLE",
+            name="quail_passable",
             type='INT',
             domain='FACE'
         )
@@ -524,7 +524,7 @@ def encode_dmspritedef2(parser, obj) -> str:
     wce_sprite.face2s = []
 
     passable_attr = mesh.attributes.get(
-        "PASSABLE"
+        "quail_passable"
     )
 
     for poly_index, poly in enumerate(

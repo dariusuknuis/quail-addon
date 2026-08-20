@@ -143,7 +143,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
     # ----------------------------------------
 
     passable_attr = mesh.attributes.new(
-        name="PASSABLE",
+        name="quail_passable",
         type='INT',
         domain='FACE'
     )

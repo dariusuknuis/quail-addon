@@ -5,6 +5,9 @@ import bmesh
 
 VALID_QUAILDEFS = {
     "dmspritedef2",
+    "eqgmodeldef",
+    "eqgskinnedmodeldef",
+    "eqgterdef",
 }
 
 # --------------------------------------------------------
@@ -27,16 +30,16 @@ def _supported_object(obj):
 
 def _bm_get_layer(me: bpy.types.Mesh):
     """
-    Return (bm, layer) for PASSABLE face int layer in EDIT mode.
+    Return (bm, layer) for quail_passable face int layer in EDIT mode.
     Creates attribute if missing.
     """
 
     bm = bmesh.from_edit_mesh(me)
 
-    layer = bm.faces.layers.int.get("PASSABLE")
+    layer = bm.faces.layers.int.get("quail_passable")
 
     if layer is None:
-        layer = bm.faces.layers.int.new("PASSABLE")
+        layer = bm.faces.layers.int.new("quail_passable")
 
     return bm, layer
 
@@ -173,15 +176,15 @@ class MESH_OT_ensure_passable_attribute(bpy.types.Operator):
         obj = context.object
         mesh = obj.data
 
-        if mesh.attributes.get("PASSABLE") is None:
+        if mesh.attributes.get("quail_passable") is None:
 
             mesh.attributes.new(
-                name="PASSABLE",
+                name="quail_passable",
                 type='INT',
                 domain='FACE'
             )
 
-        self.report({'INFO'}, "PASSABLE attribute ensured")
+        self.report({'INFO'}, "quail_passable attribute ensured")
 
         return {'FINISHED'}
 
@@ -268,7 +271,7 @@ class VIEW3D_PT_quail_passable(bpy.types.Panel):
 
         layout.separator()
 
-        if obj.data.attributes.get("PASSABLE") is None:
+        if obj.data.attributes.get("quail_passable") is None:
 
             layout.operator(
                 "mesh.ensure_passable_attribute",
