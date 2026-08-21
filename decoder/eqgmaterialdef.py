@@ -8,7 +8,7 @@ from ..ui.panel.eqgmaterialdef import eqg_apply
 from ..common.eqgshaders import parse_shader_tag
 from ..common.image_loader import load_eqg_image
 
-def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], animsleep:int, textures:list[str], flip_tex: bool = False) -> str:
+def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:str, shadertag: str, properties:list[tuple[str, int, str]], flip_tex: bool = False) -> str:
     matname = f"{modelname}_{materialname}"
     if matname in bpy.data.materials:
         if mesh.materials.get(matname) is None:
@@ -239,12 +239,12 @@ def decode_eqgmaterialdef(ctx:Context, mesh:Mesh, modelname:str, materialname:st
         property_row.property_name = prop[0]
 
     # Add textures to the collection
-    for texture in textures:
-        tex_item = props.textures.add()
-        tex_item.texture_name = texture
+    # for texture in textures:
+    #     tex_item = props.textures.add()
+    #     tex_item.texture_name = texture
 
     # Set flag
-    props.animsleep = animsleep
+    # props.animsleep = animsleep
 
 
     err =  eqg_apply(material)

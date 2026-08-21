@@ -32,9 +32,9 @@ def _encode_material(model_tag: str, material):
 	result = eqgskinnedmodeldef.materialtag()
 	result.materialtag = _material_tag(model_tag, source)
 	result.shadertag = properties.shadertag
-	result.animsleep = properties.animsleep
+	# result.animsleep = properties.animsleep
 	result.properties = []
-	result.animtextures = []
+	# result.animtextures = []
 
 	for row in properties.property_rows:
 		property_name = row.property_name

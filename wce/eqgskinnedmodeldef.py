@@ -20,26 +20,17 @@ class eqgskinnedmodeldef:
 	class materialtag:
 		materialtag:str
 		shadertag:str
-		animsleep:int
 
 		def __init__(self):
 			self.materialtag = "" #3
 			self.shadertag = "" #3
-			self.animsleep = 0 #3
 			self.properties = []
-			self.animtextures = []
 
 		class property:
 			property:tuple[str, int, str]
 
 			def __init__(self):
 				self.property = ("", 0, "") #4
-
-		class texture:
-			texture:str
-
-			def __init__(self):
-				self.texture = "" #4
 
 	class bone:
 		bone:str
@@ -134,17 +125,6 @@ class eqgskinnedmodeldef:
 				records = property(r, "PROPERTY", 3)
 				propertyj.property = (str(records[1]), int(records[2]), str(records[3]))
 				materialtagi.properties.append(propertyj)
-			records = property(r, "ANIMSLEEP", 1)
-			materialtagi.animsleep = int(records[1])
-			records = property(r, "NUMANIMTEXTURES", 1)
-			numanimtextures = int(records[1])
-
-			materialtagi.animtextures = []
-			for j in range(numanimtextures):
-				texturej = type(materialtagi).texture()
-				records = property(r, "TEXTURE", 1)
-				texturej.texture = str(records[1])
-				materialtagi.animtextures.append(texturej)
 			self.materials.append(materialtagi)
 		records = property(r, "NUMBONES", 1)
 		numbones = int(records[1])
@@ -241,10 +221,6 @@ class eqgskinnedmodeldef:
 			w.write(f"\t\tNUMPROPERTIES {len(materialtagi.properties)}\n")
 			for propertyj in materialtagi.properties:
 				w.write(f"\t\t\tPROPERTY {propertyj.property[0]} {propertyj.property[1]} {propertyj.property[2]}\n")
-			w.write(f"\t\tANIMSLEEP {materialtagi.animsleep}\n")
-			w.write(f"\t\tNUMANIMTEXTURES {len(materialtagi.animtextures)}\n")
-			for texturej in materialtagi.animtextures:
-				w.write(f"\t\t\tTEXTURE \"{texturej.texture}\"\n")
 		w.write(f"\tNUMBONES {len(self.bones)}\n")
 		for bonei in self.bones:
 			w.write(f"\t\tBONE \"{bonei.bone}\"\n")

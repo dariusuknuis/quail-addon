@@ -25,10 +25,10 @@ def decode_eqgterdef(ctx:Context, eqgterdef:eqgterdef, location:mathutils.Vector
         properties = []
         for _, prop in enumerate(mat.properties):
             properties.append((prop.property[0], prop.property[1], prop.property[2]))
-        textures = []
-        for tex in mat.animtextures:
-            textures.append(tex.texture)
-        err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, properties, mat.animsleep, textures, flip_tex)
+        # textures = []
+        # for tex in mat.animtextures:
+        #     textures.append(tex.texture)
+        err = decode_eqgmaterialdef(ctx, mesh, eqgterdef.tag, mat.materialtag, mat.shadertag, properties, flip_tex)
         if err != "":
             return f"decode {mat.materialtag}: {err}"
 

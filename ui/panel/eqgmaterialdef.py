@@ -627,12 +627,6 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
         update=update_shader
     )
 
-    animsleep: IntProperty(
-        name="Anim Sleep",
-        description="Anim Sleep",
-        default=0
-    )
-
 def draw_eqgmaterialdefinition_in_transform(self, context):
     material = get_eqg_material(context)
     if material is None:
@@ -724,7 +718,7 @@ def draw_eqgmaterialdefinition_in_transform(self, context):
     add.index = -1
 
     row = box.row()
-    row.prop(material.quail_eqgmaterialdef, "animsleep")
+    # row.prop(material.quail_eqgmaterialdef, "animsleep")
 
 from bpy_extras.io_utils import ImportHelper
 

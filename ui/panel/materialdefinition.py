@@ -5,6 +5,167 @@ import os
 from bpy.props import StringProperty, FloatProperty, FloatVectorProperty,BoolProperty, PointerProperty, IntProperty, EnumProperty
 from ...common.s3dmaterial import update_userdefined, update_rendermethod_node, update_transparent, update_simplesprite, update_twosided, sprite_items
 from ...common.rendermethod import create_rendermethod_nodegroup
+from ...common import state
+from ...decoder.simplespritedef import create_frame_nodegroup
+
+
+def first_image_texture(material):
+    if not material.use_nodes or not material.node_tree:
+        return None
+
+    for node in material.node_tree.nodes:
+        if node.type == 'TEX_IMAGE' and node.image:
+            return node.image
+
+    return None
+
+
+def image_filename(image):
+    source_name = image.get("quail_source_name", "")
+
+    if source_name:
+        return os.path.basename(str(source_name)).lower()
+
+    if image.filepath:
+        filename = os.path.basename(
+            bpy.path.abspath(image.filepath)
+        )
+
+        if filename:
+            return filename.lower()
+
+    return os.path.basename(image.name).lower()
+
+
+def default_simplesprite_tag(material):
+    name = material.name
+
+    if name.upper().endswith("_MDF"):
+        name = name[:-4]
+
+    return f"{name.upper()}_SPRITE"
+
+
+def create_default_simplesprite(material, image):
+    if not image:
+        return "", "No image texture node found"
+
+    requested_tag = default_simplesprite_tag(material)
+
+    # Always create a new datablock. Blender will add a numeric suffix if
+    # something with this name already exists, preventing an existing
+    # SimpleSprite from being overwritten.
+    sprite = bpy.data.node_groups.new(
+        requested_tag,
+        'ShaderNodeTree',
+    )
+    sprite["quaildef"] = "simplespritedef"
+
+    props = sprite.quail_simplesprite
+    previous_updating = state.QUAIL_UPDATING
+    state.QUAIL_UPDATING = True
+
+    try:
+        # ------------------------------------------------
+        # SimpleSprite interface
+        # ------------------------------------------------
+
+        sprite.interface.new_socket(
+            name="sRGB Texture",
+            in_out='OUTPUT',
+            socket_type="NodeSocketColor",
+        )
+
+        sprite.interface.new_socket(
+            name="Alpha",
+            in_out='OUTPUT',
+            socket_type="NodeSocketFloat",
+        )
+
+        nodes = sprite.nodes
+        links = sprite.links
+
+        group_output = nodes.new("NodeGroupOutput")
+        group_output.location = (600, 0)
+
+        # ------------------------------------------------
+        # SimpleSprite properties
+        # ------------------------------------------------
+
+        props.skipframes = False
+        props.has_sleep = False
+        props.sleep = 0
+        props.has_current_frame = False
+        props.current_frame = 0
+        props.frames.clear()
+
+        # ------------------------------------------------
+        # One default frame
+        # ------------------------------------------------
+
+        frame = props.frames.add()
+        frame.frame_id = 0
+        frame.frame_name = f"{sprite.name}_FRAME_0"
+        frame.files.clear()
+
+        file = frame.files.add()
+        file.file_index = 0
+        file.file_name = image_filename(image)
+        file.image_name = image.name
+        file.raw_string = file.file_name
+        file.texture_mode = 'BASE'
+        file.palette_index = 0
+        file.scale = 1.0
+        file.blend = 0.0
+
+        frame.numfiles = 1
+
+        # ------------------------------------------------
+        # Build the frame through the real frame builder
+        # ------------------------------------------------
+
+        frame_group = create_frame_nodegroup(
+            None,
+            frame,
+            sprite.name,
+            force_rebuild=False,
+        )
+
+        if not frame_group:
+            raise RuntimeError(
+                f"Unable to create frame group for {sprite.name}"
+            )
+
+        frame.frame_node_name = frame_group.name
+
+        frame_node = nodes.new("ShaderNodeGroup")
+        frame_node.node_tree = frame_group
+        frame_node.location = (0, 0)
+        frame_node["frame_id"] = 0
+
+        for socket in frame_node.inputs:
+            socket.hide = True
+
+        links.new(
+            frame_node.outputs["Color"],
+            group_output.inputs["sRGB Texture"],
+        )
+        links.new(
+            frame_node.outputs["Alpha"],
+            group_output.inputs["Alpha"],
+        )
+
+        props.numframes = 1
+        props.active_frame = 0
+
+    except Exception as exception:
+        bpy.data.node_groups.remove(sprite)
+        return "", str(exception)
+
+    finally:
+        state.QUAIL_UPDATING = previous_updating
+
+    return sprite.name, ""
 
 class QuailMaterialDefinitionProperties(bpy.types.PropertyGroup):
 
@@ -197,11 +358,40 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         return context.object and context.object.active_material
 
     def execute(self, context):
-
         material = context.object.active_material
 
         if not material:
             return {'CANCELLED'}
+
+        source_qdef = material.get("quaildef")
+
+        # ------------------------------------------------
+        # EQG conversion will use a separate path
+        # ------------------------------------------------
+
+        if source_qdef == "eqgmaterialdef":
+            self.report(
+                {'ERROR'},
+                "EQGMATERIALDEF conversion is not implemented yet",
+            )
+            return {'CANCELLED'}
+
+        # ------------------------------------------------
+        # Capture optional source image
+        # ------------------------------------------------
+
+        source_image = first_image_texture(material)
+        sprite_tag = ""
+
+        if source_image:
+            sprite_tag, err = create_default_simplesprite(
+                material,
+                source_image,
+            )
+
+            if err:
+                self.report({'ERROR'}, err)
+                return {'CANCELLED'}
 
         # ------------------------------------------------
         # Rename
@@ -216,15 +406,14 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         # Tag
         # ------------------------------------------------
 
-        material['quaildef'] = 'materialdefinition'
-
+        material["quaildef"] = "materialdefinition"
         props = material.quail_materialdefinition
 
         # ------------------------------------------------
         # Defaults
         # ------------------------------------------------
 
-        props.transparent_override = True
+        props.transparent_override = False
         props.variation = False
         props.rgbpen = (1.0, 1.0, 1.0)
         props.brightness = 1
@@ -235,18 +424,26 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
         props.uvshiftperms = (0.0, 0.0)
         props.twosided = False
 
+        # Delay enabling USERDEFINED until after the
+        # RENDERMETHOD node has been created.
+        props.use_userdefined = False
+        props.userdefined_index = 2
+
         # ------------------------------------------------
-        # Build material node tree
+        # Build MATERIALDEFINITION node tree
         # ------------------------------------------------
 
         material.use_nodes = True
 
         if not material.node_tree:
+            self.report(
+                {'ERROR'},
+                "Unable to create material node tree",
+            )
             return {'CANCELLED'}
 
         nodes = material.node_tree.nodes
         links = material.node_tree.links
-
         nodes.clear()
 
         group_tree = create_rendermethod_nodegroup()
@@ -260,7 +457,7 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
 
         links.new(
             group_node.outputs["Shader"],
-            output.inputs["Surface"]
+            output.inputs["Surface"],
         )
 
         hide_inputs = {
@@ -280,12 +477,39 @@ class MATERIAL_OT_add_default_wldmatdef(bpy.types.Operator):
                 socket.hide = True
 
         # ------------------------------------------------
-        # Apply panel-driven settings
+        # Apply USERDEFINED 2
         # ------------------------------------------------
 
+        # Setting this to True invokes update_userdefined(),
+        # which applies the previously assigned index 2.
+        props.use_userdefined = True
+
         update_rendermethod_node(props, context)
-        update_simplesprite(props, context)
+
+        # ------------------------------------------------
+        # Assign optional SimpleSprite
+        # ------------------------------------------------
+
+        if sprite_tag:
+            # This invokes update_simplesprite() and adds the
+            # SimpleSprite group node to the material.
+            props.simplespritetag = sprite_tag
+        else:
+            props.simplespritetag = "NONE"
+
         update_twosided(props, context)
+
+        if sprite_tag:
+            self.report(
+                {'INFO'},
+                f"Created {material.name} using "
+                f"USERDEFINED 2 and {sprite_tag}",
+            )
+        else:
+            self.report(
+                {'INFO'},
+                f"Created {material.name} using USERDEFINED 2",
+            )
 
         return {'FINISHED'}
 

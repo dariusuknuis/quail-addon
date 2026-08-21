@@ -227,7 +227,7 @@ def decode_eqgskinnedmodeldef(
 				(prop.property[0], prop.property[1], prop.property[2])
 				for prop in material.properties
 			]
-			textures = [texture.texture for texture in material.animtextures]
+			# textures = [texture.texture for texture in material.animtextures]
 			err = decode_eqgmaterialdef(
 				ctx,
 				mesh,
@@ -235,8 +235,8 @@ def decode_eqgskinnedmodeldef(
 				material.materialtag,
 				material.shadertag,
 				properties,
-				material.animsleep,
-				textures,
+				# material.animsleep,
+				# textures,
 				False,
 			)
 

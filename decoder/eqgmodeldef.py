@@ -407,7 +407,7 @@ def decode_eqgmodeldef(
             (prop.property[0], prop.property[1], prop.property[2])
             for prop in mat.properties
         ]
-        textures = [tex.texture for tex in mat.animtextures]
+        # textures = [tex.texture for tex in mat.animtextures]
         err = decode_eqgmaterialdef(
             ctx,
             mesh,
@@ -415,8 +415,6 @@ def decode_eqgmodeldef(
             mat.materialtag,
             mat.shadertag,
             properties,
-            mat.animsleep,
-            textures,
             flip_tex,
         )
 
