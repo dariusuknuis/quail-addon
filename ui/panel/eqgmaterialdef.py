@@ -1,14 +1,14 @@
 # pyright: basic, reportGeneralTypeIssues=false, reportInvalidTypeForm=false, reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportMissingImports=false
 
 import bpy
-from bpy.types import Material
 from bpy_extras.io_utils import ImportHelper
 import os
-from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, BoolProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
+from bpy.props import StringProperty, FloatProperty, FloatVectorProperty, PointerProperty, IntProperty, EnumProperty, CollectionProperty
 from ...logger.error import error
 from ...common.eqgshaders import SHADER_FAMILIES, eqg_apply, parse_shader_tag
 from ...common.eqgshaders import replace_shadertag_alpha_mode, replace_shadertag_shader
 from ...common import state
+from ...convert.material import convert_to_eqgmaterialdef
 
 
 def get_eqg_material(context):
@@ -628,99 +628,97 @@ class QuailEqgMaterialDefinitionProperties(bpy.types.PropertyGroup):
     )
 
 def draw_eqgmaterialdefinition_in_transform(self, context):
-    material = get_eqg_material(context)
-    if material is None:
-        return
+	material = getattr(context, "material", None)
 
-    box = self.layout.box()
-    box.label(text="EQGMATERIALDEF")
+	if material is None:
+		obj = getattr(context, "object", None)
 
-    # Original WCE shader tag.
-    row = box.row()
-    row.prop(material.quail_eqgmaterialdef, "shadertag")
+		if obj is not None:
+			material = obj.active_material
 
-    # Parsed classifications.
-    row = box.row(align=True)
-    row.prop(material.quail_eqgmaterialdef, "alpha_mode")
-    row.prop(material.quail_eqgmaterialdef, "shader")
+	if material is None:
+		return
 
-    # Actual properties present on this material.
-    for index, item in enumerate(material.quail_eqgmaterialdef.property_rows):
-        row = box.row(align=True)
+	layout = self.layout
 
-        property_name = item.property_name
+	if material.get("quaildef") != "eqgmaterialdef":
+		box = layout.box()
+		box.operator("material.add_default_eqgmatdef", text="Set EQG Material")
+		return
 
-        # This button displays the stored property name.
-        # The popup only contains properties from settings.shader.
-        choose = row.operator_menu_enum(
-            "material.choose_eqg_shader_property",
-            "property_name",
-            text=property_name or "Choose Property",
-        )
-        choose.index = index
+	props = material.quail_eqgmaterialdef
+	box = layout.box()
+	box.label(text="EQGMATERIALDEF")
 
-        # Draw the corresponding typed Blender property.
-        if property_name and hasattr(material.quail_eqgmaterialdef, property_name):
-            rna_property = material.quail_eqgmaterialdef.bl_rna.properties.get(
-                property_name
-            )
+	# Original WCE shader tag.
+	row = box.row()
+	row.prop(props, "shadertag")
 
-            is_image_property = (
-                rna_property is not None
-                and rna_property.type == 'POINTER'
-                and rna_property.fixed_type.identifier == "Image"
-            )
+	# Parsed classifications.
+	row = box.row(align=True)
+	row.prop(props, "alpha_mode")
+	row.prop(props, "shader")
 
-            if is_image_property:
-                row.prop_search(
-                    material.quail_eqgmaterialdef,
-                    property_name,
-                    bpy.data,
-                    "images",
-                    text="",
-                )
+	# Actual properties present on this material.
+	for index, item in enumerate(props.property_rows):
+		row = box.row(align=True)
+		property_name = item.property_name
 
-                load = row.operator(
-                    "material.load_eqg_image",
-                    text="",
-                    icon="FILE_FOLDER",
-                )
-                load.material_name = material.name
-                load.property_name = property_name
-            else:
-                row.prop(
-                    material.quail_eqgmaterialdef,
-                    property_name,
-                    text="",
-                )
-        else:
-            row.label(
-                text="Unsupported property",
-                icon="ERROR",
-            )
+		choose = row.operator_menu_enum(
+			"material.choose_eqg_shader_property",
+			"property_name",
+			text=property_name or "Choose Property",
+		)
+		choose.index = index
 
-        remove = row.operator(
-            "material.remove_eqg_shader_property",
-            text="",
-            icon="X",
-        )
-        remove.index = index
+		if property_name and hasattr(props, property_name):
+			rna_property = props.bl_rna.properties.get(property_name)
 
-    # Add a new property from the current family's choices.
-    row = box.row()
+			is_image_property = (
+				rna_property is not None
+				and rna_property.type == 'POINTER'
+				and rna_property.fixed_type.identifier == "Image"
+			)
 
-    add = row.operator_menu_enum(
-        "material.choose_eqg_shader_property",
-        "property_name",
-        text="Add Property",
-        icon="ADD",
-    )
-    add.index = -1
+			if is_image_property:
+				row.prop_search(
+					props,
+					property_name,
+					bpy.data,
+					"images",
+					text="",
+				)
 
-    row = box.row()
-    # row.prop(material.quail_eqgmaterialdef, "animsleep")
+				load = row.operator(
+					"material.load_eqg_image",
+					text="",
+					icon="FILE_FOLDER",
+				)
+				load.material_name = material.name
+				load.property_name = property_name
 
-from bpy_extras.io_utils import ImportHelper
+			else:
+				row.prop(props, property_name, text="")
+
+		else:
+			row.label(text="Unsupported property", icon="ERROR")
+
+		remove = row.operator(
+			"material.remove_eqg_shader_property",
+			text="",
+			icon="X",
+		)
+		remove.index = index
+
+	# Add a new property from the current family's choices.
+	row = box.row()
+	add = row.operator_menu_enum(
+		"material.choose_eqg_shader_property",
+		"property_name",
+		text="Add Property",
+		icon="ADD",
+	)
+	add.index = -1
 
 
 class MATERIAL_OT_load_eqg_image(bpy.types.Operator, ImportHelper):
@@ -896,69 +894,21 @@ class MATERIAL_OT_add_default_eqgmatdef(bpy.types.Operator):
 
     def execute(self, context):
         material = context.object.active_material
-        if not material:
-            return {"CANCELLED"}
 
-        material["quaildef"] = "eqgmaterialdef"
+        if material is None:
+            return {'CANCELLED'}
 
-        previous_updating = state.QUAIL_UPDATING
-        state.QUAIL_UPDATING = True
+        err = convert_to_eqgmaterialdef(material, context)
 
-        try:
-            material.quail_eqgmaterialdef.shadertag = "Opaque_MaxCB1.fx"
-
-            alpha_mode, shader = parse_shader_tag(
-                material.quail_eqgmaterialdef.shadertag
-            )
-
-            material.quail_eqgmaterialdef.alpha_mode = alpha_mode
-            material.quail_eqgmaterialdef.shader = shader
-
-            material.quail_eqgmaterialdef.e_fShininess0 = 12.0
-            material.quail_eqgmaterialdef.e_fBumpiness0 = 0.0
-            material.quail_eqgmaterialdef.e_fCoverageScale = 0.05
-            material.quail_eqgmaterialdef.e_fCoverageScale0 = 0.05
-            material.quail_eqgmaterialdef.e_fEnvMapStrength0 = 1.0
-            material.quail_eqgmaterialdef.e_fFresnelBias = 0.3
-            material.quail_eqgmaterialdef.e_fFresnelPower = 8.0
-            material.quail_eqgmaterialdef.e_fGloss0 = 0.5
-            material.quail_eqgmaterialdef.e_fReflectionAmount = 0.8
-
-            material.quail_eqgmaterialdef.e_fReflectionColor = (
-                1.0, 1.0, 1.0, 1.0
-            )
-            material.quail_eqgmaterialdef.e_fWaterColor1 = (
-                1.0, 1.0, 1.0, 1.0
-            )
-            material.quail_eqgmaterialdef.e_fWaterColor2 = (
-                1.0, 1.0, 1.0, 1.0
-            )
-
-            for i in range(10):
-                setattr(material.quail_eqgmaterialdef, f"e_fScale{i}", 1.0)
-                setattr(material.quail_eqgmaterialdef, f"e_fGrassDensity{i}", 0.0)
-                setattr(material.quail_eqgmaterialdef, f"e_TextureDetail{i}", "")
-
-            material.quail_eqgmaterialdef.e_fSlide1X = 0.02
-            material.quail_eqgmaterialdef.e_fSlide1Y = 0.02
-            material.quail_eqgmaterialdef.e_fSlide2X = 0.02
-            material.quail_eqgmaterialdef.e_fSlide2Y = 0.02
-
-            # String texture properties can correctly use "".
-            material.quail_eqgmaterialdef.e_TextureDiffuse0 = ""
-            material.quail_eqgmaterialdef.e_TextureNormal0 = ""
-            material.quail_eqgmaterialdef.e_TextureCoverage0 = ""
-            # Continue resetting the remaining texture strings.
-
-        finally:
-            state.QUAIL_UPDATING = previous_updating
-
-        err = eqg_apply(material)
         if err:
-            error(err)
-            return {"CANCELLED"}
+            self.report({'ERROR'}, err)
+            return {'CANCELLED'}
 
-        return {"FINISHED"}
+        self.report(
+            {'INFO'},
+            f"Converted {material.name} to EQGMATERIALDEF",
+        )
+        return {'FINISHED'}
 
 
 # Register classes
