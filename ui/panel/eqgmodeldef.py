@@ -58,58 +58,67 @@ class PROPERTIES_PT_quail_eqgmodeldef(bpy.types.Panel):
         pass
 
 def draw_eqgmodeldef_in_transform(self, context):
-    obj = context.object
-    if not obj:
-        return
-    if obj.get('quaildef') != 'eqgmodeldef':
-        return
+	obj = context.object
 
-    layout = self.layout
-    box = layout.box()
-    box.label(text="EQGMODELDEF")
-    row = box.row()
-    row.prop(obj.quail_eqgmodeldef, "version")
+	if (
+		not obj
+		or obj.type != 'MESH'
+		or obj.get("quaildef") != "eqgmodeldef"
+	):
+		return
 
-    if context.mode != 'EDIT_MESH':
-        return
+	layout = self.layout
 
-    mesh = obj.data
-    try:
-        # This might fail if mesh is corrupted
-        ensure_face_layers(mesh)
+	box = layout.box()
+	box.label(text="EQGMODELDEF")
 
-        bm = bmesh.from_edit_mesh(mesh)
-        selected_faces = [f for f in bm.faces if f.select]
+	row = box.row()
+	row.prop(obj.quail_eqgmodeldef, "version")
 
-        if len(selected_faces) != 1:
-            return
+	if context.mode != 'EDIT_MESH':
+		return
 
-        face = selected_faces[0]
-        face_index = face.index
+	mesh = obj.data
 
-        # Create a temporary property group once during registration
-        scene = context.scene
+	try:
+		ensure_face_layers(mesh)
 
-        # Draw UI for face attributes
-        box = layout.box()
-        box.label(text=f"Face Properties ({face_index})")
+		bm = bmesh.from_edit_mesh(mesh)
+		bm.faces.ensure_lookup_table()
 
-        # Use custom UI elements for boolean properties
-        for prop_name in FACE_PROPS:
-            prop_value = get_face_property(mesh, face_index, prop_name)
-            row = box.row()
+		selected_faces = [face for face in bm.faces if face.select]
 
-            # Create a checkbox-like button
-            icon = 'CHECKBOX_HLT' if prop_value else 'CHECKBOX_DEHLT'
-            op = row.operator("mesh.quail_toggle_face_property", text=prop_name, icon=icon)
-            op.face_index = face_index
-            op.prop_name = prop_name
-            op.new_value = not prop_value  # Toggle value when clicked
+		if len(selected_faces) != 1:
+			return
 
-    except Exception as e:
-        layout = self.layout
-        row = box.row()
-        row.label(text=f"Error processing face data: {e}")
+		face = selected_faces[0]
+		face_index = face.index
+
+		face_box = layout.box()
+		face_box.label(text=f"Face Properties ({face_index})")
+
+		for prop_name in FACE_PROPS:
+			prop_value = get_face_property(mesh, face_index, prop_name)
+			row = face_box.row()
+			icon = (
+				'CHECKBOX_HLT'
+				if prop_value
+				else 'CHECKBOX_DEHLT'
+			)
+
+			operator = row.operator(
+				"mesh.quail_toggle_face_property",
+				text=prop_name,
+				icon=icon,
+			)
+
+			operator.face_index = face_index
+			operator.prop_name = prop_name
+			operator.new_value = not prop_value
+
+	except Exception as exception:
+		error_box = layout.box()
+		error_box.label(text=f"Error processing face data: {exception}", icon='ERROR')
 
 class MESH_OT_quail_toggle_face_property(bpy.types.Operator):
     """Toggle face property value"""

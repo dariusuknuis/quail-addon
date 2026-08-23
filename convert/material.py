@@ -11,7 +11,7 @@ from ..common import base_tag, state
 from ..common.eqgshaders import SHADER_FAMILIES, eqg_apply, replace_shadertag_alpha_mode, replace_shadertag_shader
 from ..common.rendermethod import create_rendermethod_nodegroup
 from ..common.s3dmaterial import update_rendermethod_node, update_twosided
-from ..decoder.simplespritedef import create_frame_nodegroup
+# from ..decoder.simplespritedef import create_frame_nodegroup
 
 
 class ConversionError(Exception):
@@ -427,6 +427,7 @@ def _add_frame_file(
 def create_s3d_simplesprite(
 	plan: S3DMaterialPlan,
 ) -> tuple[str, str]:
+	from ..decoder.simplespritedef import create_frame_nodegroup
 	if plan.base_texture is None:
 		return "", ""
 

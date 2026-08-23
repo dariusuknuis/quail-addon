@@ -77,39 +77,41 @@ class QuailDMSpriteDefinitionProperties(bpy.types.PropertyGroup):
 # =========================================================
 
 def draw_dmspritedefinition_in_transform(self, context):
-    obj = context.object
-    if not obj or obj.get('quaildef') != 'dmspritedefinition':
-        return
+	obj = context.object
 
-    props = obj.quail_dmspritedefinition
-    layout = self.layout
+	if (
+		not obj
+		or obj.type != 'MESH'
+		or obj.get("quaildef") != "dmspritedefinition"
+	):
+		return
 
-    box = layout.box()
-    box.label(text="DMSPRITEDEFINITION")
+	layout = self.layout
+	props = obj.quail_dmspritedefinition
 
-    box.prop(props, "fragment1")
+	box = layout.box()
+	box.label(text="DMSPRITEDEFINITION")
 
-    box.prop(props, "materialpalette")
+	box.prop(props, "fragment1")
+	box.prop(props, "materialpalette")
+	box.prop(props, "fragment3")
+	box.prop(props, "hascenter")
+	box.prop(props, "hasparams1")
 
-    box.prop(props, "fragment3")
+	if props.hasparams1:
+		row = box.row(align=True)
+		row.prop(props, "params1_x")
+		row.prop(props, "params1_y")
+		row.prop(props, "params1_z")
 
-    box.prop(props, "hascenter")
+	box.prop(props, "data8")
+	box.prop(props, "hasparams2")
 
-    box.prop(props, "hasparams1")
-    if props.hasparams1:
-        row = box.row(align=True)
-        row.prop(props, "params1_x")
-        row.prop(props, "params1_y")
-        row.prop(props, "params1_z")
-
-    box.prop(props, "data8")
-
-    box.prop(props, "hasparams2")
-    if props.hasparams2:
-        row = box.row(align=True)
-        row.prop(props, "params2_x")
-        row.prop(props, "params2_y")
-        row.prop(props, "params2_z")
+	if props.hasparams2:
+		row = box.row(align=True)
+		row.prop(props, "params2_x")
+		row.prop(props, "params2_y")
+		row.prop(props, "params2_z")
 
 # =========================================================
 # REGISTER

@@ -58,87 +58,86 @@ class PROPERTIES_PT_quail_eqgterdef(bpy.types.Panel):
         pass
 
 def draw_eqgterdef_in_transform(self, context):
-    obj = context.object
+	obj = context.object
 
-    if not obj:
-        return
+	if (
+		not obj
+		or obj.type != 'MESH'
+		or obj.get("quaildef") != "eqgterdef"
+	):
+		return
 
-    if obj.get('quaildef') != 'eqgterdef':
-        return
+	layout = self.layout
 
-    if obj.type != 'MESH':
-        return
+	box = layout.box()
+	box.label(text="EQGTERDEF")
 
-    layout = self.layout
+	row = box.row()
+	row.prop(
+		obj.quail_eqgterdef,
+		"version",
+	)
 
-    box = layout.box()
-    box.label(text="EQGTERDEF")
+	if context.mode != 'EDIT_MESH':
+		return
 
-    row = box.row()
-    row.prop(
-        obj.quail_eqgterdef,
-        "version"
-    )
+	mesh = obj.data
 
-    if context.mode != 'EDIT_MESH':
-        return
+	try:
+		ensure_face_layers(mesh)
 
-    mesh = obj.data
+		bm = bmesh.from_edit_mesh(mesh)
+		bm.faces.ensure_lookup_table()
+		bm.faces.index_update()
 
-    try:
-        ensure_face_layers(mesh)
+		selected_faces = [
+			face
+			for face in bm.faces
+			if face.select
+		]
 
-        bm = bmesh.from_edit_mesh(mesh)
-        bm.faces.ensure_lookup_table()
-        bm.faces.index_update()
+		if len(selected_faces) != 1:
+			return
 
-        selected_faces = [
-            face
-            for face in bm.faces
-            if face.select
-        ]
+		face = selected_faces[0]
+		face_index = face.index
 
-        if len(selected_faces) != 1:
-            return
+		face_box = layout.box()
+		face_box.label(
+			text=f"Face Properties ({face_index})"
+		)
 
-        face = selected_faces[0]
-        face_index = face.index
+		for prop_name in FACE_PROPS:
+			prop_value = get_face_property(
+				mesh,
+				face_index,
+				prop_name,
+			)
 
-        box = layout.box()
-        box.label(
-            text=f"Face Properties ({face_index})"
-        )
+			row = face_box.row()
 
-        for prop_name in FACE_PROPS:
-            prop_value = get_face_property(
-                mesh,
-                face_index,
-                prop_name
-            )
+			icon = (
+				'CHECKBOX_HLT'
+				if prop_value
+				else 'CHECKBOX_DEHLT'
+			)
 
-            row = box.row()
+			operator = row.operator(
+				"mesh.quail_toggle_face_property",
+				text=prop_name,
+				icon=icon,
+			)
 
-            icon = (
-                'CHECKBOX_HLT'
-                if prop_value
-                else 'CHECKBOX_DEHLT'
-            )
+			operator.face_index = face_index
+			operator.prop_name = prop_name
+			operator.new_value = not prop_value
 
-            op = row.operator(
-                "mesh.quail_toggle_face_property",
-                text=prop_name,
-                icon=icon
-            )
-
-            op.face_index = face_index
-            op.prop_name = prop_name
-            op.new_value = not prop_value
-
-    except Exception as e:
-        box = layout.box()
-        box.label(
-            text=f"Error processing face data: {e}"
-        )
+	except Exception as exception:
+		error_box = layout.box()
+		error_box.label(
+			text=f"Error processing face data: {exception}",
+			icon='ERROR',
+		)
 
 # Register classes
 def register():
