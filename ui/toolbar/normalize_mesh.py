@@ -26,8 +26,8 @@ class VIEW3D_PT_quail_mesh_cleanup(bpy.types.Panel):
         return obj.get("quaildef") in {
             "dmspritedef2",
             "dmspritedefinition",
-            "eqterdef",
-            "eqmodeldef",
+            "eqgterdef",
+            "eqgmodeldef",
         }
 
     def draw(self, context):
@@ -63,8 +63,8 @@ class QUAIL_OT_normalize_game_vertices(Operator):
         return obj.get("quaildef") in {
             "dmspritedef2",
             "dmspritedefinition",
-            "eqterdef",
-            "eqmodeldef",
+            "eqgterdef",
+            "eqgmodeldef",
         }
 
     def execute(self, context):
