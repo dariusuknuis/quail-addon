@@ -242,6 +242,45 @@ def _ensure_int_face_attribute(
 		item.value = default
 
 
+def _ensure_bool_face_attribute(
+    mesh: bpy.types.Mesh,
+    name: str,
+    default: bool,
+) -> None:
+    attribute = mesh.attributes.get(name)
+
+    if (
+        attribute is not None
+        and attribute.domain == 'FACE'
+        and attribute.data_type == 'BOOLEAN'
+    ):
+        return
+
+    # Preserve existing 0/1 values when converting an INT face attribute.
+    old_values = None
+
+    if attribute is not None and attribute.domain == 'FACE':
+        old_values = [
+            bool(item.value)
+            for item in attribute.data
+        ]
+
+    if attribute is not None:
+        mesh.attributes.remove(attribute)
+
+    attribute = mesh.attributes.new(
+        name=name,
+        type='BOOLEAN',
+        domain='FACE',
+    )
+
+    for index, item in enumerate(attribute.data):
+        if old_values is not None and index < len(old_values):
+            item.value = old_values[index]
+        else:
+            item.value = bool(default)
+
+
 def _ensure_dmface_data(mesh: bpy.types.Mesh) -> None:
 	attribute = mesh.color_attributes.get("DATA")
 
@@ -264,7 +303,7 @@ def _ensure_dmface_data(mesh: bpy.types.Mesh) -> None:
 
 def _ensure_eqg_face_attributes(mesh: bpy.types.Mesh) -> None:
 	for name in EQG_FACE_ATTRIBUTES:
-		_ensure_int_face_attribute(mesh, name, 0)
+		_ensure_bool_face_attribute(mesh, name, 0)
 
 
 def _ensure_vertex_normal_modifier(obj: bpy.types.Object) -> None:

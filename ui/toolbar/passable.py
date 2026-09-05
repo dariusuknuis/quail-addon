@@ -30,16 +30,16 @@ def _supported_object(obj):
 
 def _bm_get_layer(me: bpy.types.Mesh):
     """
-    Return (bm, layer) for quail_passable face int layer in EDIT mode.
+    Return (bm, layer) for quail_passable face bool layer in EDIT mode.
     Creates attribute if missing.
     """
 
     bm = bmesh.from_edit_mesh(me)
 
-    layer = bm.faces.layers.int.get("quail_passable")
+    layer = bm.faces.layers.bool.get("quail_passable")
 
     if layer is None:
-        layer = bm.faces.layers.int.new("quail_passable")
+        layer = bm.faces.layers.bool.new("quail_passable")
 
     return bm, layer
 
@@ -70,7 +70,7 @@ def _obj_get_passable_selected(obj):
     if not faces:
         return False
 
-    return all(int(f[layer]) == 1 for f in faces)
+    return all(bool(f[layer]) for f in faces)
 
 
 def _obj_set_passable_selected(obj, value):
@@ -90,8 +90,6 @@ def _obj_set_passable_selected(obj, value):
 
     bm, layer = _bm_get_layer(me)
 
-    v = 1 if value else 0
-
     changed = False
 
     for f in bm.faces:
@@ -99,7 +97,7 @@ def _obj_set_passable_selected(obj, value):
         if not f.select:
             continue
 
-        f[layer] = v
+        f[layer] = bool(value)
         changed = True
 
     if changed:
@@ -180,7 +178,7 @@ class MESH_OT_ensure_passable_attribute(bpy.types.Operator):
 
             mesh.attributes.new(
                 name="quail_passable",
-                type='INT',
+                type='BOOLEAN',
                 domain='FACE'
             )
 

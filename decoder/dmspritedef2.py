@@ -144,7 +144,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
 
     passable_attr = mesh.attributes.new(
         name="quail_passable",
-        type='INT',
+        type='BOOLEAN',
         domain='FACE'
     )
 
@@ -153,7 +153,7 @@ def decode_dmspritedef2(ctx:Context, sprite:dmspritedef2) -> str:
         if i >= len(passable_attr.data):
             break
 
-        passable_attr.data[i].value = int(face.passable)
+        passable_attr.data[i].value = bool(face.passable)
 
     if len(sprite.uvs) > 0:
         uvlayer = mesh.uv_layers.new()
