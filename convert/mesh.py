@@ -114,68 +114,112 @@ def _ensure_vertex_normals(mesh: bpy.types.Mesh) -> None:
 
 
 def _ensure_point_vertex_colors(mesh: bpy.types.Mesh) -> bool:
-	attribute = mesh.color_attributes.get("vertex_colors")
+	"""
+	Convert a mesh color attribute into the EQ vertex-color format.
 
-	if attribute is not None and attribute.domain == 'POINT':
-		return True
+	An existing attribute named "vertex_colors" takes priority.
+	Otherwise, the active color attribute or first available color
+	attribute is used.
+	"""
 
-	source = attribute
+	source = mesh.color_attributes.get("vertex_colors")
 
 	if source is None:
-		for candidate in mesh.color_attributes:
-			if candidate.domain == 'CORNER':
-				source = candidate
-				break
+		source = mesh.color_attributes.active_color
+
+	if source is None and len(mesh.color_attributes) > 0:
+		source = mesh.color_attributes[0]
 
 	if source is None:
 		return False
 
-	# Copy loop colors before removing a CORNER attribute named
-	# "vertex_colors"; accessing its data after removal is invalid.
+	if (
+		source.name == "vertex_colors"
+		and source.domain == 'POINT'
+		and source.data_type == 'FLOAT_COLOR'
+	):
+		return True
+
+	if source.domain not in {'POINT', 'CORNER'}:
+		return False
+
+	source_name = source.name
+	source_domain = source.domain
 	source_colors = [
 		tuple(item.color)
 		for item in source.data
 	]
 
-	if attribute is not None:
-		mesh.color_attributes.remove(attribute)
+	# Remove an incompatible attribute occupying the required name.
+	existing = mesh.color_attributes.get("vertex_colors")
+
+	if existing is not None and existing != source:
+		mesh.color_attributes.remove(existing)
+
+	mesh.color_attributes.remove(source)
 
 	point_attribute = mesh.color_attributes.new(
 		name="vertex_colors",
 		type='FLOAT_COLOR',
 		domain='POINT',
 	)
-	accumulated = [
-		[0.0, 0.0, 0.0, 0.0]
-		for _ in mesh.vertices
-	]
-	counts = [0 for _ in mesh.vertices]
 
-	for polygon in mesh.polygons:
-		for loop_index in polygon.loop_indices:
-			vertex_index = mesh.loops[loop_index].vertex_index
-			color = source_colors[loop_index]
+	if source_domain == 'POINT':
+		for vertex_index, color in enumerate(source_colors):
+			if vertex_index >= len(point_attribute.data):
+				break
+
+			point_attribute.data[vertex_index].color = color
+
+	else:
+		accumulated = [
+			[0.0, 0.0, 0.0, 0.0]
+			for _ in mesh.vertices
+		]
+		counts = [
+			0
+			for _ in mesh.vertices
+		]
+
+		for loop in mesh.loops:
+			vertex_index = loop.vertex_index
+			color = source_colors[loop.index]
 
 			for component in range(4):
-				accumulated[vertex_index][component] += color[component]
+				accumulated[vertex_index][component] += (
+					color[component]
+				)
 
 			counts[vertex_index] += 1
 
-	for vertex_index, total in enumerate(accumulated):
-		count = counts[vertex_index]
+		for vertex_index, total in enumerate(accumulated):
+			count = counts[vertex_index]
 
-		if count == 0:
-			continue
+			if count == 0:
+				continue
 
-		point_attribute.data[vertex_index].color = tuple(
-			component / count
-			for component in total
-		)
-
-	if source != attribute:
-		mesh.color_attributes.remove(source)
+			point_attribute.data[vertex_index].color = tuple(
+				component / count
+				for component in total
+			)
 
 	return True
+
+
+def _ensure_eqg_vertex_colors(mesh: bpy.types.Mesh) -> None:
+	"""
+	Ensure an EQG mesh always has a POINT FLOAT_COLOR attribute named
+	"vertex_colors".
+	"""
+
+	if _ensure_point_vertex_colors(mesh):
+		return
+
+	mesh.color_attributes.new(
+		name="vertex_colors",
+		type='FLOAT_COLOR',
+		domain='POINT',
+	)
 
 
 def _split_then_merge(obj: bpy.types.Object) -> None:
@@ -418,6 +462,7 @@ def _apply_dmspritedefinition(obj: bpy.types.Object) -> None:
 
 def _apply_eqgmodeldef(obj: bpy.types.Object) -> None:
 	obj.quail_eqgmodeldef.version = '3'
+	_ensure_eqg_vertex_colors(obj.data)
 	_ensure_eqg_face_attributes(obj.data)
 	_ensure_vertex_normal_modifier(obj)
 
@@ -425,12 +470,14 @@ def _apply_eqgmodeldef(obj: bpy.types.Object) -> None:
 def _apply_eqgskinnedmodeldef(obj: bpy.types.Object) -> None:
 	obj.quail_eqgskinnedmodeldef.version = '1'
 	obj.quail_eqgskinnedmodeldef.mainpiece = True
+	_ensure_eqg_vertex_colors(obj.data)
 	_ensure_eqg_face_attributes(obj.data)
 	_ensure_vertex_normal_modifier(obj)
 
 
 def _apply_eqgterdef(obj: bpy.types.Object) -> None:
 	obj.quail_eqgterdef.version = '5'
+	_ensure_eqg_vertex_colors(obj.data)
 	_ensure_eqg_face_attributes(obj.data)
 	_ensure_vertex_normal_modifier(obj)
 
