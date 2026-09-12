@@ -5,6 +5,7 @@ import mathutils
 
 from ..common.armature import ensure_pivot, apply_pivot_shapes
 from ..common.mesh import get_vertex_normal_nodegroup
+from ..common.eqgmesh import eqg_piece_root
 from ..wce.eqgmodeldef import eqgmodeldef
 from ..wce.eqganidef import eqganidef
 from .eqganidef import decode_eqganidef
@@ -18,59 +19,93 @@ MODULAR_EXCLUDED_PREFIXES = ("obj", "obp")
 
 def _find_modular_model_set(
     ctx: Context,
-) -> tuple[eqgmodeldef, set[str]] | None:
-    """Identify a three-letter modular character archive from parsed WCE data."""
+) -> tuple[eqgmodeldef, dict[str, str]] | None:
+    """
+    Find the main race model and its recognized multipart pieces.
 
-    archive_name = str(ctx.parser.archive_name or "").strip().casefold()
-
-    if (
-        len(archive_name) != 3
-        or not archive_name[0].isalpha()
-        or not archive_name.isalnum()
-    ):
-        return None
+    The returned dictionary maps each recognized model tag to its
+    attachment bone on the main armature.
+    """
 
     modeldefs = list(ctx.parser.eqgmodeldefs.values())
 
     if len(modeldefs) <= 1:
         return None
 
-    eligible_models = [
+    archive_name = (
+        str(ctx.parser.archive_name or "")
+        .strip()
+        .casefold()
+        .replace("\\", "/")
+        .rsplit("/", 1)[-1]
+    )
+
+    if archive_name.endswith(".wce"):
+        archive_name = archive_name[:-4]
+
+    base_candidates = [
         model
         for model in modeldefs
-        if not str(model.tag or "").strip().casefold().startswith(
-            MODULAR_EXCLUDED_PREFIXES
+        if (
+            len(str(model.tag or "").strip()) == 3
+            and str(model.tag or "").strip()[0].isalpha()
+            and str(model.tag or "").strip().isalnum()
+            and len(model.bones) > 0
         )
     ]
 
-    if len(eligible_models) <= 1:
-        return None
-
-    model_names = {
-        str(model.tag or "").strip().casefold()
-        for model in eligible_models
-    }
-
-    if not all(name.startswith(archive_name) for name in model_names):
-        return None
-
-    main_model = min(
-        eligible_models,
-        key=lambda model: (
-            len(str(model.tag or "").strip()),
-            str(model.tag or "").strip().casefold(),
+    # Prefer the model whose tag matches the archive name.
+    main_model = next(
+        (
+            model
+            for model in base_candidates
+            if (
+                str(model.tag or "")
+                .strip()
+                .casefold()
+                == archive_name
+            )
         ),
+        None,
     )
 
-    # The shortest definition must be the exact archive name. This prevents
-    # an unrelated three-letter archive from being classified accidentally.
-    if str(main_model.tag or "").strip().casefold() != archive_name:
+    # This handles imports through a file named _root.wce.
+    if main_model is None:
+        if len(base_candidates) != 1:
+            return None
+
+        main_model = base_candidates[0]
+
+    race_tag = (
+        str(main_model.tag or "")
+        .strip()
+        .casefold()
+    )
+
+    piece_roots: dict[str, str] = {}
+
+    for model in modeldefs:
+        model_tag = (
+            str(model.tag or "")
+            .strip()
+            .casefold()
+        )
+
+        if model_tag == race_tag:
+            continue
+
+        attachment_root = eqg_piece_root(
+            model_tag,
+            race_tag,
+        )
+
+        if attachment_root is not None:
+            piece_roots[model_tag] = attachment_root
+
+    if not piece_roots:
         return None
 
-    if len(main_model.bones) == 0:
-        return None
-
-    return main_model, model_names
+    return main_model, piece_roots
 
 
 def _build_parent_map(model_bones) -> dict[str, str]:
@@ -109,33 +144,6 @@ def _find_shared_armature(
             and candidate.name.casefold() == expected_name
         ):
             return candidate
-
-    return None
-
-
-def _root_replacement_from_model(
-    model_bones,
-    main_armature: bpy.types.Object,
-) -> str | None:
-    """Resolve a piece ROOT_BONE to its actual parent in the main skeleton."""
-
-    parent_map = _build_parent_map(model_bones)
-    root_children = [
-        child_name
-        for child_name, parent_name in parent_map.items()
-        if parent_name == "ROOT_BONE"
-    ]
-
-    replacements: set[str] = set()
-
-    for child_name in root_children:
-        main_child = main_armature.data.bones.get(child_name)
-
-        if main_child is not None and main_child.parent is not None:
-            replacements.add(main_child.parent.name)
-
-    if len(replacements) == 1:
-        return next(iter(replacements))
 
     return None
 
@@ -486,11 +494,40 @@ def decode_eqgmodeldef(
         _add_skinning_data(obj, eqgmodeldef)
 
         modular_set = _find_modular_model_set(ctx)
-        current_tag = str(eqgmodeldef.tag or "").strip().casefold()
+        current_tag = (
+            str(eqgmodeldef.tag or "")
+            .strip()
+            .casefold()
+        )
 
-        if modular_set is not None and current_tag in modular_set[1]:
-            main_model = modular_set[0]
-            main_tag = str(main_model.tag or "").strip().casefold()
+        main_model = None
+        main_tag = ""
+        attachment_root = None
+        use_shared_armature = False
+
+        if modular_set is not None:
+            main_model, piece_roots = modular_set
+
+            main_tag = (
+                str(main_model.tag or "")
+                .strip()
+                .casefold()
+            )
+
+            if current_tag == main_tag:
+                # The base model owns the complete shared armature.
+                use_shared_armature = True
+
+            else:
+                attachment_root = piece_roots.get(
+                    current_tag
+                )
+
+                # Only recognized standard pieces are retargeted.
+                if attachment_root is not None:
+                    use_shared_armature = True
+
+        if use_shared_armature and main_model is not None:
             main_armature, err = _get_or_create_shared_armature(
                 ctx,
                 main_model,
@@ -501,34 +538,55 @@ def decode_eqgmodeldef(
                 return err
 
             if main_armature is None:
-                return f"Could not create armature for {main_model.tag}"
+                return (
+                    f"Could not create armature for "
+                    f"{main_model.tag}"
+                )
 
             root_replacement = None
 
             if current_tag != main_tag:
-                root_replacement = _root_replacement_from_model(
-                    eqgmodeldef.bones,
-                    main_armature,
-                )
+                if main_armature.data.bones.get(
+                    attachment_root
+                ) is None:
+                    return (
+                        f"EQGMODELDEF {eqgmodeldef.tag} "
+                        f"expects attachment bone "
+                        f"{attachment_root}, but it is not "
+                        f"present in {main_model.tag}"
+                    )
+
+                root_replacement = attachment_root
 
             _retarget_mesh_to_main_armature(
                 obj,
                 main_armature,
                 root_replacement,
             )
+
         else:
+            # This includes unrecognized model names. They retain their
+            # own WCE skeleton rather than joining the race armature.
             armature_obj = _create_armature(
                 ctx,
                 eqgmodeldef,
                 location,
             )
 
-            err = _decode_model_pose(ctx, eqgmodeldef)
+            err = _decode_model_pose(
+                ctx,
+                eqgmodeldef,
+            )
 
             if err:
-                return f"decode POS_{eqgmodeldef.tag}: {err}"
+                return (
+                    f"decode POS_{eqgmodeldef.tag}: {err}"
+                )
 
-            armature_modifier = obj.modifiers.new("Armature", "ARMATURE")
+            armature_modifier = obj.modifiers.new(
+                "Armature",
+                "ARMATURE",
+            )
             armature_modifier.object = armature_obj
             obj.parent = armature_obj
 

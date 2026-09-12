@@ -5,6 +5,7 @@ import bpy
 import mathutils
 
 from ..wce.eqgmodeldef import eqgmodeldef
+from ..common.eqgmesh import eqg_piece_root
 from ..ui.panel.eqgface import get_face_property
 from .eqganidef import encode_eqganidef
 
@@ -198,129 +199,149 @@ def _encode_pos_animation(parser, armature_obj):
 	return animation, ""
 
 
-def _encode_bones(
-	armature_obj,
-	pose_animation,
-	obj,
-):
+def _encode_bones(armature_obj, pose_animation, obj):
 	if armature_obj is None:
 		return [], {}, ""
 
 	if pose_animation is None:
-		return [], {}, (
-			f"EQG armature {armature_obj.name} has no POS animation"
-		)
+		return [], {}, f"EQG armature {armature_obj.name} has no POS animation"
 
 	pose_frames = {}
 
 	for animation_bone in pose_animation.bones:
 		if animation_bone.frames:
-			pose_frames[animation_bone.bone] = (
-				animation_bone.frames[0]
+			pose_frames[animation_bone.bone] = animation_bone.frames[0]
+
+	armature_bones = list(armature_obj.data.bones)
+
+	if not armature_bones:
+		return [], {}, f"EQG armature {armature_obj.name} has no bones"
+
+	race_tag = str(_armature_model_tag(armature_obj)).strip().casefold()
+	model_tag = str(obj.name or "").strip().casefold()
+
+	if model_tag == race_tag:
+		attachment_root = "ROOT_BONE"
+	else:
+		attachment_root = eqg_piece_root(model_tag, race_tag)
+
+	if attachment_root is not None:
+		source_root = armature_obj.data.bones.get(attachment_root)
+
+		if source_root is None:
+			return [], {}, (
+				f"EQGMODELDEF {obj.name} expects attachment bone "
+				f"{attachment_root}, but it is not present in "
+				f"{armature_obj.name}"
 			)
 
-	# Empty vertex groups are intentional. The decoder creates one
-	# group for every bone originally present in this model piece.
-	group_names = {
-		group.name
-		for group in obj.vertex_groups
-	}
+		selected_bones = []
 
-	selected_bones = [
-		bone
-		for bone in armature_obj.data.bones
-		if bone.name in group_names
-	]
+		for bone in armature_bones:
+			current = bone
 
-	if not selected_bones:
-		return [], {}, (
-			f"EQGMODELDEF {obj.name} has an armature but no "
-			"vertex groups matching its bones"
-		)
+			while current is not None:
+				if current == source_root:
+					selected_bones.append(bone)
+					break
 
-	selected_names = {
-		bone.name
-		for bone in selected_bones
-	}
+				current = current.parent
 
-	# Resolve each selected bone's nearest selected ancestor. Normally
-	# every intermediate bone is retained as an empty vertex group, but
-	# this also handles a user deleting an intermediate empty group.
-	parent_names = {}
+	else:
+		# Unrecognized models keep independent armatures, so encode
+		# their complete skeleton.
+		selected_bones = armature_bones
+		root_bones = [bone for bone in selected_bones if bone.parent is None]
 
-	for bone in selected_bones:
-		parent = bone.parent
+		if len(root_bones) != 1:
+			root_names = ", ".join(bone.name for bone in root_bones)
 
-		while (
-			parent is not None
-			and parent.name not in selected_names
-		):
-			parent = parent.parent
+			return [], {}, (
+				f"EQGMODELDEF {obj.name} has {len(root_bones)} "
+				f"armature roots: {root_names or 'none'}"
+			)
 
-		parent_names[bone.name] = (
-			parent.name
-			if parent is not None
-			else None
-		)
+		source_root = root_bones[0]
 
-	root_bones = [
-		bone
-		for bone in selected_bones
-		if parent_names[bone.name] is None
-	]
-
-	if len(root_bones) != 1:
-		root_names = ", ".join(
-			bone.name
-			for bone in root_bones
-		)
-
-		return [], {}, (
-			f"EQGMODELDEF {obj.name} has {len(root_bones)} "
-			f"highest bones in its vertex-group subset: "
-			f"{root_names or 'none'}"
-		)
-
-	source_root = root_bones[0]
-
-	# These indices refer to the piece-local bone array. The keys remain
-	# the shared-armature names because Blender vertex groups use those
-	# names. Only the encoded root bone is renamed.
+	selected_names = {bone.name for bone in selected_bones}
 	bone_indices = {
 		bone.name: index
 		for index, bone in enumerate(selected_bones)
 	}
-
-	encoded_names = {
-		bone.name: (
-			"ROOT_BONE"
-			if bone == source_root
-			else bone.name
-		)
-		for bone in selected_bones
-	}
-
-	children = {
-		bone.name: []
-		for bone in selected_bones
-	}
+	children = {bone.name: [] for bone in selected_bones}
 
 	for bone in selected_bones:
-		parent_name = parent_names[bone.name]
+		if bone.parent is not None and bone.parent.name in selected_names:
+			children[bone.parent.name].append(bone)
 
-		if parent_name is not None:
-			children[parent_name].append(bone)
-
-	next_indices = {
-		bone.name: -1
-		for bone in selected_bones
-	}
+	next_indices = {bone.name: -1 for bone in selected_bones}
 
 	for siblings in children.values():
 		for index, bone in enumerate(siblings[:-1]):
-			next_indices[bone.name] = bone_indices[
-				siblings[index + 1].name
-			]
+			next_indices[bone.name] = bone_indices[siblings[index + 1].name]
+
+	def pose_matrix(bone_name):
+		frame = pose_frames.get(bone_name)
+
+		if frame is None:
+			raise ValueError(
+				f"EQGANIDEF {pose_animation.tag} has no frame "
+				f"for bone {bone_name}"
+			)
+
+		translation = mathutils.Vector(frame.translation)
+		scale = mathutils.Vector(frame.scale)
+		source_rotation = frame.rotation
+
+		rotation = mathutils.Quaternion((
+			-source_rotation[3],
+			source_rotation[0],
+			source_rotation[1],
+			source_rotation[2],
+		))
+
+		return mathutils.Matrix.LocRotScale(
+			translation,
+			rotation,
+			scale,
+		)
+
+	accumulated_matrices = {}
+
+	def accumulated_pose_matrix(bone):
+		cached = accumulated_matrices.get(bone.name)
+
+		if cached is not None:
+			return cached
+
+		local_matrix = pose_matrix(bone.name)
+
+		if bone.parent is None:
+			world_matrix = local_matrix
+		else:
+			world_matrix = (
+				accumulated_pose_matrix(bone.parent)
+				@ local_matrix
+			)
+
+		accumulated_matrices[bone.name] = world_matrix
+		return world_matrix
+
+	try:
+		root_matrix = accumulated_pose_matrix(source_root)
+	except ValueError as exception:
+		return [], {}, str(exception)
+
+	root_translation, root_rotation, root_scale = root_matrix.decompose()
+
+	# Convert Blender's (w, x, y, z) quaternion back to the WCE
+	# (x, y, z, w) convention used by the existing encoder/decoder.
+	root_quaternion = (
+		float(root_rotation.x),
+		float(root_rotation.y),
+		float(root_rotation.z),
+		float(-root_rotation.w),
+	)
 
 	result = []
 
@@ -329,37 +350,29 @@ def _encode_bones(
 
 		if pose_frame is None:
 			return [], {}, (
-				f"EQGANIDEF {pose_animation.tag} has no "
-				f"frame for bone {bone.name}"
+				f"EQGANIDEF {pose_animation.tag} has no frame "
+				f"for bone {bone.name}"
 			)
 
 		bone_children = children[bone.name]
-
 		encoded = eqgmodeldef.bone()
-		encoded.bone = encoded_names[bone.name]
+		encoded.bone = "ROOT_BONE" if bone == source_root else bone.name
 		encoded.next = next_indices[bone.name]
 		encoded.children = len(bone_children)
-
 		encoded.childindex = (
 			bone_indices[bone_children[0].name]
 			if bone_children
 			else -1
 		)
 
-		encoded.pivot = tuple(
-			float(value)
-			for value in pose_frame.translation
-		)
-
-		encoded.quaternion = tuple(
-			float(value)
-			for value in pose_frame.rotation
-		)
-
-		encoded.scale = tuple(
-			float(value)
-			for value in pose_frame.scale
-		)
+		if bone == source_root:
+			encoded.pivot = tuple(float(value) for value in root_translation)
+			encoded.quaternion = root_quaternion
+			encoded.scale = tuple(float(value) for value in root_scale)
+		else:
+			encoded.pivot = tuple(float(value) for value in pose_frame.translation)
+			encoded.quaternion = tuple(float(value) for value in pose_frame.rotation)
+			encoded.scale = tuple(float(value) for value in pose_frame.scale)
 
 		result.append(encoded)
 
