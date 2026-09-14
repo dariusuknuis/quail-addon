@@ -80,6 +80,80 @@ S3D_TO_EQG_ANIMATIONS = {
 }
 
 
+def _expand_single_frame_tracks(action) -> None:
+	if action is None or not action.slots:
+		return
+
+	slot = action.slots[0]
+	channelbag = anim_utils.action_get_channelbag_for_slot(action, slot)
+
+	if channelbag is None:
+		return
+
+	bone_curves = {}
+
+	for fcurve in channelbag.fcurves:
+		if not fcurve.data_path.startswith('pose.bones["'):
+			continue
+
+		end = fcurve.data_path.find('"]', 12)
+
+		if end == -1:
+			continue
+
+		bone_name = fcurve.data_path[12:end]
+		bone_curves.setdefault(bone_name, []).append(fcurve)
+
+	# Obtain the complete animation timing from the bone with the greatest
+	# number of distinct keyed frames.
+	full_frames = []
+
+	for fcurves in bone_curves.values():
+		frames = sorted({
+			point.co.x
+			for fcurve in fcurves
+			for point in fcurve.keyframe_points
+		})
+
+		if len(frames) > len(full_frames):
+			full_frames = frames
+
+	if len(full_frames) <= 1:
+		return
+
+	for bone_name, fcurves in bone_curves.items():
+		bone_frames = {
+			point.co.x
+			for fcurve in fcurves
+			for point in fcurve.keyframe_points
+		}
+
+		if len(bone_frames) != 1:
+			continue
+
+		for fcurve in fcurves:
+			if not fcurve.keyframe_points:
+				continue
+
+			value = fcurve.keyframe_points[0].co.y
+			interpolation = fcurve.keyframe_points[0].interpolation
+
+			for frame in full_frames:
+				point = fcurve.keyframe_points.insert(
+					frame,
+					value,
+					options={'FAST'},
+				)
+				point.interpolation = interpolation
+
+			fcurve.update()
+
+		for track in action.quail_tracks:
+			if track.tag == bone_name:
+				track.numframes = len(full_frames)
+				break
+
+
 def _eqg_animation_name(action_name, race_tag):
 	name = str(action_name or "").strip()
 	race = str(race_tag or "").strip()
@@ -379,6 +453,8 @@ def _rename_animations(race_tag, rename_map):
 
 		if new_name is not None:
 			action.name = new_name
+
+		_expand_single_frame_tracks(action)
 
 
 def convert_s3d_to_eqg_armature(armature_obj):
