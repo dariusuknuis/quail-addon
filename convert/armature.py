@@ -388,10 +388,10 @@ def _rename_vertex_groups(armature_obj, rename_map):
 
 
 def _matching_actions(race_tag):
-	race_lower = race_tag.casefold()
+	suffix = f"_{race_tag}".casefold()
 
 	for action in bpy.data.actions:
-		if action.name.casefold().endswith(race_lower):
+		if action.name.casefold().endswith(suffix):
 			yield action
 
 
@@ -442,18 +442,23 @@ def _rename_action_bones(action, rename_map):
 
 def _rename_animations(race_tag, rename_map):
 	actions = list(_matching_actions(race_tag))
+	pose_name = f"POS_{race_tag}".casefold()
 
 	for action in actions:
 		_rename_action_bones(action, rename_map)
+		is_pose = action.name.casefold() == pose_name
+		new_name = _eqg_animation_name(action.name, race_tag)
 
-		new_name = _eqg_animation_name(
-			action.name,
-			race_tag,
-		)
+		if is_pose:
+			action["quaildef"] = "eqganidef"
+			_expand_single_frame_tracks(action)
+			continue
 
-		if new_name is not None:
-			action.name = new_name
+		if new_name is None:
+			continue
 
+		action.name = new_name
+		action["quaildef"] = "eqganidef"
 		_expand_single_frame_tracks(action)
 
 

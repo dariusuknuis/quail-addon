@@ -151,6 +151,42 @@ class COLLECTION_OT_remove_eqg_layer_texture(bpy.types.Operator):
 		return {'FINISHED'}
 
 
+class COLLECTION_OT_add_eqg_layer(bpy.types.Operator):
+	bl_idname = "collection.add_eqg_layer"
+	bl_label = "Add EQG Layer"
+	bl_description = "Add a new layer to this EQGLAYERDEF"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	collection_name: StringProperty(options={'HIDDEN'})
+
+	def execute(self, context):
+		collection = bpy.data.collections.get(self.collection_name)
+
+		if (
+			not collection
+			or collection.get("quaildef") != "eqglayerdef"
+		):
+			self.report(
+				{'ERROR'},
+				f"EQGLAYERDEF collection not found: "
+				f"{self.collection_name}",
+			)
+			return {'CANCELLED'}
+
+		layer = collection.quail_eqglayerdef.layers.add()
+		layer.material = ""
+		layer.shininess = 12.0
+		layer.rendertype = 1.0
+
+		self.report(
+			{'INFO'},
+			f"Added Layer "
+			f"{len(collection.quail_eqglayerdef.layers) - 1}",
+		)
+
+		return {'FINISHED'}
+
+
 def draw_layer_image(box, collection, layer, layer_index: int, texture_row_index: int):
 	texture = layer.textures[texture_row_index]
 	row = box.row(align=True)
@@ -173,16 +209,28 @@ def draw_layer_image(box, collection, layer, layer_index: int, texture_row_index
 
 def draw_eqglayerdef_in_visibility(self, context):
 	collection = context.collection
-	if not collection or collection.get("quaildef") != "eqglayerdef":
+
+	if (
+		not collection
+		or collection.get("quaildef") != "eqglayerdef"
+	):
 		return
 
 	props = collection.quail_eqglayerdef
 	layout = self.layout
 	layout.separator()
+
 	box = layout.box()
 	box.label(text="EQGLAYERDEF")
 	box.prop(props, "version")
 	box.label(text=f"Layers: {len(props.layers)}")
+
+	add_layer = box.operator(
+		"collection.add_eqg_layer",
+		text="Add Layer",
+		icon='ADD',
+	)
+	add_layer.collection_name = collection.name
 
 	for layer_index, layer in enumerate(props.layers):
 		layer_box = box.box()
@@ -192,12 +240,22 @@ def draw_eqglayerdef_in_visibility(self, context):
 		layer_box.prop(layer, "rendertype")
 
 		for texture_row_index in range(len(layer.textures)):
-			draw_layer_image(layer_box, collection, layer, layer_index, texture_row_index)
+			draw_layer_image(
+				layer_box,
+				collection,
+				layer,
+				layer_index,
+				texture_row_index,
+			)
 
 		if len(layer.textures) < 5:
-			add = layer_box.operator("collection.add_eqg_layer_texture", text="Add Texture", icon='ADD')
-			add.collection_name = collection.name
-			add.layer_index = layer_index
+			add_texture = layer_box.operator(
+				"collection.add_eqg_layer_texture",
+				text="Add Texture",
+				icon='ADD',
+			)
+			add_texture.collection_name = collection.name
+			add_texture.layer_index = layer_index
 
 
 def register():

@@ -234,16 +234,123 @@ class QuailEqgParticleRenderProperties(bpy.types.PropertyGroup):
 	)
 
 
+class OBJECT_OT_add_eqg_particlerender(bpy.types.Operator):
+	bl_idname = "object.add_eqg_particlerender"
+	bl_label = "Add Particle Render"
+	bl_description = "Add a render entry to this particle render definition"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	collection_name: StringProperty(
+		options={'HIDDEN'},
+	)
+
+	@classmethod
+	def poll(cls, context):
+		collection = context.collection
+
+		return (
+			collection is not None
+			and collection.get("quaildef") == "eqgparticlerenderdef"
+		)
+
+	def execute(self, context):
+		collection = bpy.data.collections.get(self.collection_name)
+
+		if collection is None:
+			self.report(
+				{'ERROR'},
+				"Particle-render collection not found",
+			)
+			return {'CANCELLED'}
+
+		if collection.get("quaildef") != "eqgparticlerenderdef":
+			self.report(
+				{'ERROR'},
+				f"Collection {collection.name} is not an "
+				"EQGPARTICLERENDERDEF",
+			)
+			return {'CANCELLED'}
+
+		index = 0
+
+		while bpy.data.objects.get(f"RENDER_{index:03d}") is not None:
+			index += 1
+
+		name = f"RENDER_{index:03d}"
+		mesh = bpy.data.meshes.new(f"{name}_mesh")
+		mesh.from_pydata([(0.0, 0.0, 0.0)], [], [])
+		mesh.update()
+
+		obj = bpy.data.objects.new(name, mesh)
+		obj["quaildef"] = "eqgparticlerender"
+		collection.objects.link(obj)
+
+		obj.location = (0.0, 0.0, 0.0)
+		obj.rotation_mode = 'XYZ'
+		obj.rotation_euler = (0.0, 0.0, 0.0)
+		obj.scale = (1.0, 1.0, 1.0)
+		obj.hide_viewport = False
+		obj.hide_render = False
+
+		props = obj.quail_eqgparticlerender
+		was_updating = state.QUAIL_UPDATING
+		state.QUAIL_UPDATING = True
+
+		try:
+			props.render = 0
+			props.particlepoint = ""
+			props.particletype = '1'
+			props.animnumber = 0
+			props.animvariation = 0
+			props.randomanim = False
+			props.starttime = 0
+			props.lifespan = 0
+			props.ground = False
+			props.playwithmat = -1
+			props.sporadic = False
+			props.coldemitterid = 0
+		finally:
+			state.QUAIL_UPDATING = was_updating
+
+		from ...handlers import initialize_particle_renderer
+		initialize_particle_renderer(obj)
+
+		for selected_obj in context.selected_objects:
+			selected_obj.select_set(False)
+
+		obj.select_set(True)
+		context.view_layer.objects.active = obj
+
+		self.report(
+			{'INFO'},
+			f"Added {obj.name}",
+		)
+
+		return {'FINISHED'}
+
+
 def draw_eqgparticlerenderdef_in_visibility(self, context):
 	collection = context.collection
-	if not collection or collection.get("quaildef") != "eqgparticlerenderdef":
+
+	if (
+		not collection
+		or collection.get("quaildef") != "eqgparticlerenderdef"
+	):
 		return
 
 	layout = self.layout
 	layout.separator()
+
 	box = layout.box()
 	box.label(text="EQGPARTICLERENDERDEF")
 	box.prop(collection.quail_eqgparticlerenderdef, "version")
+
+	operator = box.operator(
+		"object.add_eqg_particlerender",
+		text="Add Particle Render",
+		icon='ADD',
+	)
+	operator.collection_name = collection.name
 
 
 def draw_eqgparticlerender_in_transform(self, context):
