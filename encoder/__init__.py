@@ -277,7 +277,12 @@ def write_model_folder(parser, root_obj, export_objects, root_path, use_eqg):
     local_parser.variationmaterialtags = set(parser.variationmaterialtags)
 
     for tag, definition in parser.eqglayerdefs.items():
-        if tag.casefold() == model_name.casefold():
+        if (
+            tag.casefold() == model_name.casefold()
+            or tag.casefold().startswith(
+                model_name.casefold() + "_"
+            )
+        ):
             local_parser.eqglayerdefs[tag] = definition
 
     for tag, definition in parser.eqgparticlepointdefs.items():
@@ -560,9 +565,20 @@ def export_asset_images(export_objects, assets_dir):
             return os.path.basename(str(source_name)).lower()
 
         if image.filepath:
-            return os.path.basename(bpy.path.abspath(image.filepath)).lower()
+            return os.path.basename(
+                bpy.path.abspath(image.filepath)
+            ).lower()
 
         return os.path.basename(image.name).lower()
+
+    def find_image(filename):
+        expected = os.path.basename(filename).casefold()
+
+        for image in bpy.data.images:
+            if eqg_image_filename(image).casefold() == expected:
+                return image
+
+        return None
 
     def export_image(image, filename):
         if not image or not filename:
@@ -585,11 +601,17 @@ def export_asset_images(export_objects, assets_dir):
             if source and os.path.exists(source):
                 shutil.copy2(source, destination)
             else:
-                print(f"Fallback saving image (no source): {filename}")
+                print(
+                    f"Fallback saving image "
+                    f"(no source): {filename}"
+                )
                 image.save_render(destination)
 
         except Exception as exception:
-            print(f"ERROR exporting image {filename}: {exception}")
+            print(
+                f"ERROR exporting image "
+                f"{filename}: {exception}"
+            )
 
     for item in export_objects:
         if not hasattr(item, "get"):
@@ -611,10 +633,58 @@ def export_asset_images(export_objects, assets_dir):
                     image = bpy.data.images.get(file.image_name)
 
                     if not image:
-                        print(f"WARNING: Missing image {file.image_name}")
+                        print(
+                            f"WARNING: Missing image "
+                            f"{file.image_name}"
+                        )
                         continue
 
                     export_image(image, file.file_name)
+
+            continue
+
+        # ----------------------------------------
+        # EQG LayerDef images
+        # ----------------------------------------
+        if (
+            isinstance(item, bpy.types.Collection)
+            and qdef == "eqglayerdef"
+        ):
+            if not hasattr(item, "quail_eqglayerdef"):
+                print(
+                    f"WARNING: EQGLAYERDEF {item.name} "
+                    f"has no layer properties"
+                )
+                continue
+
+            props = item.quail_eqglayerdef
+
+            for layer_index, layer in enumerate(props.layers):
+                for texture in layer.textures:
+                    image = texture.image
+                    filename = texture.filename.strip()
+
+                    if not filename and image:
+                        filename = eqg_image_filename(image)
+
+                    if not filename:
+                        continue
+
+                    if image is None:
+                        image = find_image(filename)
+
+                    if image is None:
+                        print(
+                            f"WARNING: EQGLAYERDEF "
+                            f"{item.name} layer "
+                            f"{layer_index} texture "
+                            f"{texture.texture_index} "
+                            f"references {filename}, but "
+                            f"the image is not loaded"
+                        )
+                        continue
+
+                    export_image(image, filename)
 
             continue
 
@@ -628,13 +698,20 @@ def export_asset_images(export_objects, assets_dir):
         }:
             continue
 
-        if not isinstance(item, bpy.types.Object) or item.type != 'MESH':
+        if (
+            not isinstance(item, bpy.types.Object)
+            or item.type != 'MESH'
+        ):
             continue
 
         for assigned_material in item.data.materials:
             material = source_material(assigned_material)
 
-            if not material or material.get("quaildef") != "eqgmaterialdef":
+            if (
+                not material
+                or material.get("quaildef")
+                != "eqgmaterialdef"
+            ):
                 continue
 
             props = material.quail_eqgmaterialdef
@@ -642,22 +719,31 @@ def export_asset_images(export_objects, assets_dir):
             for row in props.property_rows:
                 property_name = row.property_name
 
-                if not property_name or not hasattr(props, property_name):
+                if (
+                    not property_name
+                    or not hasattr(props, property_name)
+                ):
                     continue
 
-                rna_property = props.bl_rna.properties.get(property_name)
+                rna_property = props.bl_rna.properties.get(
+                    property_name
+                )
 
                 if (
                     not rna_property
                     or rna_property.type != 'POINTER'
-                    or rna_property.fixed_type.identifier != "Image"
+                    or rna_property.fixed_type.identifier
+                    != "Image"
                 ):
                     continue
 
                 image = getattr(props, property_name)
 
                 if image:
-                    export_image(image, eqg_image_filename(image))
+                    export_image(
+                        image,
+                        eqg_image_filename(image),
+                    )
 
 def write_zone_folder(parser, export_objects, root_path):
 
